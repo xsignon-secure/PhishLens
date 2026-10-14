@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy — PhishLens{% endblock %}
+{% block content %}
+<section class="legal">
+  <h1>Privacy Policy</h1>
+  <p class="muted">Last updated: October 2026</p>
+  <h2>1. What we collect</h2>
+  <p><strong>Account data:</strong> your email, company name, and a salted password hash. <strong>Scan data:</strong> domains you submit and the resulting posture scores. <strong>Operational data:</strong> audit events (logins, scans, changes) with IP addresses, retained for security.</p>
+  <h2>2. What we don't do</h2>
+  <p>No AI processing of your data. No sale of personal data. No third-party trackers or advertising cookies on this site. Scan results for your private domains are visible only to your tenant unless you explicitly share a report link.</p>
+  <h2>3. How we use data</h2>
+  <p>To operate the service, send the alerts you configured, prevent abuse, and meet legal obligations.</p>
+  <h2>4. Your rights</h2>
+  <p>You can export your tenant's data at any time (Dashboard → Export) and request deletion by emailing <a href="mailto:info@xsignon.com">info@xsignon.com</a>.</p>
+  <h2>5. Security</h2>
+  <p>Passwords are bcrypt-hashed, sessions are short-lived signed tokens, API keys are stored as hashes, and tenant data is strictly isolated. No system is perfect — report issues to <a href="mailto:info@xsignon.com">info@xsignon.com</a>.</p>
+  <h2>6. Changes</h2>
+  <p>We will post updates here and note the revision date.</p>
+</section>
+{% endblock %}

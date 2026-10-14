@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}PhishLens — Check your domain's email security{% endblock %}
+{% block content %}
+<section class="hero">
+  <span class="eyebrow">Free domain check</span>
+  <h1>Is your domain <span class="grad-text">phish-proof?</span></h1>
+  <p class="sub">Type your domain below. We'll check its email security posture and show you exactly what to fix — record by record.</p>
+  <form id="scan-form" class="scanbox" autocomplete="off">
+    <input id="scan-domain" type="text" placeholder="example.com" spellcheck="false" aria-label="Domain to scan">
+    <button type="submit" class="btn big">Scan my domain</button>
+  </form>
+  <p class="hint"><b>Free.</b> No signup needed. Nothing to install.</p>
+
+  <div id="scan-progress" class="scan-progress hidden" aria-live="polite">
+    <div class="phase"><span class="spinner"></span><span id="phase-text">Starting…</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <div id="scan-result"></div>
+</section>
+
+<section class="features" aria-label="How it works">
+  <div class="card">
+    <div class="icon">①</div>
+    <h3>Enter your domain</h3>
+    <p>One field, one click. We read only public records — nothing is installed and no email is ever sent.</p>
+  </div>
+  <div class="card">
+    <div class="icon">②</div>
+    <h3>Get a clear grade</h3>
+    <p>Your domain gets a simple 0–100 score and a letter grade anyone on the team can understand.</p>
+  </div>
+  <div class="card">
+    <div class="icon">③</div>
+    <h3>Fix it, record by record</h3>
+    <p>Every issue ships with the exact DNS record to publish. Copy, paste, done — then rescan to watch the grade climb.</p>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Want drift alerts and history?</h2>
+  <p>Monitor your domains and get notified when a score drops or a record changes.</p>
+  <a class="btn big" href="/signup">Create a free account</a>
+</section>
+
+<p class="muted small" style="text-align:center;margin-top:28px">
+  Curious what a scan actually looks at? <a href="/help">Read the Help guide →</a>
+</p>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('scan-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domain = document.getElementById('scan-domain').value.trim().toLowerCase();
+  const box = document.getElementById('scan-result');
+  if (!domain) return;
+  box.innerHTML = '';
+  const prog = runScanProgress('scan-progress', 'phase-text', 'progress-fill');
+  try {
+    const r = await fetch('/api/scans/public', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain})
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Scan failed');
+    prog.done();
+    box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf'});
+    bindReportInteractions(box);
+    box.scrollIntoView({behavior: 'smooth', block: 'start'});
+  } catch (err) {
+    prog.done();
+    box.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p>' +
+      '<p class="muted">Tip: enter a bare domain like <code>example.com</code> — no http://, no paths.</p></div>';
+  }
+});
+</script>
+{% endblock %}

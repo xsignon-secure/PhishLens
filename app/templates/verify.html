@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Verify email — PhishLens{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>Verify your email</h1>
+  <p class="sub" id="verify-msg">Confirming…</p>
+  <p><a href="/dashboard">Go to dashboard</a></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(async () => {
+  const token = new URLSearchParams(location.search).get('token');
+  const msg = document.getElementById('verify-msg');
+  if (!token) { msg.textContent = 'No verification token found.'; return; }
+  const r = await fetch('/api/auth/verify', {method: 'POST',
+    headers: {'Content-Type': 'application/json',
+      'X-CSRF-Token': (document.cookie.match(/(?:^|; )csrf_token=([^;]*)/) || [])[1] || ''},
+    body: JSON.stringify({token})});
+  msg.textContent = r.ok ? '✓ Email verified.' : 'This link is invalid or expired. Request a new one from your dashboard.';
+})();
+</script>
+{% endblock %}

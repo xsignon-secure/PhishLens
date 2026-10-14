@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Report: {{ scan.domain }} — PhishLens{% endblock %}
+{% block content %}
+<section class="report-page">
+  <div id="shared-report"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const scanData = {{ scan.result | tojson }};
+document.getElementById('shared-report').innerHTML = renderReport(
+  {domain: scanData.domain, score: scanData.score, grade: scanData.grade, result: scanData}, false,
+  {pdfUrl: {{ ('/api/scans/shared/' ~ scan.id ~ '/pdf') | tojson }}}
+);
+// Without this the score ring stays at 0 and the Copy buttons do nothing.
+bindReportInteractions(document.getElementById('shared-report'));
+</script>
+{% endblock %}

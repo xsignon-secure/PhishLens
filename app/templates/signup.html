@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Sign up — PhishLens{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>Create your free account</h1>
+  <p class="sub" id="signup-sub">Monitor up to 3 domains free. No credit card.</p>
+  <form id="signup-form">
+    <label>Work email<input name="email" type="email" required></label>
+    <label>Company / team name<input name="company" type="text" required maxlength="200"></label>
+    <label>Password (8+ characters)<input name="password" type="password" required minlength="8"></label>
+    <button class="btn big" type="submit">Create account</button>
+    <p id="signup-err" class="error"></p>
+  </form>
+  <p>Have an account? <a href="/login">Log in</a></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const inviteToken = new URLSearchParams(location.search).get('invite');
+if (inviteToken) {
+  document.getElementById('signup-sub').textContent = "You've been invited to join a team — create your account to accept.";
+  document.querySelector('input[name="company"]').closest('label').style.display = 'none';
+}
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const r = await fetch('/api/auth/signup', {method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: fd.get('email'), password: fd.get('password'),
+      company: fd.get('company') || 'Team', invite_token: inviteToken})});
+  if (r.ok) { location.href = '/dashboard?welcome=1'; }
+  else { const d = await r.json(); document.getElementById('signup-err').textContent = d.detail || 'Signup failed'; }
+});
+</script>
+{% endblock %}
