@@ -88,3 +88,11 @@ class ScanIn(BaseModel):
 
 class MonitorIn(BaseModel):
     domain: str = Field(min_length=1, max_length=253)
+
+
+class HeadersIn(BaseModel):
+    headers: str = Field(min_length=1, max_length=262144)
+
+
+class LookalikeIn(BaseModel):
+    domain: str = Field(min_length=1, max_length=2048)

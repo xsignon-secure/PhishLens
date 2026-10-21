@@ -78,6 +78,10 @@ class Monitor(Base):
     alert_on_drop = Column(Boolean, nullable=False, default=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Registered lookalike domains seen at the last scheduled check, so the
+    # next check alerts only on newly registered ones.
+    lookalikes = Column(JSON, nullable=True)
+    lookalikes_checked_at = Column(DateTime, nullable=True)
 
     tenant = relationship("Tenant", back_populates="monitors")
 
@@ -134,3 +138,23 @@ class AuditEvent(Base):
     detail = Column(JSON, nullable=True)
     ip = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class DmarcReport(Base):
+    """One DMARC aggregate (RUA) report, as sent by a mailbox provider."""
+    __tablename__ = "dmarc_reports"
+    __table_args__ = (UniqueConstraint("tenant_id", "org_name", "report_id",
+                                       name="uq_dmarc_report_tenant_org_id"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False, index=True)
+    org_name = Column(String(200), nullable=False)
+    report_id = Column(String(200), nullable=False)
+    date_begin = Column(DateTime, nullable=True, index=True)
+    date_end = Column(DateTime, nullable=True)
+    policy = Column(JSON, nullable=True)
+    records = Column(JSON, nullable=False)
+    message_count = Column(Integer, nullable=False, default=0)
+    pass_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -628,51 +628,73 @@ def check_smtp_tls(domain: str) -> dict:
                 "issues": [], "fixes": []}
 
 
-DNSBLS = ["zen.spamhaus.org", "bl.spamcop.net"]
+DNSBLS = ["zen.spamhaus.org", "bl.spamcop.net", "psbl.surriel.com", "bl.mailspike.net"]
+# Domain blocklists list the domain itself (seen in spam/phishing URLs or as a
+# sender), independent of which servers send its mail.
+DOMAIN_BLS = ["dbl.spamhaus.org", "multi.surbl.org"]
 
 
-def _dnsbl_listed(query: str) -> bool:
+def _dnsbl_listed(query: str, domain_list: bool = False) -> bool:
     """True only for a genuine listing.
 
     Blocklists answer 127.0.0.2-127.0.0.255 for listed IPs. Spamhaus answers
     127.255.255.x when it refuses the query (public/open resolver, rate limit),
     and some ISP resolvers rewrite NXDOMAIN to an ad server's IP — neither is a
-    listing, and counting them would flag every domain."""
+    listing, and counting them would flag every domain. Spamhaus DBL lists
+    domains as 127.0.1.2-127.0.1.99 (127.0.1.255 is an error code)."""
     try:
         answers = _resolver.resolve(query, "A", lifetime=3)
     except Exception:
         return False
     for r in answers:
         ip = str(r)
+        if domain_list and query.endswith(".dbl.spamhaus.org"):
+            if ip.startswith("127.0.1."):
+                try:
+                    if 2 <= int(ip.rsplit(".", 1)[1]) <= 99:
+                        return True
+                except ValueError:
+                    pass
+            continue
         if ip.startswith("127.0.0.") and ip != "127.0.0.1":
             return True
     return False
 
 
 def check_dnsbl(domain: str) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
     max_score = 5
-    listed = []
     try:
         answers = _resolver.resolve(domain, "MX", lifetime=TIMEOUT)
         hosts = [str(r.exchange).rstrip(".") for r in answers]
     except Exception:
         hosts = []
+    queries = []  # (query, label, is_domain_list)
     for host in [h for h in hosts if h][:3]:
         try:
             ip = socket.gethostbyname(host)
         except (socket.gaierror, UnicodeError):
             continue
         rev = ".".join(reversed(ip.split(".")))
-        for bl in DNSBLS:
-            if _dnsbl_listed(f"{rev}.{bl}"):
-                listed.append(f"{ip} on {bl}")
+        queries += [(f"{rev}.{bl}", f"{ip} on {bl}", False) for bl in DNSBLS]
+    queries += [(f"{domain}.{bl}", f"{domain} on {bl}", True) for bl in DOMAIN_BLS]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        hits = list(pool.map(lambda q: _dnsbl_listed(q[0], q[2]), queries))
+    listed = list(dict.fromkeys(label for (_, label, _), hit in zip(queries, hits) if hit))
     if listed:
+        domain_hit = any(label.startswith(domain + " ") for label in listed)
+        fixes = ["Request delisting via the blocklist's process and fix the underlying spam/misconfig issue."]
+        if domain_hit:
+            fixes.append("A domain listing usually means the domain appeared in spam or phishing: check for "
+                         "compromised accounts, hacked web pages, or a sending service abusing your domain.")
         return {"key": "dnsbl", "title": "Blacklists", "status": "fail", "score": 0, "max_score": max_score,
-                "details": "Mail server IP found on blocklists.",
+                "details": "Domain or mail server IP found on blocklists.",
                 "issues": [f"Listed: {x}" for x in listed],
-                "fixes": ["Request delisting via the blocklist's process and fix the underlying spam/misconfig issue."]}
+                "fixes": fixes}
     return {"key": "dnsbl", "title": "Blacklists", "status": "pass", "score": max_score,
-            "max_score": max_score, "details": "Mail server IPs not found on major blocklists.",
+            "max_score": max_score,
+            "details": f"Domain and mail server IPs not found on {len(DNSBLS) + len(DOMAIN_BLS)} major blocklists.",
             "issues": [], "fixes": []}
 
 

@@ -37,11 +37,53 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _opener = urllib.request.build_opener(_NoRedirect)
 
 
+def chat_kind(url: str) -> str | None:
+    """'slack' / 'teams' for chat incoming-webhook URLs, which take a message
+    payload instead of the raw event; None for a generic (SIEM) endpoint."""
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    if host == "hooks.slack.com":
+        return "slack"
+    if host.endswith(".webhook.office.com") or host.endswith(".logic.azure.com") \
+            or host.endswith(".powerplatform.com"):
+        return "teams"
+    if host in ("discord.com", "discordapp.com"):
+        return "discord"
+    return None
+
+
+def chat_text(event: dict) -> str:
+    from .config import settings
+
+    if event.get("event") == "webhook.test":
+        return "PhishLens test alert: your webhook is connected."
+    lines = [f"PhishLens alert for {event.get('domain')} "
+             f"(score {event.get('score')}, grade {event.get('grade')})"]
+    lines += [f"- {a.get('message')}" for a in event.get("alerts", [])]
+    lines.append(f"{settings.APP_URL}/dashboard")
+    return "\n".join(lines)
+
+
 def deliver(url: str, secret: str, event: dict) -> bool:
     if not url_allowed(url):
         log.warning("webhook delivery to %s refused: not a public https URL", url)
         return False
-    body = json.dumps(event, separators=(",", ":")).encode()
+    kind = chat_kind(url)
+    if kind == "discord":
+        payload = {"content": chat_text(event)}
+    elif kind == "teams":
+        # Adaptive Card: accepted by both classic Teams incoming webhooks and
+        # the Workflows "post to a channel when a webhook request is received".
+        payload = {"type": "message", "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {"type": "AdaptiveCard", "version": "1.4",
+                        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                        "body": [{"type": "TextBlock", "wrap": True, "text": chat_text(event)}]},
+        }]}
+    elif kind == "slack":
+        payload = {"text": chat_text(event)}
+    else:
+        payload = event
+    body = json.dumps(payload, separators=(",", ":")).encode()
     sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     req = urllib.request.Request(
         url, data=body, method="POST",

@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import init_db
-from .routers import auth, monitors, pages, scans, team
+from .routers import auth, dmarc, monitors, pages, scans, team, tools
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -53,7 +53,7 @@ app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lif
 _CSRF_EXEMPT = {
     "/api/auth/signup", "/api/auth/login", "/api/auth/mfa/challenge",
     "/api/auth/password/forgot", "/api/auth/password/reset",
-    "/api/auth/verify", "/api/scans/public",
+    "/api/auth/verify", "/api/scans/public", "/api/tools/headers",
 }
 
 
@@ -132,6 +132,8 @@ app.include_router(auth.router)
 app.include_router(scans.router)
 app.include_router(monitors.router)
 app.include_router(team.router)
+app.include_router(dmarc.router)
+app.include_router(tools.router)
 
 
 @app.get("/api/health")

@@ -25,6 +25,9 @@ def main() -> int:
     parser.add_argument("--min-age-hours", type=float, default=20)
     parser.add_argument("--domain", help="rescan only this domain")
     parser.add_argument("--tenant", help="rescan only this tenant id")
+    parser.add_argument("--lookalike-days", type=float, default=6,
+                        help="look for new lookalike domains when the last check is older "
+                             "than this many days (0 disables)")
     args = parser.parse_args()
 
     init_db()
@@ -45,7 +48,11 @@ def main() -> int:
                 skipped += 1
                 continue
             try:
-                result = engine.rescan_monitor(db, monitor)
+                due = args.lookalike_days > 0 and (
+                    not monitor.lookalikes_checked_at
+                    or monitor.lookalikes_checked_at
+                    < datetime.utcnow() - timedelta(days=args.lookalike_days))
+                result = engine.rescan_monitor(db, monitor, check_lookalikes=due)
                 done += 1
                 alerted += len(result["alerts"])
                 print(f"[{datetime.utcnow().isoformat()}] {monitor.domain} "

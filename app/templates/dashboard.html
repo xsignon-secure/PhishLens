@@ -41,6 +41,27 @@
     <div id="history"></div>
   </div>
   <div class="dash-grid">
+    <div class="panel" id="dmarc-panel">
+      <h2><span class="dot"></span>DMARC reports</h2>
+      <p class="muted small">Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.</p>
+      <label class="btn tiny" style="display:inline-block;cursor:pointer">Upload reports
+        <input id="dmarc-file" type="file" accept=".xml,.gz,.zip,application/xml,application/gzip,application/zip" multiple hidden>
+      </label>
+      <select id="dmarc-domain" class="hidden" aria-label="Domain"></select>
+      <p id="dmarc-msg" class="muted small"></p>
+      <div id="dmarc-summary"></div>
+    </div>
+    <div class="panel" id="lookalike-panel">
+      <h2><span class="dot"></span>Lookalike domains</h2>
+      <p class="muted small">Find registered look-alikes of your domain (typos, swapped letters, other TLDs) that could be used to phish your staff or customers. Monitored domains are rechecked weekly and alert on new registrations.</p>
+      <form id="lookalike-form" class="scanbox small">
+        <input id="lookalike-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+        <button class="btn" type="submit">Find</button>
+      </form>
+      <div id="lookalike-result"></div>
+    </div>
+  </div>
+  <div class="dash-grid">
     <div class="panel">
       <h2><span class="dot"></span>Team</h2>
       <div id="members"></div>
@@ -71,7 +92,7 @@
         <button id="webhook-del" class="btn ghost" type="button">Remove</button>
       </form>
       <p id="webhook-status" class="muted"></p>
-      <p class="muted small">Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion.</p>
+      <p class="muted small">Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion. Slack, Microsoft Teams and Discord webhook URLs get a readable chat message instead (any 16+ character secret).</p>
     </div>
     <div class="panel">
       <h2><span class="dot"></span>Security</h2>
@@ -391,11 +412,79 @@ function maybeWelcome() {
   document.getElementById('welcome-skip').onclick = close;
 }
 
+
+/* ---------------- DMARC reports ---------------- */
+async function loadDmarc(selected) {
+  const domains = await api('/api/dmarc/domains');
+  const sel = document.getElementById('dmarc-domain');
+  const box = document.getElementById('dmarc-summary');
+  if (!domains.length) {
+    sel.classList.add('hidden');
+    box.innerHTML = '<p class="muted">No reports yet.</p>';
+    return;
+  }
+  const current = selected && domains.includes(selected) ? selected : (sel.value && domains.includes(sel.value) ? sel.value : domains[0]);
+  sel.innerHTML = domains.map(d => `<option${d === current ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('');
+  sel.classList.toggle('hidden', domains.length < 2);
+  const s = await api('/api/dmarc/summary/' + encodeURIComponent(current) + '?days=90');
+  const v = s.verdict || {};
+  box.innerHTML = `
+    <div class="mon"><strong>${escapeHtml(s.domain)}</strong>
+      <span class="muted">${s.messages.toLocaleString()} messages · ${s.reports} report(s) · policy p=${escapeHtml((s.policy || {}).p || '?')}</span>
+      <span class="grade g${(s.pass_rate ?? 0) >= 98 ? 'A' : (s.pass_rate ?? 0) >= 80 ? 'C' : 'F'}">${s.pass_rate ?? '—'}%</span></div>
+    <p>${statusBadge(v.level === 'info' ? 'warn' : v.level)} ${escapeHtml(v.message || '')}</p>
+    ${v.record ? `<p><code>${escapeHtml(v.record)}</code></p>` : ''}
+    ${s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
+      ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
+      <div class="meta">${r.messages.toLocaleString()} messages from ${r.ip_count} IP(s) · DKIM aligned ${r.dkim_aligned.toLocaleString()} · SPF aligned ${r.spf_aligned.toLocaleString()}</div>
+      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}`;
+}
+document.getElementById('dmarc-domain').addEventListener('change', e => loadDmarc(e.target.value));
+document.getElementById('dmarc-file').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  const msg = document.getElementById('dmarc-msg');
+  let ok = 0, dup = 0, lastDomain = null;
+  const errors = [];
+  for (const f of files) {
+    msg.textContent = `Uploading ${f.name}…`;
+    try {
+      const d = await api('/api/dmarc/reports', {method: 'POST',
+        headers: {'Content-Type': 'application/octet-stream'}, body: f});
+      if (d.duplicate) dup++; else ok++;
+      lastDomain = d.domain;
+    } catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
+  }
+  e.target.value = '';
+  msg.textContent = `${ok} report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  loadDmarc(lastDomain);
+});
+
+/* ---------------- lookalike domains ---------------- */
+document.getElementById('lookalike-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domain = document.getElementById('lookalike-domain').value.trim();
+  const box = document.getElementById('lookalike-result');
+  if (!domain) return;
+  box.innerHTML = '<p class="loading"><span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px"></span>Checking a few hundred look-alike spellings…</p>';
+  try {
+    const r = await api('/api/tools/lookalikes', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain})});
+    const risk = {high: 'fail', medium: 'warn', low: 'pass'};
+    box.innerHTML = `<p class="muted small">Checked ${r.checked} spellings of ${escapeHtml(r.domain)}: ${r.registered.length} registered, ${r.high_risk} can receive email.</p>` +
+      (r.registered.length ? r.registered.map(x => `<div class="dm-row"><div class="top"><strong>${escapeHtml(x.domain)}</strong>
+        <span class="badge ${risk[x.risk]}">${escapeHtml(x.risk)} risk</span></div>
+        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? ' · mail servers: ' + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? ' · has a website' : ''}</div></div>`).join('')
+        + '<p class="muted small">High risk = the domain has mail servers and could send phishing as a look-alike of you. Check who owns it (WHOIS) and, if it is abusive, report it to the registrar\'s abuse contact.</p>'
+      : '<p>✓ No registered look-alikes found.</p>');
+  } catch (err) { if (err.message !== 'auth') box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+
 /* ---------------- boot ---------------- */
 (async function init() {
   try {
     await loadDashboard();
     await loadEnterprise();
+    loadDmarc().catch(() => {});
     maybeWelcome();
   } catch (e) {
     if (e.message !== 'auth') toast('Could not load dashboard — ' + e.message);

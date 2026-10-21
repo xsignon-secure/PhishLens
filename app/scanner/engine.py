@@ -93,7 +93,30 @@ def score_history(db: Session, tenant_id: str, domain: str,
     return {"points": points, "trend": trend}
 
 
-def rescan_monitor(db: Session, monitor: models.Monitor) -> dict:
+def check_monitor_lookalikes(monitor: models.Monitor) -> list[models.Alert]:
+    """Look for registered lookalikes of a monitored domain. The first check
+    records a baseline; later checks alert on newly registered ones."""
+    from . import lookalike
+
+    result = lookalike.scan(monitor.domain)
+    found = {r["domain"]: r for r in result["registered"]}
+    first_check = monitor.lookalikes is None
+    previous = set(monitor.lookalikes or [])
+    monitor.lookalikes = sorted(found)
+    monitor.lookalikes_checked_at = datetime.utcnow()
+    new = [found[d] for d in sorted(set(found) - previous)]
+    if first_check or not new:
+        return []
+    listed = ", ".join(f"{r['domain']} ({'accepts mail' if r['mx'] else 'web only'})"
+                       for r in new[:10])
+    more = f" and {len(new) - 10} more" if len(new) > 10 else ""
+    return [models.Alert(
+        tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="lookalike_registered",
+        message=f"{monitor.domain}: newly registered lookalike domain(s): {listed}{more}.",
+    )]
+
+
+def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool = False) -> dict:
     """Re-scan a monitored domain, record drift alerts, email owners.
 
     Shared by the API endpoint and the scheduled worker so both behave
@@ -135,6 +158,11 @@ def rescan_monitor(db: Session, monitor: models.Monitor) -> dict:
             tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="check_failed",
             message=f"{monitor.domain}: newly failing checks: {', '.join(failed)}.",
         ))
+    if check_lookalikes:
+        try:
+            alerts.extend(check_monitor_lookalikes(monitor))
+        except Exception:
+            pass  # informational: a DNS hiccup must not fail the rescan
     for alert in alerts:
         db.add(alert)
     monitor.last_score = scan.score

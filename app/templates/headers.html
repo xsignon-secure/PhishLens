@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Email header check — PhishLens{% endblock %}
+{% block content %}
+<section class="tool">
+  <span class="eyebrow">Free tool</span>
+  <h1>Is this email really from who it says?</h1>
+  <p class="sub">Paste the full headers of a suspicious message. We read the receiving server's SPF, DKIM and DMARC verdict and flag the tricks phishing relies on. Nothing you paste is stored.</p>
+  <details class="muted small"><summary>Where do I find the headers?</summary>
+    <p><b>Gmail:</b> open the message, ⋮ menu → <i>Show original</i> → <i>Copy to clipboard</i>.<br>
+    <b>Outlook (web):</b> open the message, ⋯ → <i>View</i> → <i>View message details</i>.<br>
+    <b>Outlook (desktop):</b> File → <i>Properties</i> → <i>Internet headers</i>.<br>
+    <b>Apple Mail:</b> View → Message → <i>All Headers</i>.</p>
+  </details>
+  <form id="hdr-form" class="panel">
+    <textarea id="hdr-text" placeholder="Received: from mail.example.com ...&#10;Authentication-Results: mx.google.com; spf=pass ...&#10;From: ..." spellcheck="false" aria-label="Email headers"></textarea>
+    <button class="btn" type="submit" style="margin-top:12px">Analyze headers</button>
+  </form>
+  <div id="hdr-result" aria-live="polite"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('hdr-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('hdr-result');
+  const headers = document.getElementById('hdr-text').value;
+  if (!headers.trim()) return;
+  box.innerHTML = '<p class="loading">Analyzing…</p>';
+  try {
+    const r = await fetch('/api/tools/headers', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({headers})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Request failed');
+    const a = d.authentication;
+    const v = x => x ? escapeHtml(x) : '<span class="muted">not found</span>';
+    box.innerHTML = `<div class="panel">
+      <div class="verdict ${d.level}">${escapeHtml(d.verdict)}</div>
+      ${d.findings.map(f => `<p>${statusBadge(f.level === 'info' ? 'pass' : f.level)} ${escapeHtml(f.text)}</p>`).join('')}
+      <h2><span class="dot"></span>Identity</h2>
+      <dl class="kv">
+        <dt>From</dt><dd>${escapeHtml(d.from.name ? d.from.name + ' <' + d.from.address + '>' : d.from.address || '—')}</dd>
+        <dt>Reply-To</dt><dd>${d.reply_to.length ? escapeHtml(d.reply_to.join(', ')) : '<span class="muted">same as From</span>'}</dd>
+        <dt>Return-Path</dt><dd>${v(d.return_path)}</dd>
+        <dt>Subject</dt><dd>${v(d.subject)}</dd>
+        <dt>Date</dt><dd>${v(d.date)}</dd>
+      </dl>
+      <h2 style="margin-top:18px"><span class="dot"></span>Authentication</h2>
+      <dl class="kv">
+        <dt>SPF</dt><dd>${v(a.spf)}${a.mailfrom ? ' <span class="muted">(' + escapeHtml(a.mailfrom) + ')</span>' : ''}</dd>
+        <dt>DKIM</dt><dd>${v(a.dkim)}${a.dkim_domain ? ' <span class="muted">(' + escapeHtml(a.dkim_domain) + ')</span>' : ''}</dd>
+        <dt>DMARC</dt><dd>${v(a.dmarc)}</dd>
+        <dt>Signatures</dt><dd>${d.dkim_signatures.length ? d.dkim_signatures.map(s => escapeHtml(s.domain + ' (selector ' + s.selector + ')')).join(', ') : '<span class="muted">none</span>'}</dd>
+      </dl>
+      ${d.hops.length ? `<h2 style="margin-top:18px"><span class="dot"></span>Delivery path</h2><ol class="hops">${d.hops.map(h =>
+        `<li>${escapeHtml(h.from || '?')} → ${escapeHtml(h.by || '?')}${h.ip ? ' <span class="muted">[' + escapeHtml(h.ip) + ']</span>' : ''}${h.delay_seconds != null ? ' <span class="muted">+' + h.delay_seconds + 's</span>' : ''}</li>`).join('')}</ol>` : ''}
+      <p class="muted small" style="margin-top:16px">Worried your own domain can be spoofed like this? <a href="/">Scan it free →</a></p>
+    </div>`;
+  } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+</script>
+{% endblock %}

@@ -44,6 +44,28 @@ app/
   templates/ + static/   server-rendered UI, vanilla JS (no build step)
 ```
 
+## DMARC reports, lookalikes, header check
+
+- **DMARC aggregate reports**: upload .xml/.gz/.zip reports in the dashboard,
+  POST them to `/api/dmarc/reports` (raw body, API key or session), or run
+  `scripts/fetch_dmarc_reports.py` hourly against a shared report mailbox
+  (`DMARC_IMAP_HOST`, `DMARC_IMAP_USER`, `DMARC_IMAP_PASSWORD`; reports are filed
+  for every tenant monitoring the domain). `GET /api/dmarc/summary/{domain}`
+  groups traffic by sending service, gives pass rates and a fix per failing
+  sender, and says when it's safe to move to quarantine/reject.
+- **Lookalike domains**: `POST /api/tools/lookalikes` (signed in, 10/hour per
+  tenant) checks several hundred typo / homoglyph / keyword / TLD variants and
+  ranks registered ones by risk (mail servers = high). `scripts/rescan.py`
+  rechecks monitored domains weekly (`--lookalike-days`) and alerts on new
+  registrations.
+- **Email header analyzer**: `/tools/headers` (public, nothing stored) reads
+  SPF/DKIM/DMARC verdicts and flags Reply-To redirection, fake display-name
+  addresses and punycode senders.
+- **Chat alerts**: a Slack, Microsoft Teams or Discord webhook URL gets a
+  readable message instead of the signed JSON event.
+
+Market comparison and what's still missing: `docs/MARKET-ANALYSIS-2026-10.md`.
+
 ## Reports
 
 - **PDF export**: every report has a "Download PDF" button (dashboard, shared
@@ -87,7 +109,7 @@ app/
 | MTA-STS | 10 | enforce=10, testing=4 |
 | MX | 5 | SMTP STARTTLS 5 |
 | TLS-RPT | 3 | BIMI 2 |
-| DNSSEC | 5 | DNS blocklists 5 · CAA 5 |
+| DNSSEC | 5 | DNS blocklists 5 (4 IP lists + Spamhaus DBL/SURBL for the domain) · CAA 5 |
 | TLS cert | 5 | Web security headers 5 |
 
 ## Database
@@ -117,9 +139,9 @@ Schema changes go through Alembic — see `docs/ENTERPRISE.md` for the workflow
 
 ## Market position
 
-Researched Oct 2026: MXToolbox ($129+/mo monitoring, fragmented tools),
-EasyDMARC ($36–72/mo), dmarcian ($20+/mo), PowerDMARC (from $8/mo, MSP),
-Valimail (enterprise). Gaps PhishLens owns: single-pass 12-protocol scan,
-exact per-issue remediation records, DKIM selector auto-detection + key
-strength, generous free funnel, native multi-tenancy, deterministic (no AI,
-private by design).
+See `docs/MARKET-ANALYSIS-2026-10.md` (EasyDMARC, MXToolbox, PowerDMARC,
+dmarcian, Valimail, Red Sift, DMARC Report, Postmark). PhishLens covers the
+mid-market essentials (scan, fix records, DMARC report analysis, monitoring,
+chat/SIEM alerts, API) and adds built-in lookalike-domain alerts and free
+header/domain tools. Still missing: hosted SPF/DMARC/MTA-STS, RUF reports,
+SSO, MSP white-label, and wired billing.
