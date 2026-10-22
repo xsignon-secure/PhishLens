@@ -17,7 +17,10 @@ def _pdf_response(scan: models.Scan, db: Session, with_history: bool = False) ->
     # History is the tenant's private trend: only in the signed-in export.
     data = engine.scan_to_dict(scan, db if with_history else None)
     share_url = f"{settings.APP_URL}/r/{scan.id}" if scan.is_public else None
-    pdf = pdf_report.render(data, share_url=share_url)
+    from .. import branding
+    tenant = (db.query(models.Tenant).filter(models.Tenant.id == scan.tenant_id).first()
+              if scan.tenant_id else None)
+    pdf = pdf_report.render(data, share_url=share_url, brand=branding.for_tenant(tenant))
     filename = f"phishlens-{scan.domain}-{scan.created_at:%Y-%m-%d}.pdf"
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"',

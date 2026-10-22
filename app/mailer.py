@@ -64,10 +64,16 @@ def notify_monitor_alerts(db, monitor: "models.Monitor", scan: "models.Scan",
         .all()
     )
     recipients = [email for (email,) in owners]
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == monitor.tenant_id).first()
+    # Extra recipients, e.g. an MSP's PSA email-to-ticket inbox.
+    recipients += [e for e in (tenant.alert_emails or []) if e not in recipients] if tenant else []
     if not recipients:
         return False
+    from .branding import for_tenant
+    brand = for_tenant(tenant) or {}
+    name = brand.get("name") or settings.APP_NAME
     lines = [
-        f"{settings.APP_NAME} monitor alert",
+        f"{name} monitor alert",
         "",
         f"Domain:  {monitor.domain}",
         f"Score:   {prev_score} -> {scan.score} ({scan.grade})",
@@ -80,7 +86,9 @@ def notify_monitor_alerts(db, monitor: "models.Monitor", scan: "models.Scan",
     lines += [
         "",
         f"Details: {settings.APP_URL}/dashboard",
+        *([brand["footer"]] if brand.get("footer") else []),
         "",
         "Remove the monitor in your dashboard to stop these alerts.",
     ]
-    return send_email(recipients, f"{monitor.domain} score alert", "\n".join(lines))
+    client = f"[{monitor.client}] " if monitor.client else ""
+    return send_email(recipients, f"{client}{monitor.domain} security alert", "\n".join(lines))

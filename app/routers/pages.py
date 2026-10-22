@@ -84,6 +84,13 @@ def shared_report(scan_id: str, request: Request, db: Session = Depends(get_db))
     scan = db.query(models.Scan).filter(models.Scan.id == scan_id, models.Scan.is_public.is_(True)).first()
     if not scan:
         return templates.TemplateResponse(request, "404.html", {"request": request}, status_code=404)
+    from .. import branding
+    tenant = (db.query(models.Tenant).filter(models.Tenant.id == scan.tenant_id).first()
+              if scan.tenant_id else None)
+    brand = branding.for_tenant(tenant)
+    if brand:
+        brand = {k: brand[k] for k in ("name", "color", "footer", "logo_data_url")}
     return templates.TemplateResponse(
-        request, "report.html", {"request": request, "scan": scan, "user": _user_or_none(request, db)}
+        request, "report.html",
+        {"request": request, "scan": scan, "user": _user_or_none(request, db), "brand": brand}
     )

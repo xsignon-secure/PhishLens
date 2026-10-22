@@ -102,6 +102,9 @@ def login(payload: schemas.LoginIn, request: Request, response: Response,
         audit.log_request(db, request, "auth.login_failed", detail={"email": email})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid email or password")
+    if user.tenant and user.tenant.sso_enforced and user.tenant.sso_issuer and user.role != "owner":
+        # Owners keep password login as a break-glass path if the IdP is down.
+        raise HTTPException(status_code=403, detail="Your organisation requires single sign-on: use 'Sign in with SSO'")
     if user.mfa_enabled:
         audit.log_request(db, request, "auth.mfa_challenged", user)
         return schemas.MfaRequiredOut(mfa_token=security.create_mfa_token(user_id=user.id))

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, dmarc_reports, models
+from .. import audit, dmarc_reports, forensic, models
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit
 
@@ -119,3 +119,37 @@ def delete_report(report_id: str, request: Request, db: Session = Depends(get_db
     db.commit()
     audit.log_request(db, request, "dmarc.report.delete", user, {"domain": row.domain})
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ forensic (RUF)
+@router.post("/forensic", status_code=201)
+async def upload_forensic(request: Request, db: Session = Depends(get_db),
+                          user: models.User = Depends(get_current_user)):
+    """Send one failure report (.eml, as received) as the request body."""
+    rate_limit(request, f"dmarc-upload:{user.tenant_id}", 500)
+    try:
+        declared = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        declared = 0
+    if declared > forensic.MAX_BYTES:
+        raise HTTPException(status_code=413, detail="File is too large (5 MB max)")
+    blob = await request.body()
+    try:
+        row, created = forensic.store(db, user.tenant_id, forensic.parse(blob))
+    except forensic.ForensicError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"id": row.id, "domain": row.domain, "duplicate": not created}
+
+
+@router.get("/forensic")
+def list_forensic(domain: str | None = None, db: Session = Depends(get_db),
+                  user: models.User = Depends(get_current_user)):
+    q = db.query(models.ForensicReport).filter(models.ForensicReport.tenant_id == user.tenant_id)
+    if domain:
+        q = q.filter(models.ForensicReport.domain == normalize_domain(domain))
+    rows = q.order_by(models.ForensicReport.created_at.desc()).limit(100).all()
+    return [{"id": r.id, "domain": r.domain, "reporter": r.reporter, "source_ip": r.source_ip,
+             "arrival_date": r.arrival_date.isoformat() + "Z" if r.arrival_date else None,
+             "auth_failure": r.auth_failure, "delivery_result": r.delivery_result,
+             "header_from": r.header_from, "original_mail_from": r.original_mail_from,
+             "subject": r.subject} for r in rows]

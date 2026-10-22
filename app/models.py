@@ -26,6 +26,24 @@ class Tenant(Base):
     stripe_customer_id = Column(String(100), nullable=True)
     webhook_url = Column(String(500), nullable=True)
     webhook_secret = Column(String(100), nullable=True)
+    # Billing (Stripe): plan flips to "pro" while the subscription is active.
+    stripe_subscription_id = Column(String(100), nullable=True)
+    subscription_status = Column(String(30), nullable=True)
+    # White-label branding for reports, PDFs and alert emails (MSPs).
+    brand_name = Column(String(100), nullable=True)
+    brand_color = Column(String(7), nullable=True)  # "#rrggbb"
+    brand_logo = Column(Text, nullable=True)  # base64 PNG/JPEG, small
+    report_footer = Column(String(300), nullable=True)
+    # Extra alert recipients, e.g. a PSA's email-to-ticket inbox.
+    alert_emails = Column(JSON, nullable=True)
+    # SSO (OpenID Connect). Secrets are stored encrypted (app/crypto.py).
+    sso_issuer = Column(String(300), nullable=True)
+    sso_client_id = Column(String(300), nullable=True)
+    sso_client_secret = Column(Text, nullable=True)
+    sso_email_domain = Column(String(253), nullable=True, unique=True)
+    sso_enforced = Column(Boolean, nullable=False, default=False)
+    # Customer's own DNS provider token for one-click fixes (encrypted).
+    cloudflare_token = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
@@ -82,6 +100,7 @@ class Monitor(Base):
     # next check alerts only on newly registered ones.
     lookalikes = Column(JSON, nullable=True)
     lookalikes_checked_at = Column(DateTime, nullable=True)
+    client = Column(String(100), nullable=True)  # MSP: which customer this domain belongs to
 
     tenant = relationship("Tenant", back_populates="monitors")
 
@@ -158,3 +177,44 @@ class DmarcReport(Base):
     message_count = Column(Integer, nullable=False, default=0)
     pass_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ForensicReport(Base):
+    """One DMARC failure (RUF / ARF) report. Only headers are kept: never the
+    message body, which can contain the recipient's mail."""
+    __tablename__ = "forensic_reports"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False, index=True)
+    reporter = Column(String(200), nullable=True)
+    source_ip = Column(String(64), nullable=True)
+    arrival_date = Column(DateTime, nullable=True)
+    auth_failure = Column(String(100), nullable=True)
+    delivery_result = Column(String(50), nullable=True)
+    original_mail_from = Column(String(320), nullable=True)
+    header_from = Column(String(320), nullable=True)
+    subject = Column(String(300), nullable=True)
+    auth_results = Column(Text, nullable=True)
+    fingerprint = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "fingerprint", name="uq_forensic_tenant_fp"),)
+
+
+class HostedRecord(Base):
+    """A DMARC / SPF / MTA-STS record PhishLens publishes on a customer's
+    behalf. The customer delegates once (CNAME or include) and later changes
+    are made here instead of in their DNS."""
+    __tablename__ = "hosted_records"
+    __table_args__ = (UniqueConstraint("tenant_id", "domain", "kind", name="uq_hosted_tenant_domain_kind"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False, index=True)
+    kind = Column(String(20), nullable=False)  # dmarc | spf | mta_sts
+    config = Column(JSON, nullable=False)
+    published = Column(JSON, nullable=True)  # {record name: value} last pushed to DNS
+    policy_id = Column(String(32), nullable=True)  # MTA-STS id, changes with the policy
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)

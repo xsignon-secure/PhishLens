@@ -21,6 +21,21 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_ID: str = ""
+    # Hosted DMARC / SPF / MTA-STS records live in a zone PhishLens controls
+    # (e.g. "hosted.phishlens.example") on Cloudflare DNS. Leave empty to
+    # disable hosting.
+    HOSTED_ZONE: str = ""
+    HOSTED_CLOUDFLARE_TOKEN: str = ""
+    HOSTED_CLOUDFLARE_ZONE_ID: str = ""
+    # Default rua= for hosted DMARC records: the mailbox read by
+    # scripts/fetch_dmarc_reports.py.
+    HOSTED_DMARC_RUA: str = ""
+    # Hostname customers CNAME mta-sts.<their domain> to (defaults to APP_URL's host).
+    MTA_STS_TARGET: str = ""
+    # Optional: let PhishLens add mta-sts.<domain> as a Render custom domain
+    # (Render then issues its TLS certificate).
+    RENDER_API_KEY: str = ""
+    RENDER_SERVICE_ID: str = ""
     APP_NAME: str = "PhishLens"
     APP_URL: str = "http://localhost:8000"
     # None = auto: Secure cookies when APP_URL is https

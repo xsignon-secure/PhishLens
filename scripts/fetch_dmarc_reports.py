@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Pull DMARC aggregate reports from a mailbox and file them per tenant.
+"""Pull DMARC aggregate and failure reports from a mailbox and file them per tenant.
 
 Point each customer domain's DMARC record at one shared report mailbox, e.g.
-    _dmarc.example.com  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@reports.yourdomain.com"
+    _dmarc.example.com  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@reports.yourdomain.com; ruf=mailto:dmarc@reports.yourdomain.com; fo=1"
 then run this from cron (hourly is plenty):
 
     15 * * * *  cd /srv/phishlens && .venv/bin/python scripts/fetch_dmarc_reports.py
@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import dmarc_reports, models  # noqa: E402
+from app import dmarc_reports, forensic, models  # noqa: E402
 from app.database import SessionLocal, init_db  # noqa: E402
 from app.routers.dmarc import store_report  # noqa: E402
 
@@ -47,19 +47,33 @@ def attachments(msg) -> list[bytes]:
     return out
 
 
+def _tenants_for(db, domain: str) -> list[str]:
+    return [t for (t,) in db.query(models.Monitor.tenant_id)
+            .filter(models.Monitor.domain == domain, models.Monitor.is_active.is_(True)).distinct()]
+
+
 def file_message(db, raw: bytes) -> tuple[int, int]:
-    """Store every report attached to one email. Returns (stored, skipped)."""
+    """Store every report in one email (aggregate attachments, or a failure
+    report). Returns (stored, skipped)."""
     msg = email.message_from_bytes(raw, policy=policy.default)
     stored = skipped = 0
+    if forensic.is_arf(msg):
+        try:
+            parsed = forensic.parse(raw)
+        except forensic.ForensicError:
+            return 0, 1
+        tenants = _tenants_for(db, parsed["domain"])
+        for tenant_id in tenants:
+            _, created = forensic.store(db, tenant_id, parsed)
+            stored += int(created)
+        return stored, 0 if tenants else 1
     for blob in attachments(msg):
         try:
             parsed = dmarc_reports.parse(blob)
         except dmarc_reports.ReportError:
             skipped += 1
             continue
-        tenants = [t for (t,) in db.query(models.Monitor.tenant_id)
-                   .filter(models.Monitor.domain == parsed["domain"],
-                           models.Monitor.is_active.is_(True)).distinct()]
+        tenants = _tenants_for(db, parsed["domain"])
         if not tenants:
             skipped += 1
             continue

@@ -64,7 +64,19 @@ app/
 - **Chat alerts**: a Slack, Microsoft Teams or Discord webhook URL gets a
   readable message instead of the signed JSON event.
 
-Market comparison and what's still missing: `docs/MARKET-ANALYSIS-2026-10.md`.
+- **Forensic (RUF) reports**: failure reports (ARF) are read from the same
+  mailbox or uploaded as .eml; only headers are kept, never message bodies.
+- **Hosted DMARC / SPF / MTA-STS** with SPF flattening: `docs/HOSTED-RECORDS.md`.
+- **One-click fixes**: connect a Cloudflare API token and publish fix records
+  from the report.
+- **SSO** (OpenID Connect, optional enforcement): `docs/SSO.md`.
+- **Billing**: Stripe Checkout + Customer Portal, plan set only by the signed
+  webhook: `docs/BILLING.md`. Without Stripe keys everything is unlocked.
+- **White-label (MSPs)**: brand name, colour, logo and footer on shared
+  reports, PDFs and alert emails; client tags on monitors; extra alert
+  recipients such as a PSA's email-to-ticket inbox.
+
+Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
 
 ## Reports
 
@@ -109,7 +121,7 @@ Market comparison and what's still missing: `docs/MARKET-ANALYSIS-2026-10.md`.
 | MTA-STS | 10 | enforce=10, testing=4 |
 | MX | 5 | SMTP STARTTLS 5 |
 | TLS-RPT | 3 | BIMI 2 |
-| DNSSEC | 5 | DNS blocklists 5 (4 IP lists + Spamhaus DBL/SURBL for the domain) · CAA 5 |
+| DNSSEC | 5 | DNS blocklists 5 (7 IP lists + Spamhaus DBL, SURBL, URIBL for the domain) · CAA 5 |
 | TLS cert | 5 | Web security headers 5 |
 
 ## Database
@@ -130,12 +142,11 @@ Schema changes go through Alembic — see `docs/ENTERPRISE.md` for the workflow
 - **Email alerts**: stdlib SMTP, configured via `SMTP_*` in `.env`; when
   unconfigured, alerts stay dashboard-only and nothing breaks.
 
-## Monetization hooks (ready to wire)
+## Plans
 
-- Free plan: 3 monitors, 50-scan history (enforced in code).
-- `plan` column on tenants + Stripe keys in `.env.example` — add checkout +
-  webhook to flip `free` → `pro` when you're ready (Stripe costs $0 until
-  you're paid).
+- Free: 3 monitored domains, 50-scan history.
+- Pro (Stripe subscription): 100 domains, hosted records, one-click fixes,
+  SSO, white-label, extra alert recipients. See `docs/BILLING.md`.
 
 ## Market position
 
@@ -143,5 +154,4 @@ See `docs/MARKET-ANALYSIS-2026-10.md` (EasyDMARC, MXToolbox, PowerDMARC,
 dmarcian, Valimail, Red Sift, DMARC Report, Postmark). PhishLens covers the
 mid-market essentials (scan, fix records, DMARC report analysis, monitoring,
 chat/SIEM alerts, API) and adds built-in lookalike-domain alerts and free
-header/domain tools. Still missing: hosted SPF/DMARC/MTA-STS, RUF reports,
-SSO, MSP white-label, and wired billing.
+header/domain tools, plus hosted records, SSO, white-label and billing.

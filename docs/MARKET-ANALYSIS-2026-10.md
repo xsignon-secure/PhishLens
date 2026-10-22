@@ -30,19 +30,19 @@ before quoting it to a customer.
 | **Sender identification + "safe to enforce" guidance** | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ |
 | **Lookalike / typosquat domain monitoring** | ? | ✗ | ? | ✓ (Brand Trust, separate product) | ✗ | ✓ with weekly new-registration alerts |
 | **Email header analyzer** | ✓ free tool | ✓ free tool | ✓ | ? | ✗ | ✓ free, public |
-| Blocklist checks | ✓ | ✓ 100+ | ✓ | ◐ | ◐ 2 lists | ◐ 6 lists incl. domain lists |
+| Blocklist checks | ✓ | ✓ 100+ | ✓ | ◐ | ◐ 2 lists | ◐ 10 lists incl. 3 domain lists |
 | Monitoring + drift alerts | ✓ | ✓ paid | ✓ | ✓ | ✓ | ✓ |
 | **Slack / Teams alerts** | ✓ Premium | ✗ | ✓ | ✓ | ✗ (raw JSON only) | ✓ Slack, Teams, Discord |
 | Signed SIEM webhooks | ✓ Enterprise | ✗ | ✓ | ✓ | ✓ | ✓ |
 | REST API + keys | ✓ Premium | ✓ Business | ✓ | ✓ | ✓ | ✓ |
 | PDF reports, shareable links, score history | ◐ | ✗ | ✓ | ✓ | ✓ | ✓ |
 | MFA, audit log, data export | ✓ | ◐ | ✓ | ✓ | ✓ | ✓ |
-| Hosted SPF / DMARC / MTA-STS (CNAME delegation) | ✓ | ✗ | ✓ | ✓ | ✗ | ✗ |
-| Forensic (RUF) reports | ✓ | ✗ | ✓ | ✓ | ✗ | ✗ |
-| One-click DNS-provider integrations | ✓ | ✗ | ◐ | ◐ | ✗ | ✗ |
-| SSO / SAML | ✓ Premium | ✗ | ✓ | ✓ | ✗ | ✗ |
-| MSP white-label + PSA integrations | ✓ | ✗ | ✓ | ✓ | ◐ multi-tenant | ◐ multi-tenant |
-| Paid plans wired to billing | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Hosted SPF / DMARC / MTA-STS (CNAME delegation) | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ incl. SPF flattening |
+| Forensic (RUF) reports | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ headers only, no bodies |
+| One-click DNS-provider integrations | ✓ | ✗ | ◐ | ◐ | ✗ | ◐ Cloudflare |
+| SSO | ✓ Premium | ✗ | ✓ | ✓ | ✗ | ✓ OpenID Connect (no SAML) |
+| MSP white-label + PSA integrations | ✓ | ✗ | ✓ | ✓ | ◐ multi-tenant | ◐ branding, client tags, PSA email-to-ticket |
+| Paid plans wired to billing | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ Stripe |
 
 ## What this release closes
 
@@ -69,27 +69,39 @@ before quoting it to a customer.
    mail server IPs, plus Spamhaus DBL and SURBL, which list the domain itself
    when it shows up in spam or phishing.
 
-## Still behind (deliberately not built yet)
+## Second round (filled the rest)
 
-- **Hosted SPF/DMARC/MTA-STS.** Needs PhishLens to run authoritative DNS and an
-  MTA-STS web host per customer. It's the next big step for "set and forget",
-  but it's infrastructure, not code.
-- **Forensic (RUF) reports.** Few providers still send them (Google and
-  Microsoft don't), and they contain message content, which brings GDPR work.
-- **SSO/SAML, MSP white-label and PSA integrations.** Worth doing once there
-  are enterprise or MSP customers asking.
-- **Billing.** The `plan` column and Stripe keys exist but checkout isn't
-  wired. Nothing can be sold until it is.
-- **100+ blocklists.** MXToolbox's number. Most of the long tail is low-value
-  or needs paid data feeds.
+6. **Billing**: Stripe Checkout and Customer Portal; Free (3 domains) and Pro
+   (100 domains plus the features below). Only Stripe's signed webhook changes
+   a plan. See `docs/BILLING.md`.
+7. **Hosted DMARC / SPF / MTA-STS**: one-time CNAME/include delegation, then
+   policy changes in the dashboard. SPF is flattened to IPs (no more 10-lookup
+   failures) and re-flattened on each scheduled rescan. MTA-STS policies are
+   served by PhishLens. See `docs/HOSTED-RECORDS.md`.
+8. **One-click fixes** through the customer's Cloudflare account, limited to
+   email-auth records on their own domains.
+9. **Forensic (RUF) reports** from the report mailbox or .eml upload.
+10. **SSO** with OpenID Connect, just-in-time member provisioning, optional
+    enforcement. See `docs/SSO.md`.
+11. **White-label** reports, PDFs and alert emails; client tags; extra alert
+    recipients for PSA email-to-ticket inboxes.
+12. **Blocklists**: 10 (adds Barracuda, DroneBL, Manitu, URIBL).
+
+## Still behind
+
+- **SAML** (OIDC covers Okta, Entra ID, Google and most IdPs).
+- **Native PSA APIs** (ConnectWise/Autotask/HaloPSA ticket APIs); email-to-ticket
+  covers the common case.
+- **DNS providers beyond Cloudflare** (Route 53, GoDaddy) for one-click fixes.
+- **100+ blocklists**: most of MXToolbox's long tail is low-value or paid.
 
 ## Positioning
 
 PhishLens now matches the mid-market DMARC tools on the essentials (scan, fix,
 report analysis, monitoring, alerts, API) and beats them on three things:
-exact fix records for every finding, lookalike-domain alerts built in rather
-than sold as a separate brand-protection product, and a free header checker
-plus domain scanner with no signup. Against EasyDMARC Plus (€35.99/mo for 2
+exact fix records for every finding (now publishable in one click), lookalike-domain
+alerts built in rather than sold as a separate brand-protection product, and a
+free header checker plus domain scanner with no signup. Against EasyDMARC Plus (€35.99/mo for 2
 domains), pricing PhishLens per domain below that, with lookalike monitoring
 included, is a clear story.
 

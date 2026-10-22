@@ -628,10 +628,11 @@ def check_smtp_tls(domain: str) -> dict:
                 "issues": [], "fixes": []}
 
 
-DNSBLS = ["zen.spamhaus.org", "bl.spamcop.net", "psbl.surriel.com", "bl.mailspike.net"]
+DNSBLS = ["zen.spamhaus.org", "bl.spamcop.net", "psbl.surriel.com", "bl.mailspike.net",
+          "b.barracudacentral.org", "dnsbl.dronebl.org", "ix.dnsbl.manitu.net"]
 # Domain blocklists list the domain itself (seen in spam/phishing URLs or as a
 # sender), independent of which servers send its mail.
-DOMAIN_BLS = ["dbl.spamhaus.org", "multi.surbl.org"]
+DOMAIN_BLS = ["dbl.spamhaus.org", "multi.surbl.org", "multi.uribl.com"]
 
 
 def _dnsbl_listed(query: str, domain_list: bool = False) -> bool:

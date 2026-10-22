@@ -19,6 +19,25 @@ from app.database import SessionLocal, init_db  # noqa: E402
 from app.scanner import engine  # noqa: E402
 
 
+def refresh_hosted_spf(db) -> int:
+    """Re-flatten hosted SPF records: email providers change their IP ranges."""
+    from app import hosted
+
+    if not hosted.configured():
+        return 0
+    changed = 0
+    for rec in db.query(models.HostedRecord).filter(models.HostedRecord.kind == "spf").all():
+        try:
+            before = dict(rec.published or {})
+            if hosted.publish(rec) != before:
+                changed += 1
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            print(f"[{datetime.utcnow().isoformat()}] hosted SPF {rec.domain} FAILED: {exc}", flush=True)
+    return changed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Rescan all active PhishLens monitors")
     parser.add_argument("--force", action="store_true", help="rescan even if recently checked")
@@ -66,7 +85,9 @@ def main() -> int:
                 detail = getattr(exc, "detail", None) or exc
                 print(f"[{datetime.utcnow().isoformat()}] {monitor.domain} FAILED: {detail}",
                       flush=True)
-        print(f"done={done} skipped={skipped} failed={failed} alerts={alerted}")
+        refreshed = refresh_hosted_spf(db)
+        print(f"done={done} skipped={skipped} failed={failed} alerts={alerted} "
+              f"hosted_spf_refreshed={refreshed}")
         return 1 if failed else 0
     finally:
         db.close()

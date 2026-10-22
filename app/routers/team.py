@@ -7,10 +7,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .. import audit, mailer, models, schemas, tokens, webhooks
+from .. import audit, branding, mailer, models, schemas, tokens, webhooks
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user, require_owner
+from ..deps import get_current_user, require_owner, require_pro_owner
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 
@@ -182,3 +182,31 @@ def export_data(request: Request, db: Session = Depends(get_db),
     }
     audit.log_request(db, request, "account.export", user)
     return data
+
+
+# ------------------------------------------------------------------ white-label + alert recipients
+@router.get("/branding")
+def get_branding(user: models.User = Depends(get_current_user)):
+    t = user.tenant
+    return {"brand_name": t.brand_name, "brand_color": t.brand_color,
+            "report_footer": t.report_footer, "logo": branding.logo_data_url(t.brand_logo),
+            "alert_emails": t.alert_emails or []}
+
+
+@router.put("/branding")
+def set_branding(payload: schemas.BrandingIn, request: Request, db: Session = Depends(get_db),
+                 user: models.User = Depends(require_pro_owner)):
+    t = user.tenant
+    try:
+        t.brand_color = branding.clean_color(payload.brand_color)
+        if payload.logo is not None:  # None = keep, "" = remove
+            t.brand_logo = branding.clean_logo(payload.logo)
+    except branding.BrandingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    t.brand_name = (payload.brand_name or "").strip() or None
+    t.report_footer = (payload.report_footer or "").strip() or None
+    t.alert_emails = sorted({str(e).lower() for e in payload.alert_emails})
+    db.commit()
+    audit.log_request(db, request, "branding.update", user,
+                      {"brand_name": t.brand_name, "alert_emails": len(t.alert_emails)})
+    return get_branding(user)

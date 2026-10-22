@@ -146,6 +146,15 @@ function trendLine(history) {
     ${sparkline(history.points)}</div>`;
 }
 
+/* "Add TXT at NAME: "VALUE"" fix lines can be published in one click when
+   the account has connected its DNS provider (dashboard sets window.applyDnsFix). */
+const FIX_RECORD_RE = /Add TXT(?: record)? at ([A-Za-z0-9_.-]+): "([^"]+)"/;
+function applyButton(fix, opts) {
+  if (!opts.applyFix) return '';
+  const m = FIX_RECORD_RE.exec(fix);
+  return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">Apply in Cloudflare</button>` : '';
+}
+
 function renderReport(scan, isPublic, opts = {}) {
   const r = scan.result || scan;
   const checks = r.checks || [];
@@ -168,7 +177,7 @@ function renderReport(scan, isPublic, opts = {}) {
     ? `<div class="plan"><h3>🎯 Fix these first — biggest grade gains</h3><ol>` +
       plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">+${p.points} pts</span>
         <span class="fixline"><code>${escapeHtml(p.fix)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">Copy</button></span></li>`).join('') +
+        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">Copy</button>${applyButton(p.fix, opts)}</span></li>`).join('') +
       `</ol></div>`
     : `<div class="plan good"><h3>✓ Nothing urgent — this domain is in great shape.</h3></div>`;
 
@@ -180,7 +189,7 @@ function renderReport(scan, isPublic, opts = {}) {
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
       ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(f)}">Copy</button></p>`).join('')}
+        <button class="copy-btn" data-copy="${escapeHtml(f)}">Copy</button>${applyButton(f, opts)}</p>`).join('')}
     </details>`).join('');
 
   return `
@@ -213,6 +222,12 @@ function bindReportInteractions(container) {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       copyText(btn.getAttribute('data-copy'), btn);
+    });
+  });
+  container.querySelectorAll('[data-apply-name]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.applyDnsFix) window.applyDnsFix(btn.dataset.applyName, 'TXT', btn.dataset.applyValue, btn);
     });
   });
   container.querySelectorAll('.ring-wrap').forEach(ring => {
