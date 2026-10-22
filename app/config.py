@@ -18,9 +18,28 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 60
     CORS_ORIGINS: str = ""
     SCAN_RATE_LIMIT_PER_HOUR: int = 20
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_PRICE_ID: str = ""
+    # Optional per-team cap on monitored domains for public instances (0 = unlimited).
+    MAX_MONITORS_PER_TEAM: int = 0
+    # Shown on the Terms/Privacy pages and footer of your instance.
+    CONTACT_EMAIL: str = ""
+    SOURCE_URL: str = "https://github.com/xsignon-secure/PhishLens"
+    # Rescan monitors from inside the app every N hours (0 = off; use cron instead).
+    RESCAN_INTERVAL_HOURS: float = 0
+    # Hosted DMARC / SPF / MTA-STS records live in a zone PhishLens controls
+    # (e.g. "hosted.phishlens.example") on Cloudflare DNS. Leave empty to
+    # disable hosting.
+    HOSTED_ZONE: str = ""
+    HOSTED_CLOUDFLARE_TOKEN: str = ""
+    HOSTED_CLOUDFLARE_ZONE_ID: str = ""
+    # Default rua= for hosted DMARC records: the mailbox read by
+    # scripts/fetch_dmarc_reports.py.
+    HOSTED_DMARC_RUA: str = ""
+    # Hostname customers CNAME mta-sts.<their domain> to (defaults to APP_URL's host).
+    MTA_STS_TARGET: str = ""
+    # Optional: let PhishLens add mta-sts.<domain> as a Render custom domain
+    # (Render then issues its TLS certificate).
+    RENDER_API_KEY: str = ""
+    RENDER_SERVICE_ID: str = ""
     APP_NAME: str = "PhishLens"
     APP_URL: str = "http://localhost:8000"
     # None = auto: Secure cookies when APP_URL is https
@@ -39,8 +58,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = ""
     SMTP_USE_TLS: bool = True
-    # Optional VirusTotal reputation badge. Free/public keys are licensed for
-    # non-commercial use only: use a premium key before shipping.
+    # Optional VirusTotal reputation badge. The free public API key is fine for
+    # this non-commercial tool; each self-hoster uses their own key.
     VIRUSTOTAL_API_KEY: str = ""
     VIRUSTOTAL_RATE_PER_MIN: int = 4      # free tier quota
     VIRUSTOTAL_CACHE_HOURS: int = 12

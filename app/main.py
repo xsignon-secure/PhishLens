@@ -1,4 +1,4 @@
-"""PhishLens — deterministic email-security scanner, multi-tenant SaaS."""
+"""PhishLens — free, open-source email-security scanner."""
 import contextvars
 import hmac
 import logging
@@ -13,9 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import scheduler
 from .config import settings
 from .database import init_db
-from .routers import auth, monitors, pages, scans, team
+from .routers import auth, dmarc, hosted, monitors, pages, scans, sso, team, tools
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -42,7 +43,9 @@ async def lifespan(app):
     init_db()
     if settings.SECRET_KEY == "dev-only-change-me":
         log.warning("SECRET_KEY is the development default: set a long random value before deploying")
+    scheduler.start()
     yield
+    scheduler.stop()
 
 
 app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
@@ -53,7 +56,7 @@ app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lif
 _CSRF_EXEMPT = {
     "/api/auth/signup", "/api/auth/login", "/api/auth/mfa/challenge",
     "/api/auth/password/forgot", "/api/auth/password/reset",
-    "/api/auth/verify", "/api/scans/public",
+    "/api/auth/verify", "/api/scans/public", "/api/tools/headers",
 }
 
 
@@ -77,6 +80,26 @@ async def csrf_protect(request, call_next):
         expected = request.cookies.get("csrf_token")
         if not expected or not token or not hmac.compare_digest(token, expected):
             return JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+    return await call_next(request)
+
+@app.middleware("http")
+async def mta_sts_policy_host(request, call_next):
+    """Serve hosted MTA-STS policies: customers CNAME mta-sts.<domain> here."""
+    host = (request.headers.get("host") or "").split(":")[0].lower().rstrip(".")
+    if host.startswith("mta-sts.") and request.url.path == "/.well-known/mta-sts.txt":
+        from fastapi.responses import PlainTextResponse
+
+        from . import hosted as hosted_mod
+        from .database import SessionLocal
+        db = SessionLocal()
+        try:
+            rec = hosted_mod.serving_record(db, host[len("mta-sts."):])
+            if not rec:
+                return PlainTextResponse("No MTA-STS policy hosted for this domain\n", status_code=404)
+            return PlainTextResponse(hosted_mod.mta_sts_policy(rec.config),
+                                     headers={"Cache-Control": "max-age=300"})
+        finally:
+            db.close()
     return await call_next(request)
 
 # Security response headers
@@ -132,6 +155,10 @@ app.include_router(auth.router)
 app.include_router(scans.router)
 app.include_router(monitors.router)
 app.include_router(team.router)
+app.include_router(dmarc.router)
+app.include_router(tools.router)
+app.include_router(sso.router)
+app.include_router(hosted.router)
 
 
 @app.get("/api/health")

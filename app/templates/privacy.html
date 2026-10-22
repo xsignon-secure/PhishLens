@@ -11,9 +11,9 @@
   <h2>3. How we use data</h2>
   <p>To operate the service, send the alerts you configured, prevent abuse, and meet legal obligations.</p>
   <h2>4. Your rights</h2>
-  <p>You can export your tenant's data at any time (Dashboard → Export) and request deletion by emailing <a href="mailto:info@xsignon.com">info@xsignon.com</a>.</p>
+  <p>You can export your tenant's data at any time (Dashboard → Export) and request deletion by emailing {% if contact_email %}<a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% else %}<a href="{{ source_url }}/issues">GitHub issues</a>{% endif %}.</p>
   <h2>5. Security</h2>
-  <p>Passwords are bcrypt-hashed, sessions are short-lived signed tokens, API keys are stored as hashes, and tenant data is strictly isolated. No system is perfect — report issues to <a href="mailto:info@xsignon.com">info@xsignon.com</a>.</p>
+  <p>Passwords are bcrypt-hashed, sessions are short-lived signed tokens, API keys are stored as hashes, and tenant data is strictly isolated. No system is perfect — report vulnerabilities privately as described in our <a href="{{ source_url }}/security/policy">security policy</a>.</p>
   <h2>6. Changes</h2>
   <p>We will post updates here and note the revision date.</p>
 </section>

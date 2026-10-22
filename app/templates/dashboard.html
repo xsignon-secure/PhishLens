@@ -22,6 +22,7 @@
       <h2><span class="dot"></span>Monitor a domain</h2>
       <form id="monitor-form" class="scanbox small">
         <input id="monitor-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+        <input id="monitor-client" type="text" placeholder="Client (optional)" maxlength="100" style="max-width:170px">
         <button class="btn" type="submit">Add</button>
       </form>
       <p id="monitor-err" class="error"></p>
@@ -39,6 +40,31 @@
       <button class="btn" type="submit">Scan</button>
     </form>
     <div id="history"></div>
+  </div>
+  <div class="dash-grid">
+    <div class="panel" id="dmarc-panel">
+      <h2><span class="dot"></span>DMARC reports</h2>
+      <p class="muted small">Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.</p>
+      <label class="btn tiny" style="display:inline-block;cursor:pointer">Upload reports
+        <input id="dmarc-file" type="file" accept=".xml,.gz,.zip,application/xml,application/gzip,application/zip" multiple hidden>
+      </label>
+      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">Upload failure reports (.eml)
+        <input id="ruf-file" type="file" accept=".eml,message/rfc822" multiple hidden>
+      </label>
+      <select id="dmarc-domain" class="hidden" aria-label="Domain"></select>
+      <p id="dmarc-msg" class="muted small"></p>
+      <div id="dmarc-summary"></div>
+      <div id="ruf-list"></div>
+    </div>
+    <div class="panel" id="lookalike-panel">
+      <h2><span class="dot"></span>Lookalike domains</h2>
+      <p class="muted small">Find registered look-alikes of your domain (typos, swapped letters, other TLDs) that could be used to phish your staff or customers. Monitored domains are rechecked weekly and alert on new registrations.</p>
+      <form id="lookalike-form" class="scanbox small">
+        <input id="lookalike-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+        <button class="btn" type="submit">Find</button>
+      </form>
+      <div id="lookalike-result"></div>
+    </div>
   </div>
   <div class="dash-grid">
     <div class="panel">
@@ -71,12 +97,70 @@
         <button id="webhook-del" class="btn ghost" type="button">Remove</button>
       </form>
       <p id="webhook-status" class="muted"></p>
-      <p class="muted small">Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion.</p>
+      <p class="muted small">Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion. Slack, Microsoft Teams and Discord webhook URLs get a readable chat message instead (any 16+ character secret).</p>
     </div>
     <div class="panel">
       <h2><span class="dot"></span>Security</h2>
       <div id="mfa-box"><p class="muted">Loading…</p></div>
       <p><a href="/forgot-password">Reset password</a> · <button id="export-btn" class="btn tiny ghost owner-only hidden">Export my data</button></p>
+    </div>
+  </div>
+
+  <div class="panel" id="cloudflare-panel">
+      <h2><span class="dot"></span>DNS provider (one-click fixes)</h2>
+      <p class="muted small">Connect Cloudflare and fix records with one click: an <b>Apply in Cloudflare</b> button appears next to each record in your reports. Create an API token with <i>Zone → DNS → Edit</i> for your zones.</p>
+      <div id="cf-status" class="muted small"></div>
+      <form id="cf-form" class="scanbox small owner-only hidden">
+        <input id="cf-token" type="password" placeholder="Cloudflare API token" autocomplete="off">
+        <button class="btn" type="submit">Connect</button>
+      </form>
+      <button id="cf-del" class="btn tiny ghost owner-only hidden">Disconnect</button>
+  </div>
+  <div class="panel" id="hosted-panel">
+    <h2><span class="dot"></span>Hosted DMARC, SPF &amp; MTA-STS</h2>
+    <p class="muted small">Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.</p>
+    <div id="hosted-off" class="muted small hidden">Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).</div>
+    <form id="hosted-form" class="owner-only hidden">
+      <div class="scanbox small">
+        <select id="hosted-domain" aria-label="Domain"></select>
+        <select id="hosted-kind" aria-label="Record">
+          <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta_sts">MTA-STS</option>
+        </select>
+      </div>
+      <div id="hosted-fields"></div>
+      <button class="btn" type="submit">Save &amp; publish</button>
+      <p id="hosted-msg" class="muted small"></p>
+    </form>
+    <div id="hosted-list"></div>
+  </div>
+  <div class="dash-grid">
+    <div class="panel" id="sso-panel">
+      <h2><span class="dot"></span>Single sign-on</h2>
+      <p class="muted small">Sign in through Okta, Microsoft Entra ID, Google Workspace or any OpenID Connect provider. New people from your email domain are added as members on first sign-in.</p>
+      <div id="sso-status" class="muted small"></div>
+      <form id="sso-form" class="owner-only hidden">
+        <label>Issuer URL<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
+        <label>Client ID<input id="sso-client-id" type="text"></label>
+        <label>Client secret<input id="sso-secret" type="password" autocomplete="new-password" placeholder="leave blank to keep"></label>
+        <label>Email domain<input id="sso-domain" type="text" placeholder="acme.com"></label>
+        <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> Require SSO for members (owners can still use a password)</label>
+        <button class="btn" type="submit">Save</button>
+        <button id="sso-del" class="btn ghost" type="button">Remove</button>
+      </form>
+    </div>
+    <div class="panel" id="brand-panel">
+      <h2><span class="dot"></span>White-label &amp; alert routing</h2>
+      <p class="muted small">Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).</p>
+      <form id="brand-form" class="owner-only hidden">
+        <label>Brand name<input id="brand-name" type="text" maxlength="100" placeholder="Acme IT Services"></label>
+        <label>Colour<input id="brand-color" type="text" maxlength="7" placeholder="#4f46e5"></label>
+        <label>Report footer<input id="brand-footer" type="text" maxlength="300" placeholder="Questions? support@acme-it.com"></label>
+        <label>Logo (PNG/JPEG, under 200 KB)<input id="brand-logo" type="file" accept="image/png,image/jpeg"></label>
+        <div id="brand-logo-preview"></div>
+        <label>Extra alert emails (comma-separated, up to 5)<input id="brand-alerts" type="text" placeholder="tickets@acme.itsupport.com"></label>
+        <button class="btn" type="submit">Save</button>
+      </form>
+      <p id="brand-msg" class="muted small"></p>
     </div>
   </div>
   <div class="panel owner-only hidden" id="audit-panel">
@@ -122,6 +206,8 @@ async function loadDashboard() {
   document.getElementById('monitors').innerHTML = monitors.length
     ? monitors.map(m => `<div class="mon">
         <strong>${escapeHtml(m.domain)}</strong>
+        ${m.client ? `<span class="badge">${escapeHtml(m.client)}</span>` : ''}
+        ${m.lookalikes ? `<span class="badge warn" title="Registered lookalike domains">${m.lookalikes} lookalike${m.lookalikes > 1 ? 's' : ''}</span>` : ''}
         ${sparkline(m.history && m.history.points, 64, 22)}
         <span class="grade g${(m.last_score??0) >= 80 ? 'A' : (m.last_score??0) >= 60 ? 'C' : 'F'}">${m.last_score ?? '—'}</span>
         <span class="row-actions"><button data-rescan="${m.id}" class="btn tiny">Rescan</button>
@@ -156,7 +242,7 @@ async function loadDashboard() {
     try {
       const s = await api('/api/scans/' + b.dataset.view);
       const el = document.getElementById('dash-report');
-      el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf'});
+      el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
       bindReportInteractions(el);
       el.scrollIntoView({behavior: 'smooth'});
     } catch (err) { if (err.message !== 'auth') toast('Could not load report — ' + err.message); }
@@ -185,8 +271,9 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
   const domain = document.getElementById('monitor-domain').value.trim();
   try {
     await api('/api/monitors', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({domain})});
+      body: JSON.stringify({domain, client: document.getElementById('monitor-client').value.trim() || null})});
     document.getElementById('monitor-domain').value = '';
+    document.getElementById('monitor-client').value = '';
     document.getElementById('monitor-err').textContent = '';
     toast('✓ Now monitoring ' + domain);
     loadDashboard();
@@ -202,7 +289,7 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   try {
     const s = await api('/api/scans', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain})});
-    el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf'});
+    el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
     bindReportInteractions(el);
     el.scrollIntoView({behavior: 'smooth'});
     if (wasFirst) setTimeout(() => toast('🎉 First scan complete! Work the action plan above.'), 1600);
@@ -391,11 +478,276 @@ function maybeWelcome() {
   document.getElementById('welcome-skip').onclick = close;
 }
 
+
+/* ---------------- DMARC reports ---------------- */
+async function loadDmarc(selected) {
+  const domains = await api('/api/dmarc/domains');
+  const sel = document.getElementById('dmarc-domain');
+  const box = document.getElementById('dmarc-summary');
+  if (!domains.length) {
+    sel.classList.add('hidden');
+    box.innerHTML = '<p class="muted">No reports yet.</p>';
+    return;
+  }
+  const current = selected && domains.includes(selected) ? selected : (sel.value && domains.includes(sel.value) ? sel.value : domains[0]);
+  sel.innerHTML = domains.map(d => `<option${d === current ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('');
+  sel.classList.toggle('hidden', domains.length < 2);
+  const s = await api('/api/dmarc/summary/' + encodeURIComponent(current) + '?days=90');
+  const v = s.verdict || {};
+  box.innerHTML = `
+    <div class="mon"><strong>${escapeHtml(s.domain)}</strong>
+      <span class="muted">${s.messages.toLocaleString()} messages · ${s.reports} report(s) · policy p=${escapeHtml((s.policy || {}).p || '?')}</span>
+      <span class="grade g${(s.pass_rate ?? 0) >= 98 ? 'A' : (s.pass_rate ?? 0) >= 80 ? 'C' : 'F'}">${s.pass_rate ?? '—'}%</span></div>
+    <p>${statusBadge(v.level === 'info' ? 'warn' : v.level)} ${escapeHtml(v.message || '')}</p>
+    ${v.record ? `<p><code>${escapeHtml(v.record)}</code></p>` : ''}
+    ${s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
+      ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
+      <div class="meta">${r.messages.toLocaleString()} messages from ${r.ip_count} IP(s) · DKIM aligned ${r.dkim_aligned.toLocaleString()} · SPF aligned ${r.spf_aligned.toLocaleString()}</div>
+      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}`;
+}
+document.getElementById('dmarc-domain').addEventListener('change', e => loadDmarc(e.target.value));
+document.getElementById('dmarc-file').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  const msg = document.getElementById('dmarc-msg');
+  let ok = 0, dup = 0, lastDomain = null;
+  const errors = [];
+  for (const f of files) {
+    msg.textContent = `Uploading ${f.name}…`;
+    try {
+      const d = await api('/api/dmarc/reports', {method: 'POST',
+        headers: {'Content-Type': 'application/octet-stream'}, body: f});
+      if (d.duplicate) dup++; else ok++;
+      lastDomain = d.domain;
+    } catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
+  }
+  e.target.value = '';
+  msg.textContent = `${ok} report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  loadDmarc(lastDomain);
+});
+
+/* ---------------- lookalike domains ---------------- */
+document.getElementById('lookalike-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domain = document.getElementById('lookalike-domain').value.trim();
+  const box = document.getElementById('lookalike-result');
+  if (!domain) return;
+  box.innerHTML = '<p class="loading"><span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px"></span>Checking a few hundred look-alike spellings…</p>';
+  try {
+    const r = await api('/api/tools/lookalikes', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain})});
+    const risk = {high: 'fail', medium: 'warn', low: 'pass'};
+    box.innerHTML = `<p class="muted small">Checked ${r.checked} spellings of ${escapeHtml(r.domain)}: ${r.registered.length} registered, ${r.high_risk} can receive email.</p>` +
+      (r.registered.length ? r.registered.map(x => `<div class="dm-row"><div class="top"><strong>${escapeHtml(x.domain)}</strong>
+        <span class="badge ${risk[x.risk]}">${escapeHtml(x.risk)} risk</span></div>
+        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? ' · mail servers: ' + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? ' · has a website' : ''}</div></div>`).join('')
+        + '<p class="muted small">High risk = the domain has mail servers and could send phishing as a look-alike of you. Check who owns it (WHOIS) and, if it is abusive, report it to the registrar\'s abuse contact.</p>'
+      : '<p>✓ No registered look-alikes found.</p>');
+  } catch (err) { if (err.message !== 'auth') box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+
+
+/* ---------------- forensic (failure) reports ---------------- */
+async function loadForensic() {
+  const rows = await api('/api/dmarc/forensic');
+  document.getElementById('ruf-list').innerHTML = rows.length
+    ? '<h3 class="muted small" style="margin:14px 0 4px">Recent failure reports</h3>' + rows.slice(0, 10).map(r => `<div class="dm-row"><div class="top">
+        <strong>${escapeHtml(r.header_from || r.domain)}</strong>${statusBadge('fail')}</div>
+        <div class="meta">${escapeHtml(r.subject || '(no subject)')} · from ${escapeHtml(r.source_ip || '?')} · ${escapeHtml(r.auth_failure || 'dmarc')} failure${r.arrival_date ? ' · ' + escapeHtml(r.arrival_date.slice(0, 16).replace('T', ' ')) : ''}${r.reporter ? ' · reported by ' + escapeHtml(r.reporter) : ''}</div></div>`).join('')
+    : '';
+}
+document.getElementById('ruf-file').addEventListener('change', async (e) => {
+  const msg = document.getElementById('dmarc-msg');
+  let ok = 0; const errors = [];
+  for (const f of [...e.target.files]) {
+    try { await api('/api/dmarc/forensic', {method: 'POST', headers: {'Content-Type': 'message/rfc822'}, body: f}); ok++; }
+    catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
+  }
+  e.target.value = '';
+  msg.textContent = `${ok} failure report(s) added.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  loadForensic();
+});
+
+/* ---------------- Cloudflare one-click ---------------- */
+async function loadCloudflare() {
+  const c = await api('/api/team/cloudflare');
+  dashData.cfConnected = c.connected;
+  document.getElementById('cf-status').textContent = c.connected ? '✓ Cloudflare connected.' : 'Not connected.';
+  document.getElementById('cf-del').style.display = c.connected ? '' : 'none';
+}
+window.applyDnsFix = async (name, type, value, btn) => {
+  if (!confirm(`Publish this record in Cloudflare?\n\n${name}  ${type}  ${value}`)) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/dns/apply', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, type, value})});
+    toast(r.result === 'unchanged' ? 'Already published.' : '✓ Record ' + r.result + ' in Cloudflare. Rescan in a few minutes.');
+    if (btn) btn.textContent = 'Applied ✓';
+  } catch (err) { if (err.message !== 'auth') toast('Could not apply: ' + err.message); if (btn) btn.disabled = false; }
+};
+document.getElementById('cf-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/team/cloudflare', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token: document.getElementById('cf-token').value.trim()})});
+    document.getElementById('cf-token').value = '';
+    toast('✓ Cloudflare connected');
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  loadCloudflare();
+});
+document.getElementById('cf-del').addEventListener('click', async () => {
+  if (!confirm('Disconnect Cloudflare?')) return;
+  await api('/api/team/cloudflare', {method: 'DELETE'}); loadCloudflare();
+});
+
+/* ---------------- hosted records ---------------- */
+const HOSTED_FIELDS = {
+  dmarc: c => `<div class="scanbox small"><select id="h-p" aria-label="Policy">${['none','quarantine','reject'].map(v => `<option${(c.p||'none')===v?' selected':''}>${v}</option>`).join('')}</select>
+    <input id="h-pct" type="number" min="0" max="100" value="${c.pct ?? 100}" style="max-width:90px" aria-label="Percent"></div>
+    <label>Report addresses (rua, comma-separated; blank = PhishLens mailbox)<input id="h-rua" type="text" value="${escapeHtml((c.rua||[]).join(', '))}"></label>`,
+  spf: c => `<label>Senders, one per line (e.g. include:_spf.google.com, ip4:203.0.113.5)<textarea id="h-sources" rows="4" style="width:100%">${escapeHtml((c.sources||[]).join('\n'))}</textarea></label>
+    <div class="scanbox small"><select id="h-all" aria-label="Unlisted senders">${['-all','~all'].map(v => `<option${(c.all||'-all')===v?' selected':''}>${v}</option>`).join('')}</select></div>`,
+  mta_sts: c => `<div class="scanbox small"><select id="h-mode" aria-label="Mode">${['testing','enforce','none'].map(v => `<option${(c.mode||'testing')===v?' selected':''}>${v}</option>`).join('')}</select></div>
+    <label>MX hosts, one per line (wildcards like *.mail.protection.outlook.com are fine)<textarea id="h-mx" rows="3" style="width:100%">${escapeHtml((c.mx||[]).join('\n'))}</textarea></label>`,
+};
+function hostedConfig(kind) {
+  const lines = id => document.getElementById(id).value.split(/[\n,]/).map(x => x.trim()).filter(Boolean);
+  if (kind === 'dmarc') return {p: document.getElementById('h-p').value, pct: +document.getElementById('h-pct').value, rua: lines('h-rua')};
+  if (kind === 'spf') return {sources: lines('h-sources'), all: document.getElementById('h-all').value};
+  return {mode: document.getElementById('h-mode').value, mx: lines('h-mx')};
+}
+function renderHostedFields() {
+  const d = document.getElementById('hosted-domain').value, k = document.getElementById('hosted-kind').value;
+  const rec = (dashData.hosted || []).find(r => r.domain === d && r.kind === k);
+  document.getElementById('hosted-fields').innerHTML = HOSTED_FIELDS[k](rec ? rec.config : {});
+}
+async function loadHosted() {
+  const h = await api('/api/hosted');
+  dashData.hosted = h.records;
+  document.getElementById('hosted-off').classList.toggle('hidden', h.configured);
+  if (!h.configured) document.getElementById('hosted-form').classList.add('hidden');
+  const domains = [...new Set([...dashData.monitors.map(m => m.domain), ...dashData.scans.map(s => s.domain)])].sort();
+  const sel = document.getElementById('hosted-domain'), cur = sel.value;
+  sel.innerHTML = domains.length
+    ? domains.map(d => `<option${d === cur ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('')
+    : '<option value="">Scan a domain first</option>';
+  renderHostedFields();
+  const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS'};
+  document.getElementById('hosted-list').innerHTML = h.records.map(r => `<div class="dm-row" data-hosted="${escapeHtml(r.domain)}|${r.kind}">
+    <div class="top"><strong>${escapeHtml(r.domain)} · ${labels[r.kind]}</strong>
+      <button class="btn tiny" data-hcheck>Check DNS</button>
+      <button class="btn tiny ghost owner-only" data-hdel>Stop hosting</button></div>
+    <div class="meta">Publish once in your DNS:</div>
+    ${r.customer_records.map(c => `<div class="meta fix"><code>${escapeHtml(c.name)}  ${c.type}  ${escapeHtml(c.value)}</code>
+      <button class="copy-btn" data-copy="${escapeHtml(c.value)}">Copy</button>
+      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>Apply in Cloudflare</button>` : ''}
+      <br><small>${escapeHtml(c.note)}</small></div>`).join('')}
+    <div class="meta" data-hstatus></div></div>`).join('');
+  const list = document.getElementById('hosted-list');
+  bindReportInteractions(list);
+  const isOwner = dashData.me && dashData.me.role === 'owner';
+  list.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
+  list.querySelectorAll('[data-happly]').forEach(b => b.onclick = () => {
+    const c = JSON.parse(b.dataset.happly); window.applyDnsFix(c.name, c.type, c.value, b);
+  });
+  list.querySelectorAll('[data-hcheck]').forEach(b => b.onclick = async () => {
+    const row = b.closest('[data-hosted]'); const [d, k] = row.dataset.hosted.split('|');
+    const st = await api(`/api/hosted/${encodeURIComponent(d)}/${k}/status`);
+    row.querySelector('[data-hstatus]').innerHTML = st.delegation.map(x =>
+      `${x.ok ? '✓' : '✗'} ${escapeHtml(x.name)} ${x.ok ? 'points at PhishLens' : 'not delegated yet' + (x.found.length ? ' (found ' + escapeHtml(x.found.join(', ')) + ')' : '')}`).join('<br>');
+  });
+  list.querySelectorAll('[data-hdel]').forEach(b => b.onclick = async () => {
+    const [d, k] = b.closest('[data-hosted]').dataset.hosted.split('|');
+    if (!confirm('Stop hosting this record? Put a record back in your own DNS first, or the delegation will point at nothing.')) return;
+    try { await api(`/api/hosted/${encodeURIComponent(d)}/${k}`, {method: 'DELETE'}); } catch (err) { toast(err.message); }
+    loadHosted();
+  });
+}
+document.getElementById('hosted-domain').addEventListener('change', renderHostedFields);
+document.getElementById('hosted-kind').addEventListener('change', renderHostedFields);
+document.getElementById('hosted-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const d = document.getElementById('hosted-domain').value, k = document.getElementById('hosted-kind').value;
+  const msg = document.getElementById('hosted-msg');
+  if (!d) { msg.textContent = 'Scan or monitor a domain first.'; return; }
+  msg.textContent = 'Publishing…';
+  try {
+    await api(`/api/hosted/${encodeURIComponent(d)}/${k}`, {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({config: hostedConfig(k)})});
+    msg.textContent = '✓ Published. Add the records below to your DNS once (if you haven\'t already).';
+  } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
+  loadHosted();
+});
+
+/* ---------------- SSO ---------------- */
+async function loadSso() {
+  const c = await api('/api/team/sso');
+  document.getElementById('sso-status').innerHTML = (c.configured
+    ? `✓ SSO on for @${escapeHtml(c.email_domain)}${c.enforced ? ' (required for members)' : ''}.`
+    : 'Not set up.') + `<br>Redirect URI to register with your provider: <code>${escapeHtml(c.redirect_uri)}</code>`;
+  document.getElementById('sso-issuer').value = c.issuer || '';
+  document.getElementById('sso-client-id').value = c.client_id || '';
+  document.getElementById('sso-domain').value = c.email_domain || (dashData.me ? dashData.me.email.split('@')[1] : '');
+  document.getElementById('sso-enforced').checked = !!c.enforced;
+}
+document.getElementById('sso-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/team/sso', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      issuer: document.getElementById('sso-issuer').value.trim(), client_id: document.getElementById('sso-client-id').value.trim(),
+      client_secret: document.getElementById('sso-secret').value || null, email_domain: document.getElementById('sso-domain').value.trim(),
+      enforced: document.getElementById('sso-enforced').checked})});
+    document.getElementById('sso-secret').value = '';
+    toast('✓ SSO saved. Test it from the login page in a private window before requiring it.');
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  loadSso();
+});
+document.getElementById('sso-del').addEventListener('click', async () => {
+  if (!confirm('Turn off SSO?')) return;
+  try { await api('/api/team/sso', {method: 'DELETE'}); } catch (err) { toast(err.message); }
+  loadSso();
+});
+
+/* ---------------- white-label ---------------- */
+async function loadBranding() {
+  const b = await api('/api/team/branding');
+  document.getElementById('brand-name').value = b.brand_name || '';
+  document.getElementById('brand-color').value = b.brand_color || '';
+  document.getElementById('brand-footer').value = b.report_footer || '';
+  document.getElementById('brand-alerts').value = (b.alert_emails || []).join(', ');
+  document.getElementById('brand-logo-preview').innerHTML = b.logo
+    ? `<img src="${escapeHtml(b.logo)}" alt="Current logo" class="brand-logo"> <button type="button" class="btn tiny ghost" id="brand-logo-del">Remove logo</button>` : '';
+  const del = document.getElementById('brand-logo-del');
+  if (del) del.onclick = () => saveBranding('');
+}
+function fileToDataUrl(file) {
+  return new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(file); });
+}
+async function saveBranding(logoOverride) {
+  const f = document.getElementById('brand-logo').files[0];
+  const logo = logoOverride !== undefined ? logoOverride : (f ? await fileToDataUrl(f) : null);
+  try {
+    await api('/api/team/branding', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      brand_name: document.getElementById('brand-name').value, brand_color: document.getElementById('brand-color').value.trim() || null,
+      report_footer: document.getElementById('brand-footer').value, logo,
+      alert_emails: document.getElementById('brand-alerts').value.split(',').map(x => x.trim()).filter(Boolean)})});
+    document.getElementById('brand-logo').value = '';
+    document.getElementById('brand-msg').textContent = '✓ Saved. Shared reports, PDFs and alert emails now use your branding.';
+  } catch (err) { if (err.message !== 'auth') document.getElementById('brand-msg').textContent = err.message; }
+  loadBranding();
+}
+document.getElementById('brand-form').addEventListener('submit', (e) => { e.preventDefault(); saveBranding(); });
+
 /* ---------------- boot ---------------- */
 (async function init() {
   try {
     await loadDashboard();
     await loadEnterprise();
+    loadDmarc().catch(() => {});
+    loadForensic().catch(() => {});
+    await loadCloudflare().catch(() => {});
+    loadHosted().catch(() => {});
+    loadSso().catch(() => {});
+    loadBranding().catch(() => {});
     maybeWelcome();
   } catch (e) {
     if (e.message !== 'auth') toast('Could not load dashboard — ' + e.message);

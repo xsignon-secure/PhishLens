@@ -1,6 +1,13 @@
 # PhishLens
 
-Deterministic email-security scanner — multi-tenant SaaS. One scan grades a
+[![CI](https://github.com/xsignon-secure/PhishLens/actions/workflows/ci.yml/badge.svg)](https://github.com/xsignon-secure/PhishLens/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**Free and open-source email-security scanner and DMARC monitor.** No paid
+plans, no feature gates, no sign-up needed to scan. Self-host it in one
+command or use a public instance.
+
+One scan grades a
 domain across **13 checks** (SPF, DKIM with selector auto-detection + true key-strength
 validation, DMARC, BIMI, MTA-STS, TLS-RPT, MX, SMTP STARTTLS, DNS blocklists,
 DNSSEC, TLS certificate, web security headers), scores 0–100, and returns the
@@ -9,7 +16,22 @@ DNSSEC, TLS certificate, web security headers), scores 0–100, and returns the
 No AI. No external APIs. No tracking. Pure DNS + HTTPS lookups, so the marginal
 cost per scan is ~zero.
 
-## Quickstart
+Everything is included for everyone: monitoring with drift alerts, DMARC
+aggregate and forensic report analysis, lookalike-domain alerts, an email
+header analyzer, PDF reports, Slack/Teams/Discord/SIEM alerts, API keys, MFA,
+teams, SSO (OIDC), white-label reports, hosted DMARC/SPF/MTA-STS and one-click
+Cloudflare fixes.
+
+## Run it with Docker (one command)
+
+```bash
+SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))") docker compose up -d
+# open http://localhost:8000
+```
+
+`docker-compose.yml` runs PhishLens with Postgres and weekly built-in rescans.
+
+## Run it with Python
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
@@ -44,6 +66,38 @@ app/
   templates/ + static/   server-rendered UI, vanilla JS (no build step)
 ```
 
+## DMARC reports, lookalikes, header check
+
+- **DMARC aggregate reports**: upload .xml/.gz/.zip reports in the dashboard,
+  POST them to `/api/dmarc/reports` (raw body, API key or session), or run
+  `scripts/fetch_dmarc_reports.py` hourly against a shared report mailbox
+  (`DMARC_IMAP_HOST`, `DMARC_IMAP_USER`, `DMARC_IMAP_PASSWORD`; reports are filed
+  for every tenant monitoring the domain). `GET /api/dmarc/summary/{domain}`
+  groups traffic by sending service, gives pass rates and a fix per failing
+  sender, and says when it's safe to move to quarantine/reject.
+- **Lookalike domains**: `POST /api/tools/lookalikes` (signed in, 10/hour per
+  tenant) checks several hundred typo / homoglyph / keyword / TLD variants and
+  ranks registered ones by risk (mail servers = high). `scripts/rescan.py`
+  rechecks monitored domains weekly (`--lookalike-days`) and alerts on new
+  registrations.
+- **Email header analyzer**: `/tools/headers` (public, nothing stored) reads
+  SPF/DKIM/DMARC verdicts and flags Reply-To redirection, fake display-name
+  addresses and punycode senders.
+- **Chat alerts**: a Slack, Microsoft Teams or Discord webhook URL gets a
+  readable message instead of the signed JSON event.
+
+- **Forensic (RUF) reports**: failure reports (ARF) are read from the same
+  mailbox or uploaded as .eml; only headers are kept, never message bodies.
+- **Hosted DMARC / SPF / MTA-STS** with SPF flattening: `docs/HOSTED-RECORDS.md`.
+- **One-click fixes**: connect a Cloudflare API token and publish fix records
+  from the report.
+- **SSO** (OpenID Connect, optional enforcement): `docs/SSO.md`.
+- **White-label (MSPs)**: brand name, colour, logo and footer on shared
+  reports, PDFs and alert emails; client tags on monitors; extra alert
+  recipients such as a PSA's email-to-ticket inbox.
+
+Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
+
 ## Reports
 
 - **PDF export**: every report has a "Download PDF" button (dashboard, shared
@@ -56,8 +110,8 @@ app/
 - **VirusTotal reputation badge** (optional): set `VIRUSTOTAL_API_KEY` to show
   "flagged by X/N vendors" with a link to the VirusTotal report. Informational
   only, never part of the score; cached per domain and kept within the free
-  tier's 4 lookups/minute. **The free/public VirusTotal key is licensed for
-  non-commercial use only: get a premium key before shipping this.**
+  tier's 4 lookups/minute. Use your own free VirusTotal key (its public API is
+  for non-commercial use, which fits this free tool).
 
 ## Multi-tenancy & security model
 
@@ -87,7 +141,7 @@ app/
 | MTA-STS | 10 | enforce=10, testing=4 |
 | MX | 5 | SMTP STARTTLS 5 |
 | TLS-RPT | 3 | BIMI 2 |
-| DNSSEC | 5 | DNS blocklists 5 · CAA 5 |
+| DNSSEC | 5 | DNS blocklists 5 (7 IP lists + Spamhaus DBL, SURBL, URIBL for the domain) · CAA 5 |
 | TLS cert | 5 | Web security headers 5 |
 
 ## Database
@@ -103,23 +157,23 @@ Schema changes go through Alembic — see `docs/ENTERPRISE.md` for the workflow
 - **Single VPS (Oracle Cloud free tier)**: systemd + uvicorn, SQLite is fine
   to start; Caddy for TLS.
 - Full checklist: `docs/DEPLOY.md`.
-- **Scheduled rescans**: `scripts/rescan.py` (weekly cron) rescans every
-  active monitor, records drift alerts, and emails tenant owners.
+- **Scheduled rescans**: set `RESCAN_INTERVAL_HOURS=168` and the app rescans
+  every active monitor weekly by itself, records drift alerts and emails
+  owners; no cron service needed. Or run `scripts/rescan.py` from cron.
+- **Public instances**: `MAX_MONITORS_PER_TEAM` (default 0 = unlimited) and
+  `SCAN_RATE_LIMIT_PER_HOUR` are abuse brakes only; nothing is paywalled.
 - **Email alerts**: stdlib SMTP, configured via `SMTP_*` in `.env`; when
   unconfigured, alerts stay dashboard-only and nothing breaks.
 
-## Monetization hooks (ready to wire)
+## Contributing
 
-- Free plan: 3 monitors, 50-scan history (enforced in code).
-- `plan` column on tenants + Stripe keys in `.env.example` — add checkout +
-  webhook to flip `free` → `pro` when you're ready (Stripe costs $0 until
-  you're paid).
+PhishLens is MIT-licensed and welcomes contributions: see
+[CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md) for reporting vulnerabilities privately.
 
-## Market position
+## How it compares
 
-Researched Oct 2026: MXToolbox ($129+/mo monitoring, fragmented tools),
-EasyDMARC ($36–72/mo), dmarcian ($20+/mo), PowerDMARC (from $8/mo, MSP),
-Valimail (enterprise). Gaps PhishLens owns: single-pass 12-protocol scan,
-exact per-issue remediation records, DKIM selector auto-detection + key
-strength, generous free funnel, native multi-tenancy, deterministic (no AI,
-private by design).
+See `docs/MARKET-ANALYSIS-2026-10.md` (EasyDMARC, MXToolbox, PowerDMARC,
+dmarcian, Valimail, Red Sift, DMARC Report, Postmark). Those tools charge for
+monitoring, DMARC reports, hosted records and white-label; PhishLens gives all
+of it away under the MIT License and can be self-hosted.

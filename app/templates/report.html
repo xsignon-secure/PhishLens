@@ -1,7 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Report: {{ scan.domain }} — PhishLens{% endblock %}
+{% block title %}Report: {{ scan.domain }} — {{ brand.name if brand and brand.name else 'PhishLens' }}{% endblock %}
 {% block content %}
 <section class="report-page">
+  {% if brand %}
+  <div class="brand-bar" {% if brand.color %}style="border-color: {{ brand.color }}"{% endif %}>
+    {% if brand.logo_data_url %}<img src="{{ brand.logo_data_url }}" alt="" class="brand-logo">{% endif %}
+    {% if brand.name %}<strong>Prepared by {{ brand.name }}</strong>{% endif %}
+    {% if brand.footer %}<span class="muted small">{{ brand.footer }}</span>{% endif %}
+  </div>
+  {% endif %}
   <div id="shared-report"></div>
 </section>
 {% endblock %}

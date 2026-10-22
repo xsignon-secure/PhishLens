@@ -211,3 +211,4 @@ def auth_limit(request: Request, bucket: str, ident: str = "", limit: int = 10,
     rate_limit(request, f"{bucket}:ip:{client_ip(request)}", limit * 3, window_secs)
     if ident:
         rate_limit(request, f"{bucket}:id:{ident}", limit, window_secs)
+

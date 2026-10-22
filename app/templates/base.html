@@ -13,6 +13,7 @@
   <a class="brand" href="/"><span class="brand-mark">◈</span> PhishLens</a>
   <nav>
     <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Scan</a>
+    <a href="/tools/headers" class="{% if request.url.path == '/tools/headers' %}active{% endif %}">Header check</a>
     <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">Help</a>
     {% if user %}
       <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
@@ -26,9 +27,9 @@
 <main>{% block content %}{% endblock %}</main>
 <footer>
   <p>
-    <a href="/help">Help</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/api/health">Status</a>
+    <a href="/help">Help</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/api/health">Status</a> · <a href="{{ source_url }}">Source code</a>
   </p>
-  <p>PhishLens — know where your domain stands.</p>
+  <p>PhishLens — free and open source (MIT). Know where your domain stands.</p>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="/static/app.js"></script>

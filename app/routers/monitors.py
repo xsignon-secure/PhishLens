@@ -6,13 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
+from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, tenant_alerts, tenant_monitors
 from ..scanner import engine
 
 router = APIRouter(prefix="/api/monitors", tags=["monitors"])
-
-FREE_MONITOR_LIMIT = 3
 
 
 @router.get("")
@@ -22,7 +21,8 @@ def list_monitors(db: Session = Depends(get_db), user: models.User = Depends(get
         {
             "id": m.id, "domain": m.domain, "last_score": m.last_score,
             "last_checked_at": m.last_checked_at.isoformat() + "Z" if m.last_checked_at else None,
-            "is_active": m.is_active,
+            "is_active": m.is_active, "client": m.client,
+            "lookalikes": len(m.lookalikes or []),
             "history": engine.score_history(db, user.tenant_id, m.domain),
         }
         for m in monitors
@@ -36,13 +36,14 @@ def add_monitor(payload: schemas.MonitorIn, request: Request, db: Session = Depe
     existing = tenant_monitors(db, user).filter(models.Monitor.domain == domain).first()
     if existing:
         raise HTTPException(status_code=409, detail="Domain already monitored")
-    count = tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count()
-    if user.tenant.plan == "free" and count >= FREE_MONITOR_LIMIT:
-        raise HTTPException(status_code=402, detail=f"Free plan allows {FREE_MONITOR_LIMIT} monitors")
+    limit = settings.MAX_MONITORS_PER_TEAM  # 0 = unlimited; a server operator's abuse brake
+    if limit and tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count() >= limit:
+        raise HTTPException(status_code=429, detail=f"This server allows {limit} monitored domains per team")
     # Baseline scan BEFORE inserting: run_scan refuses unscannable domains, and
-    # a failure must not leave a monitor behind that counts against the limit.
+    # a failure must not leave a broken monitor behind.
     scan = engine.run_scan(db, domain, tenant_id=user.tenant_id)
     monitor = models.Monitor(tenant_id=user.tenant_id, domain=domain,
+                             client=(payload.client or "").strip() or None,
                              last_score=scan.score, last_checked_at=datetime.utcnow())
     db.add(monitor)
     try:
@@ -53,6 +54,18 @@ def add_monitor(payload: schemas.MonitorIn, request: Request, db: Session = Depe
     db.refresh(monitor)
     audit.log_request(db, request, "monitor.create", user, {"domain": domain, "score": scan.score})
     return {"id": monitor.id, "domain": monitor.domain, "last_score": monitor.last_score}
+
+
+@router.patch("/{monitor_id}")
+def update_monitor(monitor_id: str, payload: schemas.MonitorUpdateIn, request: Request,
+                   db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    monitor = tenant_monitors(db, user).filter(models.Monitor.id == monitor_id).first()
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    monitor.client = (payload.client or "").strip() or None
+    db.commit()
+    audit.log_request(db, request, "monitor.update", user, {"domain": monitor.domain, "client": monitor.client})
+    return {"id": monitor.id, "client": monitor.client}
 
 
 @router.delete("/{monitor_id}")

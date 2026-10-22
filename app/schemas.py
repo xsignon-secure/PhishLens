@@ -88,3 +88,24 @@ class ScanIn(BaseModel):
 
 class MonitorIn(BaseModel):
     domain: str = Field(min_length=1, max_length=253)
+    client: str | None = Field(default=None, max_length=100)
+
+
+class MonitorUpdateIn(BaseModel):
+    client: str | None = Field(default=None, max_length=100)
+
+
+class BrandingIn(BaseModel):
+    brand_name: str | None = Field(default=None, max_length=100)
+    brand_color: str | None = Field(default=None, max_length=7)
+    report_footer: str | None = Field(default=None, max_length=300)
+    logo: str | None = Field(default=None, max_length=400_000)  # base64 / data URL; "" removes
+    alert_emails: list[EmailStr] = Field(default_factory=list, max_length=5)
+
+
+class HeadersIn(BaseModel):
+    headers: str = Field(min_length=1, max_length=262144)
+
+
+class LookalikeIn(BaseModel):
+    domain: str = Field(min_length=1, max_length=2048)
