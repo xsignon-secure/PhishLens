@@ -106,12 +106,7 @@
     </div>
   </div>
 
-  <div class="dash-grid">
-    <div class="panel" id="billing-panel">
-      <h2><span class="dot"></span>Plan &amp; billing</h2>
-      <div id="billing-box"><p class="muted">Loading…</p></div>
-    </div>
-    <div class="panel" id="cloudflare-panel">
+  <div class="panel" id="cloudflare-panel">
       <h2><span class="dot"></span>DNS provider (one-click fixes)</h2>
       <p class="muted small">Connect Cloudflare and fix records with one click: an <b>Apply in Cloudflare</b> button appears next to each record in your reports. Create an API token with <i>Zone → DNS → Edit</i> for your zones.</p>
       <div id="cf-status" class="muted small"></div>
@@ -120,7 +115,6 @@
         <button class="btn" type="submit">Connect</button>
       </form>
       <button id="cf-del" class="btn tiny ghost owner-only hidden">Disconnect</button>
-    </div>
   </div>
   <div class="panel" id="hosted-panel">
     <h2><span class="dot"></span>Hosted DMARC, SPF &amp; MTA-STS</h2>
@@ -573,27 +567,6 @@ document.getElementById('ruf-file').addEventListener('change', async (e) => {
   loadForensic();
 });
 
-/* ---------------- billing ---------------- */
-async function loadBilling() {
-  const b = await api('/api/billing');
-  dashData.billing = b;
-  const box = document.getElementById('billing-box');
-  const isOwner = dashData.me && dashData.me.role === 'owner';
-  if (!b.configured) { box.innerHTML = '<p class="muted">Billing isn\'t set up on this server: every feature is unlocked.</p>'; return; }
-  box.innerHTML = `<p>Plan: <strong>${b.plan === 'pro' ? 'Pro' : 'Free'}</strong>${b.status ? ' <span class="muted">(' + escapeHtml(b.status) + ')</span>' : ''} · up to ${b.monitor_limit} monitored domains</p>
-    ${b.plan === 'pro' ? '' : '<p class="muted small">Pro adds hosted records, one-click fixes, SSO, white-label reports and more monitors.</p>'}
-    ${isOwner ? (b.plan === 'pro' || b.has_subscription
-      ? '<button class="btn tiny" id="billing-portal">Manage subscription</button>'
-      : '<button class="btn" id="billing-upgrade">Upgrade to Pro</button>') : ''}`;
-  const go = async (path) => { try { location.href = (await api(path, {method: 'POST'})).url; } catch (err) { toast(err.message); } };
-  const up = document.getElementById('billing-upgrade'); if (up) up.onclick = () => go('/api/billing/checkout');
-  const pt = document.getElementById('billing-portal'); if (pt) pt.onclick = () => go('/api/billing/portal');
-}
-{
-  const q = new URLSearchParams(location.search).get('billing');
-  if (q === 'success') setTimeout(() => toast('Thanks! Your plan updates as soon as Stripe confirms the payment.'), 800);
-}
-
 /* ---------------- Cloudflare one-click ---------------- */
 async function loadCloudflare() {
   const c = await api('/api/team/cloudflare');
@@ -771,7 +744,6 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     await loadEnterprise();
     loadDmarc().catch(() => {});
     loadForensic().catch(() => {});
-    loadBilling().catch(() => {});
     await loadCloudflare().catch(() => {});
     loadHosted().catch(() => {});
     loadSso().catch(() => {});

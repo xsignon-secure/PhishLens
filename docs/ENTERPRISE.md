@@ -40,7 +40,7 @@
 | SSO (SAML/OIDC) | Biggest enterprise ask. Interface point is `get_current_user` in `app/deps.py`; add an OIDC provider config + JIT provisioning when a customer requires it. |
 | SCIM provisioning | Follows SSO; needs a customer pilot to spec correctly. |
 | SOC 2 Type II | Organizational: auditor, 6–12 month observation window. The audit log, access controls, and change discipline here are the technical foundation. |
-| SLA / status page | Define after first paid tenants; wire `/api/health` into an external monitor. |
+| Status page | Wire `/api/health` into an external uptime monitor. |
 | Penetration test | Annual, before enterprise deals; scope the API + auth flows. |
 | Data residency | Postgres per-region; `DATABASE_URL` already makes this a deploy choice. |
 | Rate limits per plan | In-memory limiter now; move to Redis when multi-worker. |

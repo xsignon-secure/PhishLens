@@ -22,13 +22,8 @@ class Tenant(Base):
 
     id = Column(String(32), primary_key=True, default=_uid)
     name = Column(String(200), nullable=False)
-    plan = Column(String(20), nullable=False, default="free")  # free | pro
-    stripe_customer_id = Column(String(100), nullable=True)
     webhook_url = Column(String(500), nullable=True)
     webhook_secret = Column(String(100), nullable=True)
-    # Billing (Stripe): plan flips to "pro" while the subscription is active.
-    stripe_subscription_id = Column(String(100), nullable=True)
-    subscription_status = Column(String(30), nullable=True)
     # White-label branding for reports, PDFs and alert emails (MSPs).
     brand_name = Column(String(100), nullable=True)
     brand_color = Column(String(7), nullable=True)  # "#rrggbb"

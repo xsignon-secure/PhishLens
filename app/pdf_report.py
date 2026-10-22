@@ -183,13 +183,13 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
     ]))
     story.append(table)
 
-    # ---- recommendations (existing funnel content)
+    # ---- next steps beyond DNS
     for rec in recs:
         block = [Paragraph(escape(rec.get("headline", "")), S["h2"]), _p(rec.get("body", ""))]
         for prod in rec.get("products") or []:
             block.append(_p(f"• {prod.get('name', '')}: {prod.get('blurb', '')}"))
-        if rec.get("contact"):
-            block.append(_p(rec["contact"], "muted"))
+        if rec.get("cta"):
+            block.append(_p(f"{rec['cta'].get('label', '')}: {rec['cta'].get('href', '')}", "muted"))
         story.append(KeepTogether(block))
 
     story.append(Spacer(1, 10))

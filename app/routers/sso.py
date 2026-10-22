@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import audit, crypto, models, security, sso
 from ..config import settings
 from ..database import get_db
-from ..deps import auth_limit, get_current_user, require_pro_owner
+from ..deps import auth_limit, get_current_user, require_owner
 from .auth import _set_session_cookies
 
 router = APIRouter(tags=["sso"])
@@ -41,7 +41,7 @@ def get_sso(user: models.User = Depends(get_current_user)):
 
 @router.put("/api/team/sso")
 def set_sso(payload: SsoConfigIn, request: Request, db: Session = Depends(get_db),
-            user: models.User = Depends(require_pro_owner)):
+            user: models.User = Depends(require_owner)):
     from ..deps import normalize_domain
 
     t = user.tenant
@@ -72,7 +72,7 @@ def set_sso(payload: SsoConfigIn, request: Request, db: Session = Depends(get_db
 
 @router.delete("/api/team/sso")
 def delete_sso(request: Request, db: Session = Depends(get_db),
-               user: models.User = Depends(require_pro_owner)):
+               user: models.User = Depends(require_owner)):
     t = user.tenant
     t.sso_issuer = t.sso_client_id = t.sso_client_secret = t.sso_email_domain = None
     t.sso_enforced = False

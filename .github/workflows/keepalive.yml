@@ -1,0 +1,18 @@
+# Optional: keeps a free-tier instance (e.g. Render) awake so built-in rescans
+# run. Set the repository variable PHISHLENS_URL (Settings > Secrets and
+# variables > Actions > Variables) to your instance URL; without it this does nothing.
+name: Keep instance awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    if: ${{ vars.PHISHLENS_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 60 "${{ vars.PHISHLENS_URL }}/api/health" > /dev/null

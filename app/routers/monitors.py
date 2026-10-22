@@ -5,14 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, billing, models, schemas
+from .. import audit, models, schemas
+from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, tenant_alerts, tenant_monitors
 from ..scanner import engine
 
 router = APIRouter(prefix="/api/monitors", tags=["monitors"])
-
-FREE_MONITOR_LIMIT = billing.FREE_MONITORS
 
 
 @router.get("")
@@ -37,14 +36,11 @@ def add_monitor(payload: schemas.MonitorIn, request: Request, db: Session = Depe
     existing = tenant_monitors(db, user).filter(models.Monitor.domain == domain).first()
     if existing:
         raise HTTPException(status_code=409, detail="Domain already monitored")
-    count = tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count()
-    limit = billing.monitor_limit(user.tenant)
-    if count >= limit:
-        detail = (f"Free plan allows {limit} monitors: upgrade to Pro for more"
-                  if user.tenant.plan != "pro" else f"Your plan allows {limit} monitors")
-        raise HTTPException(status_code=402, detail=detail)
+    limit = settings.MAX_MONITORS_PER_TEAM  # 0 = unlimited; a server operator's abuse brake
+    if limit and tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count() >= limit:
+        raise HTTPException(status_code=429, detail=f"This server allows {limit} monitored domains per team")
     # Baseline scan BEFORE inserting: run_scan refuses unscannable domains, and
-    # a failure must not leave a monitor behind that counts against the limit.
+    # a failure must not leave a broken monitor behind.
     scan = engine.run_scan(db, domain, tenant_id=user.tenant_id)
     monitor = models.Monitor(tenant_id=user.tenant_id, domain=domain,
                              client=(payload.client or "").strip() or None,

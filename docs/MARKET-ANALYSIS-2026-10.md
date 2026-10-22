@@ -101,9 +101,10 @@ PhishLens now matches the mid-market DMARC tools on the essentials (scan, fix,
 report analysis, monitoring, alerts, API) and beats them on three things:
 exact fix records for every finding (now publishable in one click), lookalike-domain
 alerts built in rather than sold as a separate brand-protection product, and a
-free header checker plus domain scanner with no signup. Against EasyDMARC Plus (€35.99/mo for 2
-domains), pricing PhishLens per domain below that, with lookalike monitoring
-included, is a clear story.
+free header checker plus domain scanner with no signup. Its biggest difference
+is price: PhishLens is free and open source (MIT), with every feature
+available to everyone and a self-hosting option, while the tools above charge
+per domain for monitoring, report analysis and hosted records.
 
 Sources: [dmarcreport.com comparison](https://dmarcreport.com/blog/best-dmarc-reporting-tools-2026/),
 [EasyDMARC review (dupple.com)](https://dupple.com/reviews/easydmarc),

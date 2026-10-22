@@ -4,7 +4,6 @@ import base64
 import io
 import re
 
-from . import billing
 
 MAX_LOGO_BYTES = 200 * 1024
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -15,8 +14,8 @@ class BrandingError(ValueError):
 
 
 def for_tenant(tenant) -> dict | None:
-    """Branding to apply, or None. Only Pro tenants get white-labelling."""
-    if tenant is None or not billing.is_pro(tenant):
+    """Branding to apply, or None."""
+    if tenant is None:
         return None
     if not (tenant.brand_name or tenant.brand_color or tenant.brand_logo or tenant.report_footer):
         return None

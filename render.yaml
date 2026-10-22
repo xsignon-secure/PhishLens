@@ -4,7 +4,7 @@ services:
   - type: web
     name: phishlens
     runtime: docker
-    plan: free            # free instances sleep after ~15 min idle; use "starter" for production
+    plan: free            # free instances sleep after ~15 min idle; see docs/DEPLOY-RENDER.md
     region: oregon        # must match the database region below
     healthCheckPath: /api/health
     envVars:
@@ -16,32 +16,16 @@ services:
           property: connectionString
       - key: VIRUSTOTAL_API_KEY
         sync: false                  # Render asks you for this during setup
+      - key: RESCAN_INTERVAL_HOURS
+        value: "168"                 # built-in weekly rescans, no paid cron job
       # APP_URL defaults to the service's https://<name>.onrender.com address.
       # Set APP_URL (and SMTP_* for email alerts) in the dashboard when you
       # add a custom domain or an email provider.
 
-  # Weekly monitor rescans (Mondays 06:00 UTC). Render cron jobs are a paid
-  # service type: uncomment once billing is set up.
-  # - type: cron
-  #   name: phishlens-rescan
-  #   runtime: docker
-  #   plan: starter
-  #   region: oregon
-  #   schedule: "0 6 * * 1"
-  #   dockerCommand: python scripts/rescan.py
-  #   envVars:
-  #     - key: SECRET_KEY
-  #       sync: false               # paste the same value the web service uses
-  #     - key: DATABASE_URL
-  #       fromDatabase:
-  #         name: phishlens-db
-  #         property: connectionString
-  #     - key: APP_URL
-  #       sync: false               # the web service's URL, used in alert emails
 
 databases:
   - name: phishlens-db
-    plan: free            # free Render Postgres expires after a trial period; upgrade before real customers
+    plan: free            # free Render Postgres expires after a trial; Neon/Supabase free Postgres don't
     region: oregon
     databaseName: phishlens
     user: phishlens

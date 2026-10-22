@@ -1,4 +1,4 @@
-"""Product recommendation funnel tests."""
+"""Next-step advice tests: vendor-neutral, no sales pitch."""
 from app.scanner import recommendations
 
 
@@ -7,23 +7,23 @@ def _check(key, title, status):
             "max_score": 10, "details": "", "issues": [], "fixes": []}
 
 
-def test_no_pitch_on_clean_scan():
+def test_no_advice_on_clean_scan():
     checks = [_check("spf", "SPF", "pass"), _check("dmarc", "DMARC", "pass")]
     assert recommendations.build(checks, 96) == []
 
 
-def test_pitch_when_phishing_gaps_found():
+def test_advice_when_phishing_gaps_found():
     checks = [_check("spf", "SPF", "fail"), _check("dmarc", "DMARC", "warn"),
               _check("sec-headers", "Web Security Headers", "pass")]
     recs = recommendations.build(checks, 58)
     assert len(recs) == 1
     rec = recs[0]
     assert rec["triggered_by"] == ["SPF", "DMARC"]
-    assert "AUTH BioPro" in [p["name"] for p in rec["products"]]
-    assert rec["cta"]["href"] == "mailto:info@xsignon.com"
-    # no prices anywhere in the funnel copy
-    blob = rec["headline"] + rec["body"] + rec["contact"]
-    assert "$" not in blob
+    assert rec["cta"]["href"].startswith("https://")
+    # vendor-neutral: no prices, sales contacts or product pitches
+    blob = (rec["headline"] + rec["body"] + str(rec["products"])).lower()
+    assert "$" not in blob and "quote" not in blob and "xsignon" not in blob
+    assert "contact" not in rec
 
 
 def test_soft_line_for_non_phishing_gaps():

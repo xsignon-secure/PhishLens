@@ -7,11 +7,13 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
+templates.env.globals.update(contact_email=settings.CONTACT_EMAIL, source_url=settings.SOURCE_URL)
 
 
 def _user_or_none(request: Request, db: Session):

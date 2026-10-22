@@ -1,4 +1,4 @@
-"""Billing, SSO, hosted records, one-click DNS, forensic reports, white-label."""
+"""SSO, hosted records, one-click DNS, forensic reports, white-label."""
 import base64
 import hashlib
 import hmac
@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from app import (billing, branding, crypto, dns_providers, forensic, hosted, mailer, models,
+from app import (branding, crypto, dns_providers, forensic, hosted, mailer, models,
                  pdf_report, sso)
 from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
@@ -50,76 +50,21 @@ def _tenant(db, email):
     return db.query(models.User).filter(models.User.email == email).first().tenant
 
 
-@pytest.fixture()
-def stripe_on(monkeypatch):
-    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_test_x")
-    monkeypatch.setattr(settings, "STRIPE_PRICE_ID", "price_x")
-    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", "whsec_test")
-
-
-# ------------------------------------------------------------------ billing
-def _stripe_sig(payload: bytes, secret="whsec_test", ts=None):
-    ts = ts or int(time.time())
-    sig = hmac.new(secret.encode(), f"{ts}.".encode() + payload, hashlib.sha256).hexdigest()
-    return f"t={ts},v1={sig}"
-
-
-def test_stripe_signature_checks():
-    body = b'{"id":"evt_1"}'
-    assert billing.verify_signature(body, _stripe_sig(body), "whsec_test")
-    assert not billing.verify_signature(body, _stripe_sig(body, "wrong"), "whsec_test")
-    assert not billing.verify_signature(body + b" ", _stripe_sig(body), "whsec_test")
-    assert not billing.verify_signature(body, _stripe_sig(body, ts=int(time.time()) - 3600), "whsec_test")
-    assert not billing.verify_signature(body, "", "whsec_test")
-
-
-def test_webhook_upgrades_and_downgrades_tenant(client, db, stripe_on):
-    _auth(client, "owner@bill.com")
-    t = _tenant(db, "owner@bill.com")
-    done = json.dumps({"id": "evt_1", "type": "checkout.session.completed", "data": {"object": {
-        "client_reference_id": t.id, "customer": "cus_1", "subscription": "sub_1"}}}).encode()
-    assert client.post("/api/billing/webhook", content=done,
-                       headers={"Stripe-Signature": "t=1,v1=bad"}).status_code == 400
-    r = client.post("/api/billing/webhook", content=done, headers={"Stripe-Signature": _stripe_sig(done)})
-    assert r.status_code == 200
-    db.expire_all()
-    assert _tenant(db, "owner@bill.com").plan == "pro"
-    gone = json.dumps({"id": "evt_2", "type": "customer.subscription.deleted", "data": {"object": {
-        "id": "sub_1", "customer": "cus_1", "status": "canceled"}}}).encode()
-    client.post("/api/billing/webhook", content=gone, headers={"Stripe-Signature": _stripe_sig(gone)})
-    db.expire_all()
-    t = _tenant(db, "owner@bill.com")
-    assert t.plan == "free" and t.subscription_status == "canceled"
-
-
-def test_checkout_calls_stripe(client, stripe_on, monkeypatch):
-    h = _auth(client, "pay@bill.com")
-    seen = {}
-
-    def fake_post(url, data=None, timeout=None, auth=None):
-        seen.update(url=url, data=data, auth=auth)
-        return httpx.Response(200, json={"url": "https://checkout.stripe.com/c/pay/x"})
-    monkeypatch.setattr(billing.httpx, "post", fake_post)
-    r = client.post("/api/billing/checkout", headers=h)
-    assert r.json()["url"].startswith("https://checkout.stripe.com/")
-    assert seen["url"].endswith("/checkout/sessions") and seen["data"]["mode"] == "subscription"
-    assert seen["auth"] == ("sk_test_x", "")
-
-
-def test_pro_features_gated_only_when_billing_configured(client, db, stripe_on):
-    h = _auth(client, "free@gate.com")
-    r = client.put("/api/team/branding", json={"brand_name": "X"}, headers=h)
-    assert r.status_code == 402
-    t = _tenant(db, "free@gate.com")
-    t.plan = "pro"
-    db.commit()
-    assert client.put("/api/team/branding", json={"brand_name": "X"}, headers=h).status_code == 200
-
-
-def test_everything_unlocked_without_billing(client):
+# ------------------------------------------------------------------ fully free
+def test_no_billing_or_paywall(client):
     h = _auth(client, "self@hosted.com")
-    assert client.get("/api/billing", headers=h).json()["pro_features"] is True
+    assert client.get("/api/billing", headers=h).status_code == 404
     assert client.put("/api/team/branding", json={"brand_name": "X"}, headers=h).status_code == 200
+    for d in ("a.com", "b.com", "c.com", "d.com", "e.com"):  # no 3-domain cap
+        assert client.post("/api/monitors", json={"domain": d}, headers=h).status_code == 201
+
+
+def test_operator_can_cap_monitors(client, monkeypatch):
+    monkeypatch.setattr(settings, "MAX_MONITORS_PER_TEAM", 1)
+    h = _auth(client, "cap@hosted.com")
+    assert client.post("/api/monitors", json={"domain": "a.com"}, headers=h).status_code == 201
+    r = client.post("/api/monitors", json={"domain": "b.com"}, headers=h)
+    assert r.status_code == 429 and "allows 1" in r.json()["detail"]
 
 
 # ------------------------------------------------------------------ SSO
@@ -514,3 +459,17 @@ def test_monitor_client_tag(client):
 
 def test_unbranded_pdf_still_renders():
     assert pdf_report.render({"domain": "x.com", "score": 50, "grade": "D", "checks": []})[:4] == b"%PDF"
+
+
+# ------------------------------------------------------------------ built-in scheduler
+def test_scheduler_off_by_default_and_runs_rescans(monkeypatch):
+    from app import scheduler
+    from scripts import rescan
+    monkeypatch.setattr(settings, "RESCAN_INTERVAL_HOURS", 0)
+    assert scheduler.start() is None
+    calls = []
+    monkeypatch.setattr(rescan, "run", lambda **kw: calls.append(kw) or {"done": 0})
+    waits = iter([False, True])  # skip the startup delay, then stop after one run
+    monkeypatch.setattr(scheduler._stop, "wait", lambda secs: next(waits))
+    scheduler._loop(168)
+    assert calls == [{"min_age_hours": 167}]

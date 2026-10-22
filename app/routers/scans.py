@@ -10,7 +10,7 @@ from ..scanner import engine
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 
-FREE_HISTORY_LIMIT = 50
+HISTORY_PAGE = 500
 
 
 def _pdf_response(scan: models.Scan, db: Session, with_history: bool = False) -> Response:
@@ -83,7 +83,7 @@ def list_scans(db: Session = Depends(get_db), user: models.User = Depends(get_cu
     scans = (
         tenant_scans(db, user)
         .order_by(models.Scan.created_at.desc())
-        .limit(FREE_HISTORY_LIMIT)
+        .limit(HISTORY_PAGE)
         .all()
     )
     return [engine.scan_to_dict(s) for s in scans]

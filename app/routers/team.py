@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import audit, branding, mailer, models, schemas, tokens, webhooks
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user, require_owner, require_pro_owner
+from ..deps import get_current_user, require_owner
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 
@@ -163,7 +163,7 @@ def export_data(request: Request, db: Session = Depends(get_db),
                 user: models.User = Depends(require_owner)):
     tid = user.tenant_id
     data = {
-        "tenant": {"id": tid, "name": user.tenant.name, "plan": user.tenant.plan},
+        "tenant": {"id": tid, "name": user.tenant.name},
         "users": [{"id": u.id, "email": u.email, "role": u.role,
                    "is_verified": u.is_verified,
                    "created_at": u.created_at.isoformat() + "Z"}
@@ -195,7 +195,7 @@ def get_branding(user: models.User = Depends(get_current_user)):
 
 @router.put("/branding")
 def set_branding(payload: schemas.BrandingIn, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_pro_owner)):
+                 user: models.User = Depends(require_owner)):
     t = user.tenant
     try:
         t.brand_color = branding.clean_color(payload.brand_color)

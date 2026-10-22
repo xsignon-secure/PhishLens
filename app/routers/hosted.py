@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import audit, crypto, dns_providers, hosted, models
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user, normalize_domain, require_pro_owner
+from ..deps import get_current_user, normalize_domain, require_owner
 
 router = APIRouter(tags=["hosted"])
 
@@ -45,7 +45,7 @@ class HostedIn(BaseModel):
 
 @router.put("/api/hosted/{domain}/{kind}")
 def save_hosted(domain: str, kind: str, payload: HostedIn, request: Request,
-                db: Session = Depends(get_db), user: models.User = Depends(require_pro_owner)):
+                db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
     if not hosted.configured():
         raise HTTPException(status_code=503, detail="Hosted records aren't set up on this server")
     domain = normalize_domain(domain)
@@ -97,7 +97,7 @@ def hosted_status(domain: str, kind: str, db: Session = Depends(get_db),
 
 @router.delete("/api/hosted/{domain}/{kind}")
 def delete_hosted(domain: str, kind: str, request: Request, db: Session = Depends(get_db),
-                  user: models.User = Depends(require_pro_owner)):
+                  user: models.User = Depends(require_owner)):
     rec = (db.query(models.HostedRecord)
            .filter(models.HostedRecord.tenant_id == user.tenant_id,
                    models.HostedRecord.domain == normalize_domain(domain),
@@ -135,7 +135,7 @@ def cloudflare_status(user: models.User = Depends(get_current_user)):
 
 @router.put("/api/team/cloudflare")
 def set_cloudflare(payload: CloudflareTokenIn, request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_pro_owner)):
+                   user: models.User = Depends(require_owner)):
     try:
         ok = dns_providers.Cloudflare(payload.token.strip()).verify()
     except dns_providers.DnsProviderError as exc:
@@ -150,7 +150,7 @@ def set_cloudflare(payload: CloudflareTokenIn, request: Request, db: Session = D
 
 @router.delete("/api/team/cloudflare")
 def delete_cloudflare(request: Request, db: Session = Depends(get_db),
-                      user: models.User = Depends(require_pro_owner)):
+                      user: models.User = Depends(require_owner)):
     user.tenant.cloudflare_token = None
     db.commit()
     audit.log_request(db, request, "dns.cloudflare_disconnect", user)
@@ -176,7 +176,7 @@ def check_apply_allowed(name: str, rtype: str, value: str, domains: set[str]) ->
 
 @router.post("/api/dns/apply")
 def apply_record(payload: DnsApplyIn, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_pro_owner)):
+                 user: models.User = Depends(require_owner)):
     token = crypto.decrypt(user.tenant.cloudflare_token)
     if not token:
         raise HTTPException(status_code=400, detail="Connect Cloudflare first")

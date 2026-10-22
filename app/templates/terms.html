@@ -10,12 +10,12 @@
   <p>Scan only domains you own or are authorized to assess. Do not use the service to probe systems without authorization, and do not abuse rate limits or attempt to disrupt the service.</p>
   <h2>3. Accounts</h2>
   <p>You are responsible for activity under your account. Use a strong, unique password and enable multi-factor authentication.</p>
-  <h2>4. Free and paid plans</h2>
-  <p>Free-plan limits (monitored domains, scan history) are described on the site and may change with notice. Paid features, when offered, are billed per the plan you select.</p>
+  <h2>4. Free and open source</h2>
+  <p>PhishLens is free, open-source software under the MIT License. There are no paid plans. The operator of this instance may apply rate limits to prevent abuse. You can run your own copy from the <a href="{{ source_url }}">source code</a>.</p>
   <h2>5. Liability</h2>
   <p>The service is provided "as is" without warranties. To the maximum extent permitted by law, we are not liable for decisions you make based on scan results.</p>
   <h2>6. Changes</h2>
   <p>We may update these terms; continued use after changes take effect constitutes acceptance.</p>
-  <p>Questions: <a href="mailto:info@xsignon.com">info@xsignon.com</a></p>
+  <p>Questions: {% if contact_email %}<a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% else %}<a href="{{ source_url }}/issues">GitHub issues</a>{% endif %}</p>
 </section>
 {% endblock %}

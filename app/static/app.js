@@ -169,8 +169,7 @@ function renderReport(scan, isPublic, opts = {}) {
       <p>${escapeHtml(rec.body)}</p>
       <ul>${(rec.products || []).map(p =>
         `<li><strong>${escapeHtml(p.name)}</strong> — ${escapeHtml(p.blurb)}</li>`).join('')}</ul>
-      <p><a class="btn" href="${escapeHtml(rec.cta.href)}">${escapeHtml(rec.cta.label)}</a>
-      <span class="muted">${escapeHtml(rec.contact || '')}</span></p>
+      ${rec.cta ? `<p><a class="btn ghost" href="${escapeHtml(rec.cta.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(rec.cta.label)} ↗</a></p>` : ''}
     </div>`).join('');
 
   const planHtml = plan.length

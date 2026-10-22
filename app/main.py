@@ -1,4 +1,4 @@
-"""PhishLens — deterministic email-security scanner, multi-tenant SaaS."""
+"""PhishLens — free, open-source email-security scanner."""
 import contextvars
 import hmac
 import logging
@@ -13,9 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import scheduler
 from .config import settings
 from .database import init_db
-from .routers import auth, billing, dmarc, hosted, monitors, pages, scans, sso, team, tools
+from .routers import auth, dmarc, hosted, monitors, pages, scans, sso, team, tools
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -42,7 +43,9 @@ async def lifespan(app):
     init_db()
     if settings.SECRET_KEY == "dev-only-change-me":
         log.warning("SECRET_KEY is the development default: set a long random value before deploying")
+    scheduler.start()
     yield
+    scheduler.stop()
 
 
 app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
@@ -54,7 +57,6 @@ _CSRF_EXEMPT = {
     "/api/auth/signup", "/api/auth/login", "/api/auth/mfa/challenge",
     "/api/auth/password/forgot", "/api/auth/password/reset",
     "/api/auth/verify", "/api/scans/public", "/api/tools/headers",
-    "/api/billing/webhook",
 }
 
 
@@ -155,7 +157,6 @@ app.include_router(monitors.router)
 app.include_router(team.router)
 app.include_router(dmarc.router)
 app.include_router(tools.router)
-app.include_router(billing.router)
 app.include_router(sso.router)
 app.include_router(hosted.router)
 

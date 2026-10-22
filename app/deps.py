@@ -212,13 +212,3 @@ def auth_limit(request: Request, bucket: str, ident: str = "", limit: int = 10,
     if ident:
         rate_limit(request, f"{bucket}:id:{ident}", limit, window_secs)
 
-
-def require_pro(user: models.User = Depends(get_current_user)) -> models.User:
-    from . import billing
-    if not billing.is_pro(user.tenant):
-        raise HTTPException(status_code=402, detail="This is a Pro feature: upgrade in Billing")
-    return user
-
-
-def require_pro_owner(user: models.User = Depends(require_owner)) -> models.User:
-    return require_pro(user)

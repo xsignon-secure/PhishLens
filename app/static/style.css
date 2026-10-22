@@ -274,7 +274,7 @@ code {
 .plan li strong { color: #fff; }
 .plan .fixline { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 
-/* recommendation funnel (XSignOn BioPro + AMS) */
+/* next steps beyond DNS (phishing-resistant MFA) */
 .recommend {
   border-radius: 16px; padding: 26px; margin: 24px 0; position: relative;
   background: linear-gradient(160deg, #0b1430 0%, #070c1c 100%);

@@ -51,5 +51,5 @@ The worker skips monitors checked in the last 20h (`--force` overrides).
 ## Ongoing
 
 - Watch `/var/log/phishlens-rescan.log` the first two Mondays.
-- Free-plan limits (3 monitors, 50-scan history) are enforced in code —
-  revisit when billing is wired.
+- PhishLens has no plans or paywalls. On a public instance, use
+  `MAX_MONITORS_PER_TEAM` and `SCAN_RATE_LIMIT_PER_HOUR` as abuse brakes.

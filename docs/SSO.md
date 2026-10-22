@@ -7,7 +7,7 @@ an OIDC app as well.)
 1. In the identity provider, create a **web application** (OIDC, authorization
    code flow). Redirect URI: `https://<your app>/api/auth/sso/callback` (the
    dashboard's SSO panel shows the exact value). Scopes: `openid email profile`.
-2. In PhishLens → Dashboard → Single sign-on (owner, Pro), enter the issuer URL
+2. In PhishLens → Dashboard → Single sign-on (owner), enter the issuer URL
    (e.g. `https://acme.okta.com`, `https://login.microsoftonline.com/<tenant id>/v2.0`,
    `https://accounts.google.com`), client id, client secret and your email
    domain.
