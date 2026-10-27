@@ -37,6 +37,10 @@ class Tenant(Base):
     sso_client_secret = Column(Text, nullable=True)
     sso_email_domain = Column(String(253), nullable=True, unique=True)
     sso_enforced = Column(Boolean, nullable=False, default=False)
+    sso_protocol = Column(String(10), nullable=True)  # oidc | saml (None = oidc for older rows)
+    saml_entity_id = Column(String(500), nullable=True)
+    saml_sso_url = Column(String(1000), nullable=True)
+    saml_idp_cert = Column(Text, nullable=True)
     # Customer's own DNS provider for one-click fixes; the token is encrypted.
     dns_provider = Column(String(20), nullable=True)  # cloudflare | digitalocean | desec
     dns_token = Column(Text, nullable=True)

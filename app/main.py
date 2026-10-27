@@ -57,7 +57,8 @@ _CSRF_EXEMPT = {
     "/api/auth/signup", "/api/auth/login", "/api/auth/mfa/challenge",
     "/api/auth/password/forgot", "/api/auth/password/reset",
     "/api/auth/verify", "/api/scans/public", "/api/tools/headers", "/api/tools/check",
-    "/api/tools/propagation",
+    "/api/tools/propagation", "/api/tools/url",
+    "/api/auth/saml/acs",  # cross-site POST from the IdP; the signed assertion authorizes it
 }
 
 

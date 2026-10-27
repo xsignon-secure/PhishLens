@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_lang() }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}PhishLens{% endblock %}</title>
-<meta name="description" content="PhishLens checks your domain's email security posture and shows you exactly what to fix.">
+<meta name="description" content="{{ _("PhishLens checks your domain's email security posture and shows you exactly what to fix.") }}">
 <link rel="stylesheet" href="/static/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
 </head>
@@ -12,28 +12,35 @@
 <header class="nav">
   <a class="brand" href="/"><span class="brand-mark">◈</span> PhishLens</a>
   <nav>
-    <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Scan</a>
-    <a href="/tools" class="{% if request.url.path == '/tools' %}active{% endif %}">Free tools</a>
-    <a href="/tools/headers" class="{% if request.url.path == '/tools/headers' %}active{% endif %}">Header check</a>
-    <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">Help</a>
+    <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">{{ _("Scan") }}</a>
+    <a href="/tools" class="{% if request.url.path == '/tools' %}active{% endif %}">{{ _("Free tools") }}</a>
+    <a href="/tools/headers" class="{% if request.url.path == '/tools/headers' %}active{% endif %}">{{ _("Header check") }}</a>
+    <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">{{ _("Help") }}</a>
     {% if user %}
-      <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="#" id="logout">Log out</a>
+      <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">{{ _("Dashboard") }}</a>
+      <a href="#" id="logout">{{ _("Log out") }}</a>
     {% else %}
-      <a href="/login">Log in</a>
-      <a class="btn" href="/signup" style="padding:9px 18px;font-size:14px">Get started</a>
+      <a href="/login">{{ _("Log in") }}</a>
+      <a class="btn" href="/signup" style="padding:9px 18px;font-size:14px">{{ _("Get started") }}</a>
     {% endif %}
   </nav>
 </header>
 <main>{% block content %}{% endblock %}</main>
 <footer>
   <p>
-    <a href="/help">Help</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/api/health">Status</a> · <a href="{{ source_url }}">Source code</a>
+    <a href="/help">{{ _("Help") }}</a> · <a href="/terms">{{ _("Terms") }}</a> · <a href="/privacy">{{ _("Privacy") }}</a> · <a href="/api/health">{{ _("Status") }}</a> · <a href="{{ source_url }}">{{ _("Source code") }}</a>
   </p>
-  <p>PhishLens — free and open source (MIT). Know where your domain stands.</p>
+  <p>{{ _("PhishLens — free and open source (MIT). Know where your domain stands.") }}</p>
+  <p><select id="lang-pick" aria-label="Language" class="small">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == current_lang() %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></p>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="/static/app.js"></script>
+<script>
+document.getElementById('lang-pick').addEventListener('change', (e) => {
+  document.cookie = 'lang=' + e.target.value + '; path=/; max-age=31536000; SameSite=Lax';
+  location.reload();
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

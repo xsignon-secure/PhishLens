@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     VIRUSTOTAL_API_KEY: str = ""
     VIRUSTOTAL_RATE_PER_MIN: int = 4      # free tier quota
     VIRUSTOTAL_CACHE_HOURS: int = 12
+    # Phishing URL checker (/tools). RDAP gives domain age; the feeds are opt-in.
+    URL_CHECK_RDAP: bool = True
+    SAFE_BROWSING_API_KEY: str = ""
+    URLHAUS_AUTH_KEY: str = ""
+    OPENPHISH_FEED: bool = False
 
     @model_validator(mode="after")
     def _platform_url(self):

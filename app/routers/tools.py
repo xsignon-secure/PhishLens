@@ -1,5 +1,6 @@
-"""Standalone tools: email header analyzer, single-record checker and DNS
-propagation checker (public), and lookalike domain finder (signed in)."""
+"""Standalone tools: email header analyzer, single-record checker, DNS
+propagation checker and phishing URL checker (public), and lookalike domain
+finder (signed in)."""
 from concurrent.futures import ThreadPoolExecutor
 
 import dns.flags
@@ -11,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import audit, header_analyzer, models, schemas
+from .. import audit, header_analyzer, models, schemas, url_check
 from ..database import get_db
 from ..deps import assert_public_target, client_ip, get_current_user, normalize_domain, public_scan_limit, rate_limit
 from ..scanner import dns_checks, lookalike, mail_checks, net, web_checks
@@ -147,3 +148,18 @@ def propagation(payload: PropagationIn, request: Request):
     answered = [tuple(r["answers"]) for r in results if not r["error"]]
     consistent = len(set(answered)) <= 1
     return {"name": name, "type": payload.type, "results": results, "consistent": consistent}
+
+
+# ------------------------------------------------------------------ phishing URL checker
+class UrlCheckIn(BaseModel):
+    url: str = Field(min_length=3, max_length=2000)
+
+
+@router.post("/url")
+def check_url(payload: UrlCheckIn, request: Request):
+    """Public: is this link likely phishing? The link is never opened."""
+    rate_limit(request, f"url:{client_ip(request)}", 30)
+    try:
+        return url_check.check(payload.url)
+    except url_check.UrlError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
