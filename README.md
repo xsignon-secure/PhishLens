@@ -11,16 +11,25 @@ One scan grades a
 domain across **13 checks** (SPF, DKIM with selector auto-detection + true key-strength
 validation, DMARC, BIMI, MTA-STS, TLS-RPT, MX, SMTP STARTTLS, DNS blocklists,
 DNSSEC, TLS certificate, web security headers), scores 0–100, and returns the
-**exact DNS records to publish** for every failing check.
+**exact DNS records to publish** for every failing check. It also reports
+DANE/TLSA, reverse DNS (PTR/FCrDNS), IPv6 and optional RPKI for your mail
+servers, and validates BIMI certificates (VMC/CMC) and SVG Tiny PS logos.
+DMARC checks follow the 2026 DMARC update (RFC 9989–9991: `t=`, `np=`, `psd=`;
+`pct`, `rf`, `ri` flagged as obsolete).
 
 No AI. No external APIs. No tracking. Pure DNS + HTTPS lookups, so the marginal
 cost per scan is ~zero.
 
 Everything is included for everyone: monitoring with drift alerts, DMARC
-aggregate and forensic report analysis, lookalike-domain alerts, an email
-header analyzer, PDF reports, Slack/Teams/Discord/SIEM alerts, API keys, MFA,
-teams, SSO (OIDC), white-label reports, hosted DMARC/SPF/MTA-STS and one-click
-Cloudflare fixes.
+aggregate and forensic report analysis, SMTP TLS (TLS-RPT) report analysis,
+report import from IMAP, Microsoft 365 or Gmail, lookalike-domain alerts, an
+email header analyzer, PDF reports, Slack/Teams/Discord/SIEM alerts, a
+Prometheus `/api/metrics` endpoint for Grafana, API keys, MFA, teams, SSO
+(OIDC), white-label reports, hosted DMARC/SPF/MTA-STS and one-click DNS fixes
+on Cloudflare, DigitalOcean or deSEC.
+
+Free tools, no account needed: `/tools` has single-record checkers, record
+generators (DMARC, SPF, MTA-STS, TLS-RPT, BIMI) and a DNS propagation checker.
 
 ## Run it with Docker (one command)
 
@@ -55,6 +64,7 @@ app/
   deps.py            auth, tenant scoping, rate limits, domain validation, SSRF guard
   scanner/
     dns_checks.py    SPF / DMARC / DKIM / MTA-STS / TLS-RPT / BIMI / MX / SMTP TLS / DNSBL / DNSSEC
+    mail_checks.py   DANE / PTR (FCrDNS) / IPv6 / RPKI (informational, not scored)
     web_checks.py    TLS cert, security headers
     scoring.py       weighted 0-100, grades, prioritized action plan
     engine.py        orchestration + persistence
@@ -121,8 +131,13 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
 - Passwords: bcrypt(12). Sessions: short-lived JWT (Bearer or httpOnly cookie).
 - Public scan endpoint is rate-limited per IP (default 20/hour); login, MFA,
   signup, password-reset and verification endpoints have brute-force limits.
-  Limits are in-process: behind a proxy run uvicorn with `--proxy-headers`
-  (the Dockerfile does), and move to Redis before running multiple workers.
+  Behind a proxy run uvicorn with `--proxy-headers` (the Dockerfile does).
+  Limits are in-process by default; set `RATE_LIMIT_STORAGE=database` when
+  running several workers or instances so they share one counter. The
+  rescan and report-fetch jobs take a database lease, so only one instance
+  runs them.
+- Password reset and "Sign out other devices" revoke every existing session.
+  MFA codes can't be reused, and MFA secrets are encrypted at rest.
 - Input hardening: strict domain validation (IDNA, no IP literals, no
   `.local`/`.internal`/`.onion`), plus an SSRF guard that refuses targets
   resolving to non-public addresses. The same guard covers every outbound hop
@@ -135,7 +150,7 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
 
 | Check | Max | Notes |
 |---|---|---|
-| DMARC | 20 | reject=20, quarantine=12, none=5; −3 if pct<100, −2 if no rua |
+| DMARC | 20 | reject=20, quarantine=12, none=5; −3 if t=y or legacy pct<100, −2 if no rua |
 | SPF | 15 | −all=15, ~all=11; fail on >10 lookups or +all |
 | DKIM | 15 | 2048-bit+=15, 1024=8; selector auto-detection |
 | MTA-STS | 10 | enforce=10, testing=4 |
@@ -152,8 +167,16 @@ Schema changes go through Alembic — see `docs/ENTERPRISE.md` for the workflow
 
 ## Deployment ($0 options)
 
-- **Fly.io / Render free tier**: `Dockerfile` included; set `SECRET_KEY` and
-  `DATABASE_URL` (Supabase/Neon free Postgres for production).
+- **Prebuilt image**: every push to `main` publishes
+  `ghcr.io/xsignon-secure/phishlens:latest` (plus version and commit tags).
+- **Fly.io / Render free tier**: use the image above or the `Dockerfile`; set
+  `SECRET_KEY` and `DATABASE_URL` (Neon or Supabase free Postgres; Render's
+  free Postgres expires).
+- **Report mailbox**: set `REPORT_FETCH_MINUTES=60` plus the IMAP, Microsoft
+  Graph or Gmail variables in `.env.example` and the app imports DMARC and
+  TLS-RPT reports by itself.
+- **Optional**: `RPKI_CHECK=true` (asks RIPEstat), `GEOIP_DB=/path/GeoLite2-Country.mmdb`
+  (adds country to DMARC senders; `pip install maxminddb`).
 - **Single VPS (Oracle Cloud free tier)**: systemd + uvicorn, SQLite is fine
   to start; Caddy for TLS.
 - Full checklist: `docs/DEPLOY.md`.

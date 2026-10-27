@@ -11,7 +11,7 @@ import socket
 import threading
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import idna
 from fastapi import Depends, HTTPException, Request, status
@@ -140,6 +140,8 @@ def get_current_user(
     )
     if not user or user.tenant_id != payload.get("tid"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    if payload.get("tv", 0) != (user.token_version or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session was signed out")
     request.state.auth_method = "cookie" if request.cookies.get("access_token") else "bearer"
     return user
 
@@ -163,8 +165,8 @@ def tenant_alerts(db: Session, user: models.User):
 
 
 # ---------------------------------------------------------------- rate limiting
-# In-process sliding window. Per-worker: move to Redis when running multiple
-# workers (see docs/ENTERPRISE.md).
+# In-process sliding window by default (one worker). With several workers or
+# instances set RATE_LIMIT_STORAGE=database so limits are shared.
 _hits: dict[str, deque] = {}
 _hits_lock = threading.Lock()
 _last_sweep = 0.0
@@ -181,7 +183,43 @@ def _sweep(now: float, max_window: int = 3600) -> None:
         del _hits[k]
 
 
+def _db_rate_limit(key: str, limit: int, window_secs: int) -> None:
+    """Fixed-window counter in the database: shared by every worker/instance."""
+    from sqlalchemy import update
+    from sqlalchemy.exc import IntegrityError
+
+    from .database import SessionLocal
+
+    now = datetime.utcnow()
+    window = now - timedelta(seconds=window_secs)
+    key = key[:200]
+    db = SessionLocal()
+    try:
+        bumped = db.execute(
+            update(models.RateCounter)
+            .where(models.RateCounter.key == key, models.RateCounter.window_start >= window,
+                   models.RateCounter.count < limit)
+            .values(count=models.RateCounter.count + 1)).rowcount
+        if not bumped:
+            row = db.get(models.RateCounter, key)
+            if row and row.window_start >= window:
+                db.rollback()
+                raise HTTPException(status_code=429, detail="Rate limit exceeded, try again later")
+            if row:  # window expired: start a new one
+                row.window_start, row.count = now, 1
+            else:
+                db.add(models.RateCounter(key=key, window_start=now, count=1))
+        try:
+            db.commit()
+        except IntegrityError:  # concurrent first hit; count it next time
+            db.rollback()
+    finally:
+        db.close()
+
+
 def rate_limit(request: Request, key: str, limit: int, window_secs: int = 3600) -> None:
+    if settings.RATE_LIMIT_STORAGE == "database":
+        return _db_rate_limit(key, limit, window_secs)
     now = time.time()
     with _hits_lock:
         _sweep(now)

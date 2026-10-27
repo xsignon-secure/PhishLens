@@ -13,6 +13,7 @@
   <a class="brand" href="/"><span class="brand-mark">◈</span> PhishLens</a>
   <nav>
     <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Scan</a>
+    <a href="/tools" class="{% if request.url.path == '/tools' %}active{% endif %}">Free tools</a>
     <a href="/tools/headers" class="{% if request.url.path == '/tools/headers' %}active{% endif %}">Header check</a>
     <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">Help</a>
     {% if user %}

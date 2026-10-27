@@ -133,7 +133,9 @@ def parse(blob: bytes) -> dict:
         "policy": {
             "p": _text(pol, "p", "none").lower(),
             "sp": _text(pol, "sp").lower() or None,
-            "pct": _int(pol, "pct", 100),
+            "pct": _int(pol, "pct", 100),  # legacy RFC 7489 reports
+            "np": _text(pol, "np").lower() or None,
+            "testing": _text(pol, "testing").lower() in ("y", "true", "1"),  # RFC 9990
             "adkim": _text(pol, "adkim", "r").lower(),
             "aspf": _text(pol, "aspf", "r").lower(),
         },
@@ -282,7 +284,8 @@ def _verdict(policy, pass_rate, span_days, rows, domain) -> dict:
         nxt = "quarantine" if p == "none" else "reject"
         return {"level": "pass", "message": f"{pass_rate}% of your mail passes. It looks safe to move "
                 f"to p={nxt}.",
-                "record": f"_dmarc.{domain}  TXT  \"v=DMARC1; p={nxt}; rua=mailto:<your report address>\""}
+                "record": f"_dmarc.{domain}  TXT  \"v=DMARC1; p={nxt}; rua=mailto:<your report address>\""
+                + ("" if nxt == "quarantine" else "  (optionally add np=reject)")}
     names = ", ".join(r["sender"] for r in failing_legit[:3]) or "some senders"
     return {"level": "warn", "message": f"{pass_rate}% of your mail passes. Fix {names} before "
             f"moving beyond p={p}, or legitimate mail will be blocked."}

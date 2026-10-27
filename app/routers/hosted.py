@@ -1,5 +1,5 @@
 """Hosted DMARC / SPF / MTA-STS records, and one-click DNS fixes through the
-customer's own Cloudflare account."""
+customer's own DNS provider (Cloudflare, DigitalOcean or deSEC)."""
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -115,7 +115,8 @@ def delete_hosted(domain: str, kind: str, request: Request, db: Session = Depend
 
 
 # ------------------------------------------------------------------ one-click fixes
-class CloudflareTokenIn(BaseModel):
+class DnsTokenIn(BaseModel):
+    provider: str = Field(default="cloudflare", pattern="^(cloudflare|digitalocean|desec)$")
     token: str = Field(min_length=20, max_length=200)
 
 
@@ -128,33 +129,61 @@ class DnsApplyIn(BaseModel):
 _TXT_PREFIXES = ("v=spf1", "v=dmarc1", "v=stsv1", "v=tlsrptv1", "v=bimi1")
 
 
-@router.get("/api/team/cloudflare")
-def cloudflare_status(user: models.User = Depends(get_current_user)):
-    return {"connected": bool(user.tenant.cloudflare_token)}
+def _dns_status(tenant) -> dict:
+    return {"connected": bool(tenant.dns_token), "provider": tenant.dns_provider if tenant.dns_token else None,
+            "label": dns_providers.LABELS.get(tenant.dns_provider or "", None)}
 
 
-@router.put("/api/team/cloudflare")
-def set_cloudflare(payload: CloudflareTokenIn, request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_owner)):
+@router.get("/api/team/dns")
+def dns_status(user: models.User = Depends(get_current_user)):
+    return _dns_status(user.tenant)
+
+
+@router.put("/api/team/dns")
+def set_dns(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
+            user: models.User = Depends(require_owner)):
+    token = payload.token.strip()
     try:
-        ok = dns_providers.Cloudflare(payload.token.strip()).verify()
+        ok = dns_providers.client(payload.provider, token).verify()
     except dns_providers.DnsProviderError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     if not ok:
-        raise HTTPException(status_code=400, detail="Cloudflare says this token isn't active")
-    user.tenant.cloudflare_token = crypto.encrypt(payload.token.strip())
+        raise HTTPException(status_code=400, detail=f"{dns_providers.LABELS[payload.provider]} says this token isn't active")
+    user.tenant.dns_provider = payload.provider
+    user.tenant.dns_token = crypto.encrypt(token)
     db.commit()
-    audit.log_request(db, request, "dns.cloudflare_connect", user)
+    audit.log_request(db, request, "dns.connect", user, {"provider": payload.provider})
+    return _dns_status(user.tenant)
+
+
+@router.delete("/api/team/dns")
+def delete_dns(request: Request, db: Session = Depends(get_db),
+               user: models.User = Depends(require_owner)):
+    user.tenant.dns_provider = None
+    user.tenant.dns_token = None
+    db.commit()
+    audit.log_request(db, request, "dns.disconnect", user)
+    return {"ok": True}
+
+
+# Older clients used /api/team/cloudflare; kept working.
+@router.get("/api/team/cloudflare")
+def cloudflare_status(user: models.User = Depends(get_current_user)):
+    return {"connected": bool(user.tenant.dns_token) and user.tenant.dns_provider == "cloudflare"}
+
+
+@router.put("/api/team/cloudflare")
+def set_cloudflare(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
+                   user: models.User = Depends(require_owner)):
+    payload.provider = "cloudflare"
+    set_dns(payload, request, db, user)
     return {"connected": True}
 
 
 @router.delete("/api/team/cloudflare")
 def delete_cloudflare(request: Request, db: Session = Depends(get_db),
                       user: models.User = Depends(require_owner)):
-    user.tenant.cloudflare_token = None
-    db.commit()
-    audit.log_request(db, request, "dns.cloudflare_disconnect", user)
-    return {"ok": True}
+    return delete_dns(request, db, user)
 
 
 def check_apply_allowed(name: str, rtype: str, value: str, domains: set[str]) -> str:
@@ -177,17 +206,18 @@ def check_apply_allowed(name: str, rtype: str, value: str, domains: set[str]) ->
 @router.post("/api/dns/apply")
 def apply_record(payload: DnsApplyIn, request: Request, db: Session = Depends(get_db),
                  user: models.User = Depends(require_owner)):
-    token = crypto.decrypt(user.tenant.cloudflare_token)
+    token = crypto.decrypt(user.tenant.dns_token)
     if not token:
-        raise HTTPException(status_code=400, detail="Connect Cloudflare first")
+        raise HTTPException(status_code=400, detail="Connect your DNS provider first")
     name = check_apply_allowed(payload.name, payload.type, payload.value,
                                _tenant_domains(db, user.tenant_id))
-    cf = dns_providers.Cloudflare(token)
     try:
-        zone_id, _ = cf.zone_for(name)
-        result = cf.upsert(zone_id, name, payload.type, payload.value)
+        dns = dns_providers.client(user.tenant.dns_provider or "cloudflare", token)
+        zone_id, _ = dns.zone_for(name)
+        result = dns.upsert(zone_id, name, payload.type, payload.value)
     except dns_providers.DnsProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     audit.log_request(db, request, "dns.apply", user,
-                      {"name": name, "type": payload.type, "value": payload.value[:200], "result": result})
+                      {"name": name, "type": payload.type, "value": payload.value[:200], "result": result,
+                       "provider": user.tenant.dns_provider})
     return {"ok": True, "result": result, "name": name}

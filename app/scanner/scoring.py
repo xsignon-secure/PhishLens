@@ -1,7 +1,7 @@
 """Scoring: weighted 0-100 aggregation + letter grade + prioritized action plan."""
 from concurrent.futures import ThreadPoolExecutor
 
-from . import dns_checks, web_checks
+from . import dns_checks, mail_checks, web_checks
 
 # (check_fn, applies_to) — web checks run against the domain's web presence
 EMAIL_CHECKS = [
@@ -16,6 +16,10 @@ EMAIL_CHECKS = [
     dns_checks.check_caa,
     dns_checks.check_dnsbl,
     dns_checks.check_dnssec,
+    mail_checks.check_dane,
+    mail_checks.check_ptr,
+    mail_checks.check_ipv6,
+    mail_checks.check_rpki,
 ]
 WEB_CHECKS = [
     web_checks.check_tls_cert,

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, dmarc_reports, forensic, models
+from .. import audit, dmarc_reports, forensic, ip_enrich, models
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit
 
@@ -94,7 +94,7 @@ def report_domains(db: Session = Depends(get_db), user: models.User = Depends(ge
 
 
 @router.get("/summary/{domain}")
-def domain_summary(domain: str, days: int = 30, db: Session = Depends(get_db),
+def domain_summary(domain: str, days: int = 30, enrich: bool = True, db: Session = Depends(get_db),
                    user: models.User = Depends(get_current_user)):
     days = max(1, min(days, 365))
     domain = normalize_domain(domain)
@@ -104,7 +104,8 @@ def domain_summary(domain: str, days: int = 30, db: Session = Depends(get_db),
                        models.DmarcReport.domain == domain,
                        models.DmarcReport.date_begin >= since)
                .order_by(models.DmarcReport.date_begin.desc()).all())
-    return dmarc_reports.summarize(reports, domain, days)
+    summary = dmarc_reports.summarize(reports, domain, days)
+    return ip_enrich.enrich_summary(summary) if enrich else summary
 
 
 @router.delete("/reports/{report_id}")

@@ -1,5 +1,10 @@
-"""Password hashing and JWT session tokens."""
+"""Password hashing, JWT session tokens and TOTP checks."""
+import hmac
+import re
+import time
 from datetime import datetime, timedelta
+
+import pyotp
 
 import bcrypt
 from jose import JWTError, jwt
@@ -25,9 +30,9 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, user_id: str, tenant_id: str) -> str:
+def create_access_token(*, user_id: str, tenant_id: str, version: int = 0) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    payload = {"sub": user_id, "tid": tenant_id, "exp": expire, "typ": "access"}
+    payload = {"sub": user_id, "tid": tenant_id, "exp": expire, "typ": "access", "tv": version or 0}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -46,3 +51,42 @@ def decode_token(token: str, allowed_types: tuple[str, ...] = ("access",)) -> di
         return payload
     except JWTError:
         return None
+
+
+# ---------------------------------------------------------------- TOTP
+def totp_secret(user) -> str | None:
+    """The user's TOTP seed. Stored encrypted; seeds saved before encryption
+    was added are plain base32 and still accepted (re-encrypted on next use)."""
+    from . import crypto
+    if not user.totp_secret:
+        return None
+    return crypto.decrypt(user.totp_secret) or (
+        user.totp_secret if re.fullmatch(r"[A-Z2-7]{16,64}", user.totp_secret) else None)
+
+
+def set_totp_secret(user, secret: str | None) -> None:
+    from . import crypto
+    user.totp_secret = crypto.encrypt(secret) if secret else None
+    user.totp_last_step = None
+
+
+def verify_totp(user, code: str) -> bool:
+    """Check a 6-digit code (±1 step for clock drift) and refuse replays: each
+    time-step can be used once. The caller commits."""
+    secret = totp_secret(user)
+    code = (code or "").strip()
+    if not secret or not re.fullmatch(r"\d{6}", code):
+        return False
+    totp = pyotp.TOTP(secret)
+    now = int(time.time())
+    for offset in (0, -1, 1):
+        step = totp.timecode(datetime.utcfromtimestamp(now)) + offset
+        if hmac.compare_digest(totp.generate_otp(step), code):
+            if user.totp_last_step is not None and step <= user.totp_last_step:
+                return False  # already used
+            user.totp_last_step = step
+            if secret == user.totp_secret:  # legacy plaintext seed
+                set_totp_secret(user, secret)
+                user.totp_last_step = step
+            return True
+    return False

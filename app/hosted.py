@@ -70,12 +70,16 @@ def clean_config(kind: str, cfg: dict, domain: str) -> dict:
         sp = cfg.get("sp") or None
         if sp not in (None, "none", "quarantine", "reject"):
             raise HostedError("sp must be none, quarantine or reject")
-        try:
-            pct = int(cfg.get("pct", 100))
-        except (TypeError, ValueError):
-            raise HostedError("pct must be a number")
-        if not 0 <= pct <= 100:
-            raise HostedError("pct must be 0-100")
+        np_ = cfg.get("np") or None
+        if np_ not in (None, "none", "quarantine", "reject"):
+            raise HostedError("np must be none, quarantine or reject")
+        # RFC 9989 replaced pct with t=y (testing); an old pct below 100 maps to it.
+        testing = bool(cfg.get("t"))
+        if "pct" in cfg:
+            try:
+                testing = testing or int(cfg["pct"]) < 100
+            except (TypeError, ValueError):
+                raise HostedError("pct must be a number")
         rua = [a.strip().lower().removeprefix("mailto:") for a in (cfg.get("rua") or []) if a.strip()]
         if not rua and settings.HOSTED_DMARC_RUA:
             rua = [settings.HOSTED_DMARC_RUA.lower().removeprefix("mailto:")]
@@ -85,7 +89,7 @@ def clean_config(kind: str, cfg: dict, domain: str) -> dict:
         align = {k: cfg.get(k, "r") for k in ("adkim", "aspf")}
         if any(v not in ("r", "s") for v in align.values()):
             raise HostedError("adkim/aspf must be r or s")
-        return {"p": p, "sp": sp, "pct": pct, "rua": rua[:3], **align}
+        return {"p": p, "sp": sp, "np": np_, "t": testing, "rua": rua[:3], **align}
     if kind == "spf":
         sources = [s.strip() for s in (cfg.get("sources") or []) if s.strip()]
         if not sources:
@@ -125,8 +129,10 @@ def dmarc_value(cfg: dict) -> str:
     parts = ["v=DMARC1", f"p={cfg['p']}"]
     if cfg.get("sp"):
         parts.append(f"sp={cfg['sp']}")
-    if cfg.get("pct", 100) != 100:
-        parts.append(f"pct={cfg['pct']}")
+    if cfg.get("np"):
+        parts.append(f"np={cfg['np']}")
+    if cfg.get("t") or cfg.get("pct", 100) != 100:  # pct: configs saved before RFC 9989
+        parts.append("t=y")
     if cfg.get("rua"):
         parts.append("rua=" + ",".join(f"mailto:{a}" for a in cfg["rua"]))
     if cfg.get("adkim") == "s":
@@ -227,7 +233,7 @@ def desired_records(rec: models.HostedRecord, resolver=None) -> dict[str, str]:
     """Every TXT record PhishLens must publish in its zone for `rec`."""
     if rec.kind == "dmarc":
         out = {hosted_name(rec): dmarc_value(rec.config)}
-        # External reporting authorisation (RFC 7489 7.1) for rua mailboxes
+        # External reporting authorisation (RFC 9990) for rua mailboxes
         # inside the hosted zone: otherwise receivers drop the reports.
         for addr in rec.config.get("rua", []):
             host = addr.rsplit("@", 1)[1]

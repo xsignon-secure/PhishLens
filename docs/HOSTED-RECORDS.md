@@ -15,7 +15,7 @@ zone you control on Cloudflare.
    - `HOSTED_CLOUDFLARE_ZONE_ID=<zone id from the zone's Overview page>`
    - `HOSTED_DMARC_RUA=dmarc@reports.hosted.phishlens.example` (the mailbox
      `scripts/fetch_dmarc_reports.py` reads; if it's inside `HOSTED_ZONE`,
-     PhishLens also publishes the RFC 7489 authorisation record for you)
+     PhishLens also publishes the RFC 9990 external-reporting authorisation record for you)
    - `MTA_STS_TARGET` = the hostname customers CNAME `mta-sts.<domain>` to
      (defaults to the app's own host)
    - Optional: `RENDER_API_KEY` + `RENDER_SERVICE_ID`, so PhishLens adds each

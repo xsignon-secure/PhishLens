@@ -1,0 +1,50 @@
+# Builds the Docker image on every push to main and on version tags, and
+# publishes it to GitHub Container Registry (free for public repos):
+#   ghcr.io/xsignon-secure/phishlens:latest   (main)
+#   ghcr.io/xsignon-secure/phishlens:1.2.0    (tag v1.2.0)
+# Optional: set the repository secret RENDER_DEPLOY_HOOK (Render > service >
+# Settings > Deploy Hook) to redeploy the demo after each build.
+name: Docker image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/phishlens
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=sha,format=short
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Redeploy the demo on Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        if: ${{ env.HOOK != '' && github.ref == 'refs/heads/main' }}
+        run: curl -fsS -X POST "$HOOK" > /dev/null
