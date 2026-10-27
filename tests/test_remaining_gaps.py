@@ -344,7 +344,7 @@ def _template_strings():
     for f in glob.glob("app/templates/*.html") + ["app/static/app.js"]:
         src = open(f, encoding="utf-8").read()
         keys |= {_unescape(m) for m in re.findall(r'(?<![\w$])_\("((?:[^"\\]|\\.)*)"\)', src)}
-        keys |= {_unescape(m) for m in re.findall(r"(?<![\w$])_t\('((?:[^'\\]|\\.)*)'", src)}
+        keys |= {_unescape(m) for m in re.findall(r"(?<![\w$])(?:_t|N_)\('((?:[^'\\]|\\.)*)'", src)}
     return keys
 
 

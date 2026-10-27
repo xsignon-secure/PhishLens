@@ -8,6 +8,9 @@ function _t(s, vars) {
   return vars ? out.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : out;
 }
 
+// Marks a string for the translation catalog where it's looked up later with _t(variable).
+const N_ = s => s;
+
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -163,6 +166,205 @@ function applyButton(fix, opts) {
   return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">${_t('Apply in {0}', {0: escapeHtml(window.DNS_LABEL || 'DNS')})}</button>` : '';
 }
 
+/* ---------------- fix cards ----------------
+   Each failing check carries a `guide` from the scanner: plain-language
+   problem, the exact record fields, and steps. The card shows the record as
+   separate fields with their own copy buttons, and adapts field names and
+   steps to the DNS provider picked (detected from the nameservers). */
+const DNS_PROVIDERS = {
+  cloudflare: {label: 'Cloudflare', name: 'Name', value: 'Content', ttl: 'Auto', apex: '@',
+    open: N_('Sign in at <b>dash.cloudflare.com</b> and open <b>{0}</b>.'),
+    add: N_('Go to <b>DNS → Records</b> and click <b>Add record</b>.'),
+    edit: N_('Go to <b>DNS → Records</b>, find the {0} record named <b>{1}</b> shown under "Replaces", and click <b>Edit</b>.'),
+    save: N_('Click <b>Save</b>.')},
+  godaddy: {label: 'GoDaddy', name: 'Name', value: 'Value', ttl: '1 Hour', apex: '@',
+    open: N_('Sign in at <b>dcc.godaddy.com</b>, open <b>Domains</b> and select <b>{0}</b>.'),
+    add: N_('Open the <b>DNS</b> tab and click <b>Add New Record</b>.'),
+    edit: N_('Open the <b>DNS</b> tab, find the {0} record named <b>{1}</b> shown under "Replaces", and click the pencil icon.'),
+    save: N_('Click <b>Save</b>.')},
+  namecheap: {label: 'Namecheap', name: 'Host', value: 'Value', ttl: 'Automatic', apex: '@',
+    open: N_('Sign in at <b>namecheap.com</b>, open <b>Domain List</b> and click <b>Manage</b> next to <b>{0}</b>.'),
+    add: N_('Open <b>Advanced DNS</b> and click <b>Add New Record</b>.'),
+    edit: N_('Open <b>Advanced DNS</b> and find the {0} record with host <b>{1}</b> shown under "Replaces".'),
+    save: N_('Click the green tick to save.')},
+  route53: {label: 'Amazon Route 53', name: 'Record name', value: 'Value', ttl: '300', apex: '', quoteTxt: true,
+    open: N_('Sign in to the AWS console and open <b>Route 53 → Hosted zones → {0}</b>.'),
+    add: N_('Click <b>Create record</b>.'),
+    edit: N_('Select the {0} record named <b>{1}</b> and click <b>Edit record</b>.'),
+    save: N_('Click <b>Create records</b> (or <b>Save</b>).'),
+    valueHint: N_('Route 53 needs TXT values inside double quotes. Copy includes them.')},
+  m365: {label: 'Microsoft 365', name: 'TXT name', value: 'TXT value', ttl: '1 hour', apex: '@',
+    open: N_('Sign in at <b>admin.microsoft.com</b> and go to <b>Settings → Domains → {0}</b>.'),
+    add: N_('Open <b>DNS records</b> and click <b>Add record</b>.'),
+    edit: N_('Open <b>DNS records</b>, select the {0} record named <b>{1}</b> and click <b>Edit</b>.'),
+    save: N_('Click <b>Save</b>.')},
+  squarespace: {label: 'Squarespace Domains', name: 'Host', value: 'Data', ttl: 'Default', apex: '@',
+    open: N_('Sign in at <b>account.squarespace.com/domains</b> and click <b>{0}</b>.'),
+    add: N_('Open <b>DNS → DNS Settings</b> and click <b>Add record</b> under Custom records.'),
+    edit: N_('Open <b>DNS → DNS Settings</b> and click the {0} record with host <b>{1}</b> shown under "Replaces".'),
+    save: N_('Click <b>Save</b>.')},
+  hostinger: {label: 'Hostinger', name: 'Name', value: 'Value', ttl: 'Default', apex: '@',
+    open: N_('Sign in to <b>hPanel</b>, open <b>Domains</b> and select <b>{0}</b>.'),
+    add: N_('Open <b>DNS / Nameservers</b> and use <b>Manage DNS records</b>.'),
+    edit: N_('Open <b>DNS / Nameservers</b>, find the {0} record named <b>{1}</b> shown under "Replaces", and click <b>Edit</b>.'),
+    save: N_('Click <b>Add Record</b> (or <b>Update</b>).')},
+  digitalocean: {label: 'DigitalOcean', name: 'Hostname', value: 'Value', ttl: '3600', apex: '@',
+    open: N_('Sign in at <b>cloud.digitalocean.com</b> and open <b>Networking → Domains → {0}</b>.'),
+    add: N_('Choose the <b>{0}</b> tab to create the record.'),
+    edit: N_('Find the {0} record named <b>{1}</b> shown under "Replaces", click <b>More → Edit record</b>.'),
+    save: N_('Click <b>Create Record</b> (or <b>Update</b>).')},
+  other: {label: N_('Other / not sure'), name: 'Name / Host', value: 'Value / Content', ttl: 'Default (1 hour is fine)', apex: '@',
+    open: N_('Sign in where you bought <b>{0}</b>, or wherever its DNS is managed.'),
+    add: N_('Find <b>DNS</b>, <b>DNS records</b> or <b>Zone editor</b> and choose <b>Add record</b>.'),
+    edit: N_('Find <b>DNS</b>, <b>DNS records</b> or <b>Zone editor</b>, and edit the {0} record named <b>{1}</b> shown under "Replaces".'),
+    save: N_('Save the record.'),
+    hint: N_('If the box already shows ".{0}" after it, type only the part above. If it wants the full name, use "{1}".')},
+};
+const DIFFICULTY = {easy: N_('Easy'), medium: N_('Medium'), hard: N_('Needs a technical person')};
+let FIX_GUIDES = [];
+let FIX_OPTS = {};
+let fixProvider = null;
+try { fixProvider = localStorage.getItem('phishlens_dns_provider'); } catch (_) {}
+
+function providerFor(key) { return DNS_PROVIDERS[key] ? key : 'other'; }
+
+function fixHost(rec, p) {
+  return rec.host === '@' ? (p.apex || '@') : rec.host;
+}
+
+function fixRecordRows(rec, domain, pk, opts) {
+  const p = DNS_PROVIDERS[pk];
+  const host = fixHost(rec, p);
+  const quote = p.quoteTxt && rec.type === 'TXT';
+  const value = rec.value ? (quote ? `"${rec.value}"` : rec.value) : '';
+  const copy = (v) => `<button class="copy-btn" data-copy="${escapeHtml(v)}">${_t('Copy')}</button>`;
+  const hint = rec.host === '@'
+    ? (p.apex ? _t('"{0}" means {1} itself.', {0: p.apex, 1: domain}) : _t('Leave this box empty: the record goes on {0} itself.', {0: domain}))
+    : (p.hint && pk === 'other' ? _t(p.hint, {0: domain, 1: rec.fqdn}) : _t('{0} adds ".{1}" for you.', {0: _t(p.label), 1: domain}));
+  const caa = rec.type === 'CAA' ? rec.value.match(/^(\d+)\s+(\w+)\s+"?([^"]+)"?$/) : null;
+  const rows = [
+    `<div class="rec-row"><span class="rec-label">${_t('Type')}</span><span class="rec-val">${escapeHtml(rec.type)}</span>${copy(rec.type)}</div>`,
+    `<div class="rec-row"><span class="rec-label">${_t(p.name)}</span><span class="rec-val">${escapeHtml(host || '—')}<span class="rec-hint">${escapeHtml(hint)}</span></span>${host ? copy(host) : '<span></span>'}</div>`,
+  ];
+  if (rec.value_from_provider) {
+    rows.push(`<div class="rec-row"><span class="rec-label">${_t(p.value)}</span><span class="rec-val rec-pending">${_t('Your email provider gives you this value (see the steps below).')}</span><span></span></div>`);
+  } else {
+    rows.push(`<div class="rec-row"><span class="rec-label">${_t(p.value)}</span><span class="rec-val">${escapeHtml(value)}${quote && p.valueHint ? `<span class="rec-hint">${escapeHtml(_t(p.valueHint))}</span>` : ''}${rec.note ? `<span class="rec-hint">${escapeHtml(rec.note)}</span>` : ''}${caa ? `<span class="rec-hint">${escapeHtml(_t('If your provider asks for separate boxes: Flags {0}, Tag {1}, Value {2}.', {0: caa[1], 1: caa[2], 2: caa[3]}))}</span>` : ''}</span>${copy(value)}</div>`);
+  }
+  rows.push(`<div class="rec-row"><span class="rec-label">${_t('TTL')}</span><span class="rec-val">${escapeHtml(_t(p.ttl))}</span><span></span></div>`);
+  const current = rec.current ? `<div class="rec-current"><span class="rec-label">${_t('Replaces')}</span><code>${escapeHtml(rec.current)}</code></div>` : '';
+  const changes = (rec.changes || []).length ? `<p class="small muted">${_t('What changes:')} ${rec.changes.map(escapeHtml).join(' · ')}</p>` : '';
+  const apply = opts.applyFix && rec.type === 'TXT' && rec.value && window.applyDnsFix
+    ? `<button class="btn tiny" data-apply-name="${escapeHtml(rec.fqdn)}" data-apply-value="${escapeHtml(rec.value)}">${_t('Apply in {0}', {0: escapeHtml(window.DNS_LABEL || 'DNS')})}</button>` : '';
+  const action = rec.action === 'replace' ? _t('Change this record') : _t('Add this record');
+  return `<div class="rec-block"><span class="fix-label">${action}</span>${current}<div class="rec">${rows.join('')}</div>${changes}${apply ? `<div class="fix-actions">${apply}</div>` : ''}</div>`;
+}
+
+function fixSteps(g, domain, pk) {
+  const p = DNS_PROVIDERS[pk];
+  const steps = [];
+  const recs = g.records || [];
+  if (recs.length && !recs.every(r => r.value_from_provider)) {
+    const r = recs[0];
+    steps.push(_t(p.open, {0: escapeHtml(domain)}));
+    steps.push(r.action === 'replace'
+      ? _t(p.edit, {0: escapeHtml(r.type), 1: escapeHtml(fixHost(r, p) || domain)})
+      : _t(p.add, {0: escapeHtml(r.type)}));
+    steps.push(r.action === 'replace'
+      ? _t('Replace the value with the one above. Keep the type and name as they are.')
+      : _t('Choose type <b>{0}</b>, then copy each field above into the matching box.', {0: escapeHtml(r.type)}));
+    steps.push(_t(p.save) + ' ' + _t('Changes usually show within 5 minutes, and can take up to an hour.'));
+  }
+  const extra = (g.steps || []).map(escapeHtml);
+  const all = recs.length && recs.every(r => r.value_from_provider) ? [...extra] : [...steps, ...extra];
+  return all.length ? `<ol class="fix-steps">${all.map(s => `<li><div>${s}</div></li>`).join('')}</ol>` : '';
+}
+
+function fixCardInner(g, domain, pk, opts) {
+  const recs = (g.records || []).map(r => fixRecordRows(r, domain, pk, opts)).join('');
+  const file = g.file ? `<div class="rec-block"><span class="fix-label">${_t('Publish this file')}</span>
+      <p class="small muted">${_t('At this address:')} <code>${escapeHtml(g.file.url)}</code></p>
+      <pre class="fix-file">${escapeHtml(g.file.content)}</pre>
+      <div class="fix-actions"><button class="copy-btn" data-copy="${escapeHtml(g.file.content)}">${_t('Copy file')}</button></div></div>` : '';
+  const steps = fixSteps(g, domain, pk);
+  return `${recs}${file}${steps ? `<div class="rec-block"><span class="fix-label">${_t('Steps')}</span>${steps}</div>` : ''}`;
+}
+
+function providerPicker(pk, detected) {
+  const opts = Object.entries(DNS_PROVIDERS).map(([k, p]) =>
+    `<option value="${k}"${k === pk ? ' selected' : ''}>${escapeHtml(_t(p.label))}</option>`).join('');
+  const det = detected && detected.label
+    ? `<span class="small muted">${_t('Detected from your nameservers: {0}', {0: escapeHtml(detected.label)})}</span>` : '';
+  return `<div class="provider-pick"><label for="fix-provider">${_t('Where is your DNS managed?')}</label>
+    <select id="fix-provider" class="fix-provider">${opts}</select>${det}</div>`;
+}
+
+function fixCard(g, check, points, domain, pk, opts, n) {
+  const id = FIX_GUIDES.push({g, domain}) - 1;
+  const chips = [
+    `<span class="fchip ${escapeHtml(check.status)}">${check.status === 'fail' ? _t('✗ Failing') : _t('! Warning')}</span>`,
+    points > 0 ? `<span class="fchip pts">${_t('+{0} points', {0: points})}</span>` : '',
+    g.minutes ? `<span class="fchip">${_t('⏱ About {0} min', {0: g.minutes})}</span>` : '',
+    g.difficulty ? `<span class="fchip">${_t(DIFFICULTY[g.difficulty] || g.difficulty)}</span>` : '',
+  ].join('');
+  const why = (g.problem || g.why) ? `<div class="fix-why">
+      ${g.problem ? `<div><span class="fix-label">${_t('What\'s wrong')}</span><p>${escapeHtml(g.problem)}</p></div>` : ''}
+      ${g.why ? `<div><span class="fix-label">${_t('Why it matters')}</span><p>${escapeHtml(g.why)}</p></div>` : ''}</div>` : '';
+  return `<article class="fixcard" id="fix-${escapeHtml(check.key || id)}">
+    <header class="fix-head"><div class="fix-chips">${n ? `<span class="fix-num">${n}</span>` : ''}${chips}</div>
+      <h4>${escapeHtml(g.headline || check.title)}</h4><span class="small muted">${escapeHtml(check.title)}</span></header>
+    <div class="fix-body">
+      ${why}
+      <div class="fix-dyn" data-gid="${id}">${fixCardInner(g, domain, pk, opts)}</div>
+      ${g.warning ? `<p class="fix-warn"><b>${_t('Watch out:')}</b> ${escapeHtml(g.warning)}</p>` : ''}
+      <div class="fix-actions">
+        ${window.rescanDomain ? `<button class="btn tiny" data-rescan="${escapeHtml(domain)}">${_t('Check again')}</button>` : ''}
+        <button class="btn tiny ghost" data-handoff="${id}">${_t('Copy instructions for your IT person')}</button>
+      </div>
+      ${g.next ? `<p class="small muted"><b>${_t('Next step:')}</b> ${escapeHtml(g.next)}</p>` : ''}
+    </div></article>`;
+}
+
+/* Plain-text version of one card, to paste into an email or ticket. */
+function fixHandoffText(g, domain, pk) {
+  const p = DNS_PROVIDERS[pk];
+  const lines = [g.headline, '', g.problem || '', g.why ? _t('Why it matters') + ': ' + g.why : ''];
+  (g.records || []).forEach(r => {
+    lines.push('', (r.action === 'replace' ? _t('Change this record') : _t('Add this record')) + ` (${domain}):`);
+    lines.push(`  ${_t('Type')}: ${r.type}`, `  ${_t('Name / Host')}: ${r.host}  (${r.fqdn})`);
+    lines.push(`  ${_t('Value')}: ${r.value || _t('Your email provider gives you this value (see the steps below).')}`);
+    if (r.current) lines.push(`  ${_t('Replaces')}: ${r.current}`);
+  });
+  if (g.file) lines.push('', _t('Publish this file') + ': ' + g.file.url, g.file.content);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = fixSteps(g, domain, pk);
+  const steps = [...tmp.querySelectorAll('li')].map((li, i) => `${i + 1}. ${li.textContent.trim()}`);
+  if (steps.length) lines.push('', _t('Steps') + ` (${_t(p.label)}):`, ...steps);
+  if (g.warning) lines.push('', _t('Watch out:') + ' ' + g.warning);
+  return lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
+}
+
+function bindFixCards(container) {
+  const sel = container.querySelector('.fix-provider');
+  if (sel) sel.addEventListener('change', () => {
+    fixProvider = sel.value;
+    try { localStorage.setItem('phishlens_dns_provider', fixProvider); } catch (_) {}
+    container.querySelectorAll('.fix-dyn').forEach(el => {
+      const {g, domain} = FIX_GUIDES[+el.dataset.gid];
+      el.innerHTML = fixCardInner(g, domain, fixProvider, FIX_OPTS);
+    });
+  });
+  container.querySelectorAll('[data-handoff]').forEach(b => b.addEventListener('click', (e) => {
+    e.preventDefault();
+    const {g, domain} = FIX_GUIDES[+b.dataset.handoff];
+    copyText(fixHandoffText(g, domain, (sel && sel.value) || 'other'), b);
+  }));
+  container.querySelectorAll('[data-rescan]').forEach(b => b.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.rescanDomain) window.rescanDomain(b.dataset.rescan);
+  }));
+}
+
 function renderReport(scan, isPublic, opts = {}) {
   const r = scan.result || scan;
   const checks = r.checks || [];
@@ -180,12 +382,23 @@ function renderReport(scan, isPublic, opts = {}) {
       ${rec.cta ? `<p><a class="btn ghost" href="${escapeHtml(rec.cta.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(rec.cta.label)} ↗</a></p>` : ''}
     </div>`).join('');
 
+  FIX_GUIDES = [];
+  FIX_OPTS = opts;
+  const detected = r.dns_host || null;
+  const pk = detected && DNS_PROVIDERS[detected.key] ? detected.key : providerFor(fixProvider || 'other');
+  const planned = {};
+  plan.forEach((p, i) => { if (p.guide) planned[p.check] = i + 1; });
+  const hasGuides = checks.some(c => c.guide);
   const planHtml = plan.length
-    ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3><ol>` +
-      plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span>
+    ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3>
+      ${hasGuides ? providerPicker(pk, detected) : ''}` +
+      plan.map((p, i) => {
+        const c = checks.find(x => x.title === p.check) || {title: p.check, status: 'fail'};
+        return p.guide ? fixCard(p.guide, c, p.points, r.domain, pk, opts, i + 1)
+          : `<ol start="${i + 1}"><li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span>
         <span class="fixline"><code>${escapeHtml(p.fix)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li>`).join('') +
-      `</ol></div>`
+        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li></ol>`;
+      }).join('') + `</div>`
     : `<div class="plan good"><h3>${_t('✓ Nothing urgent — this domain is in great shape.')}</h3></div>`;
 
   const checksHtml = checks.map((c, i) => `
@@ -195,7 +408,9 @@ function renderReport(scan, isPublic, opts = {}) {
         <span class="chev">▾</span></summary>
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
-      ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
+      ${c.guide && planned[c.title] ? `<p class="fix-see"><a href="#fix-${escapeHtml(c.key)}">${_t('How to fix: see step {0} above ↑', {0: planned[c.title]})}</a></p>`
+        : c.guide ? `<div class="fix-in-check">${fixCard(c.guide, c, c.max_score - c.score, r.domain, pk, opts, 0)}</div>`
+        : (c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button>${applyButton(f, opts)}</p>`).join('')}
     </details>`).join('');
 
@@ -218,6 +433,7 @@ function renderReport(scan, isPublic, opts = {}) {
     ${planHtml}
     ${recHtml}
     <h3 class="findings-title">${_t('Findings')}</h3>
+    ${hasGuides && !plan.some(p => p.guide) ? providerPicker(pk, detected) : ''}
     ${checksHtml}
     ${isPublic ? `<p class="upsell">${_t('Want drift alerts and history for your domains?')} <a href="/signup">${_t('Create a free account →')}</a></p>` : ''}
   </div>`;
@@ -225,18 +441,27 @@ function renderReport(scan, isPublic, opts = {}) {
 
 /* Wire up copy buttons + animate ring + count-up after injecting report HTML. */
 function bindReportInteractions(container) {
-  container.querySelectorAll('[data-copy]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      copyText(btn.getAttribute('data-copy'), btn);
+  // Delegated, so buttons re-rendered by the provider picker keep working.
+  if (!container.dataset.bound) {
+    container.dataset.bound = '1';
+    container.addEventListener('click', (e) => {
+      const copy = e.target.closest('[data-copy]');
+      if (copy) { e.preventDefault(); copyText(copy.getAttribute('data-copy'), copy); return; }
+      const apply = e.target.closest('[data-apply-name]');
+      if (apply) {
+        e.preventDefault();
+        if (window.applyDnsFix) window.applyDnsFix(apply.dataset.applyName, 'TXT', apply.dataset.applyValue, apply);
+        return;
+      }
+      const see = e.target.closest('.fix-see a');
+      if (see) {
+        e.preventDefault();
+        const el = container.querySelector(see.getAttribute('href'));
+        if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }
     });
-  });
-  container.querySelectorAll('[data-apply-name]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (window.applyDnsFix) window.applyDnsFix(btn.dataset.applyName, 'TXT', btn.dataset.applyValue, btn);
-    });
-  });
+  }
+  bindFixCards(container);
   container.querySelectorAll('.ring-wrap').forEach(ring => {
     const fg = ring.querySelector('.ring-fg');
     const num = ring.querySelector('.ring-num');

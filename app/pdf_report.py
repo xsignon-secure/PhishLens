@@ -38,6 +38,13 @@ S = {
                            textColor=INK, backColor=colors.HexColor("#f3f4f6"),
                            leftIndent=0, borderPadding=(3, 3, 3, 3),
                            spaceBefore=5, spaceAfter=3, wordWrap="CJK"),
+    "h3": ParagraphStyle("h3", parent=_base["Heading3"], fontSize=11, leading=14,
+                         textColor=INK, spaceBefore=4, spaceAfter=2),
+    "mono": ParagraphStyle("mono", fontName="Courier", fontSize=8.5, leading=11, textColor=INK,
+                           wordWrap="CJK"),
+    "warn": ParagraphStyle("warn", parent=_base["BodyText"], fontSize=9, leading=12,
+                           textColor=colors.HexColor("#92400e"), backColor=colors.HexColor("#fef3c7"),
+                           borderPadding=(3, 3, 3, 3), spaceBefore=4),
     "score": ParagraphStyle("score", fontName="Helvetica-Bold", fontSize=30, leading=34,
                             alignment=TA_CENTER, textColor=colors.white),
     "grade": ParagraphStyle("grade", fontName="Helvetica-Bold", fontSize=11, leading=14,
@@ -47,6 +54,62 @@ S = {
 
 def _p(text, style="body"):
     return Paragraph(escape(str(text if text is not None else "")), S[style])
+
+
+def _pdf_text(text) -> str:
+    # The built-in Helvetica has no arrow glyph.
+    return str(text or "").replace("→", ">")
+
+
+ACTION_WORDS = {"add": "Add this record", "replace": "Change this record", "delete": "Delete this record"}
+DIFFICULTY = {"easy": "Easy", "medium": "Medium", "hard": "Needs a technical person"}
+
+
+def _guide_block(n: int, title: str, points: int | None, g: dict) -> list:
+    """One fix card: what's wrong, the record fields, the steps."""
+    meta = [f"+{points} points" if points else "", f"about {g['minutes']} min" if g.get("minutes") else "",
+            DIFFICULTY.get(g.get("difficulty", ""), "")]
+    block = [_p(f"{n}. {_pdf_text(g.get('headline') or title)}", "h3"),
+             _p(" · ".join(m for m in meta if m), "muted")]
+    if g.get("problem"):
+        block.append(_p(_pdf_text(g["problem"])))
+    if g.get("why"):
+        block.append(_p("Why it matters: " + _pdf_text(g["why"]), "muted"))
+    for rec in g.get("records") or []:
+        value = rec.get("value") or ("(copy it from your email provider)" if rec.get("value_from_provider") else "")
+        rows = [[_p("Type", "muted"), _p(rec.get("type", ""), "mono")],
+                [_p("Name / Host", "muted"),
+                 _p(f"{rec.get('host', '')}    (full name: {rec.get('fqdn', '')})", "mono")],
+                [_p("Value", "muted"), _p(value, "mono")]]
+        if rec.get("current"):
+            rows.append([_p("Replaces", "muted"), _p(rec["current"], "mono")])
+        t = Table(rows, colWidths=[26 * mm, None])
+        t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                               ("BOX", (0, 0), (-1, -1), 0.5, LINE),
+                               ("LINEBELOW", (0, 0), (-1, -2), 0.4, LINE),
+                               ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f9fafb"))]))
+        block += [_p(ACTION_WORDS.get(rec.get("action"), "Add this record") + ":", "body"), t]
+        if rec.get("note"):
+            block.append(_p(_pdf_text(rec["note"]), "muted"))
+    if g.get("file"):
+        block += [_p("Publish this file at " + g["file"]["url"] + ":"),
+                  Paragraph(escape(g["file"]["content"]).replace("\n", "<br/>"), S["code"])]
+    steps = list(g.get("steps") or [])
+    recs = g.get("records") or []
+    if recs and not all(r.get("value_from_provider") for r in recs):
+        steps = ["Sign in where your domain's DNS is managed and open its DNS records.",
+                 ("Edit the existing record shown as Replaces, and put in the new value."
+                  if recs[0].get("action") == "replace" else
+                  "Add a new record and copy each field above into the matching box."),
+                 "Save. Changes usually show within 5 minutes, and can take up to an hour."] + steps
+    for i, step in enumerate(steps, 1):
+        block.append(_p(f"Step {i}: {_pdf_text(step)}"))
+    if g.get("warning"):
+        block.append(_p("Watch out: " + _pdf_text(g["warning"]), "warn"))
+    if g.get("next"):
+        block.append(_p("Next: " + _pdf_text(g["next"]), "muted"))
+    block.append(Spacer(1, 8))
+    return [KeepTogether(block)]
 
 
 def _date(iso: str | None) -> str:
@@ -155,11 +218,25 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
 
     # ---- action plan
     story.append(Paragraph("Fix these first", S["h2"]))
+    guided = [c for c in checks if c.get("guide")]
     if plan:
-        for i, item in enumerate(plan, 1):
-            story.append(KeepTogether([
-                _p(f"{i}. {item.get('check', '')}  (+{item.get('points', 0)} pts)"),
-                _p(item.get("fix", ""), "code"), Spacer(1, 4)]))
+        n = 0
+        for item in plan:
+            n += 1
+            if item.get("guide"):
+                story += _guide_block(n, item.get("check", ""), item.get("points"), item["guide"])
+            else:
+                story.append(KeepTogether([
+                    _p(f"{n}. {item.get('check', '')}  (+{item.get('points', 0)} pts)"),
+                    _p(item.get("fix", ""), "code"), Spacer(1, 4)]))
+        planned = {item.get("check") for item in plan}
+        rest = [c for c in guided if c.get("title") not in planned]
+        if rest:
+            story.append(Paragraph("Other fixes", S["h2"]))
+            for c in rest:
+                n += 1
+                story += _guide_block(n, c.get("title", ""), (c.get("max_score") or 0) - (c.get("score") or 0),
+                                      c["guide"])
     else:
         story.append(_p("Nothing urgent: this domain is in great shape."))
 
@@ -172,7 +249,10 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
                           f'{escape(status.upper())}</b></font>', S["body"])
         detail = [_p(c.get("details", ""))]
         detail += [_p("• " + str(x), "muted") for x in c.get("issues") or []]
-        detail += [_p(f, "code") for f in c.get("fixes") or []]
+        if c.get("guide"):
+            detail.append(_p("Fix: " + _pdf_text(c["guide"].get("headline", "")) + " (see above)", "muted"))
+        else:
+            detail += [_p(f, "code") for f in c.get("fixes") or []]
         rows.append([badge, _p(c.get("title", "")), _p(f"{c.get('score', 0)}/{c.get('max_score', 0)}"),
                      detail])
     table = Table(rows, colWidths=[17 * mm, 30 * mm, 16 * mm, None], repeatRows=1)

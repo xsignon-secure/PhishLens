@@ -110,7 +110,7 @@ def check_spf(domain: str) -> dict:
     if len(records) > 1:
         return {
             "key": "spf", "title": "SPF", "status": "fail", "score": 2, "max_score": max_score,
-            "details": f"{len(records)} SPF records found; only one is allowed (permerror).",
+            "details": f"{len(records)} SPF records found; only one is allowed (permerror).", "records": records,
             "issues": ["Multiple SPF records cause a permanent error; receivers ignore SPF."],
             "fixes": ["Merge into a single TXT record starting with v=spf1."],
         }
@@ -174,7 +174,7 @@ def check_spf(domain: str) -> dict:
     details = f"Record: {record} ({lookups}/{SPF_LOOKUP_LIMIT} DNS lookups, includes followed)"
     return {
         "key": "spf", "title": "SPF", "status": status, "score": score, "max_score": max_score,
-        "details": details, "issues": issues, "fixes": fixes,
+        "details": details, "issues": issues, "fixes": fixes, "record": record,
     }
 
 
@@ -193,6 +193,7 @@ def check_dmarc(domain: str) -> dict:
         return {
             "key": "dmarc", "title": "DMARC", "status": "fail", "score": 0, "max_score": max_score,
             "details": f"{len(records)} DMARC records found; receivers ignore DMARC when more than one exists.",
+            "records": records,
             "issues": ["Multiple DMARC records: the policy is not applied at all (RFC 9989)."],
             "fixes": [f"Delete all but one TXT record at _dmarc.{domain}."],
         }
@@ -263,7 +264,7 @@ def check_dmarc(domain: str) -> dict:
     return {
         "key": "dmarc", "title": "DMARC", "status": status, "score": score, "max_score": max_score,
         "details": "Policy: " + "; ".join(detail_bits),
-        "issues": issues, "fixes": fixes,
+        "issues": issues, "fixes": fixes, "record": records[0],
     }
 
 
@@ -677,7 +678,7 @@ def check_mx(domain: str) -> dict:
     status, score = ("warn", 3) if issues else ("pass", max_score)
     return {"key": "mx", "title": "MX", "status": status, "score": score, "max_score": max_score,
             "details": f"{len(hosts)} MX record(s): {', '.join(h for _, h in hosts[:3])}",
-            "issues": issues, "fixes": fixes}
+            "issues": issues, "fixes": fixes, "hosts": [h for _, h in hosts]}
 
 
 def check_smtp_tls(domain: str) -> dict:

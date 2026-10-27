@@ -622,3 +622,46 @@ code {
   margin: 0 auto 18px; max-width: 980px; border-left: 4px solid var(--accent); border-radius: 10px;
   background: rgba(255, 255, 255, .03); }
 .brand-logo { max-height: 40px; max-width: 160px; }
+
+/* ---------------- fix cards ---------------- */
+.provider-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 14px; font-size: 14px; color: var(--ink-dim); }
+.provider-pick select { background: var(--bg1); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; font: inherit; }
+.fixcard { background: rgba(10, 17, 34, .85); border: 1px solid var(--line); border-radius: 14px; margin: 12px 0; overflow: hidden; text-align: left; }
+.fix-in-check .fixcard { margin: 4px 14px 14px; }
+.fix-head { padding: 14px 18px; border-bottom: 1px solid var(--line-soft); display: grid; gap: 6px; }
+.fix-head h4 { margin: 0; color: #fff; font-size: 16.5px; line-height: 1.35; text-wrap: balance; }
+.fix-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fix-num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--grad); color: #fff; font-size: 12px; font-weight: 800; }
+.fchip { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 99px; background: var(--surface-2); color: var(--ink-dim); border: 1px solid var(--line-soft); }
+.fchip.fail { background: var(--red-bg); color: var(--red); border-color: transparent; }
+.fchip.warn { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
+.fchip.pts { background: var(--green-bg); color: var(--green); border-color: transparent; }
+.fix-body { padding: 16px 18px; display: grid; gap: 16px; color: var(--ink-dim); font-size: 14px; line-height: 1.6; }
+.fix-body p { margin: 0; }
+.fix-why { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .fix-why { grid-template-columns: 1fr; } }
+.fix-why p { color: var(--ink); }
+.fix-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+.rec-block { display: grid; gap: 8px; min-width: 0; }
+.rec-block + .rec-block { margin-top: 12px; }
+.rec { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+.rec-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line-soft); }
+.rec-row:first-child { border-top: 0; }
+.rec-label { font-size: 12px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; }
+.rec-val { font-family: var(--mono); font-size: 13.5px; color: #fff; overflow-wrap: anywhere; min-width: 0; }
+.rec-val.rec-pending { font-family: var(--font); color: var(--ink-dim); font-style: italic; }
+.rec-hint { display: block; font-family: var(--font); font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+@media (max-width: 560px) { .rec-row { grid-template-columns: 1fr auto; } .rec-row .rec-label { grid-column: 1 / -1; } }
+.rec-current { display: grid; gap: 4px; }
+.rec-current code { font-size: 12.5px; color: var(--ink-dim); text-decoration: line-through; text-decoration-color: rgba(248, 113, 113, .6); overflow-wrap: anywhere; }
+.fix-steps { margin: 0; padding: 0; list-style: none; counter-reset: fs; display: grid; gap: 10px; }
+.fix-steps li { counter-increment: fs; display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+.fix-steps li::before { content: counter(fs); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--accent-2); font-size: 12.5px; font-weight: 700; }
+.fix-steps li > div { padding-top: 2px; min-width: 0; color: var(--ink); }
+.fix-steps b { color: #fff; }
+.fix-file { margin: 0; font-family: var(--mono); font-size: 13px; background: #070c19; border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: #fff; overflow-x: auto; }
+.fix-warn { border-left: 3px solid var(--amber); background: var(--amber-bg); padding: 10px 14px; border-radius: 0 9px 9px 0; color: var(--ink); }
+.fix-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fix-see { padding: 0 16px 14px; margin: 0; font-size: 14px; }
+.plan > .fixcard:first-of-type { margin-top: 4px; }
+.fix-actions .btn.tiny { margin-left: 0; }

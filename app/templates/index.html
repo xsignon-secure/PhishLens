@@ -49,6 +49,10 @@
 {% endblock %}
 {% block scripts %}
 <script>
+window.rescanDomain = (domain) => {
+  document.getElementById('scan-domain').value = domain;
+  document.getElementById('scan-form').requestSubmit();
+};
 document.getElementById('scan-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const domain = document.getElementById('scan-domain').value.trim().toLowerCase();
