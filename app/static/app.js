@@ -1,5 +1,13 @@
 /* PhishLens interactive UI — report rendering, scan progress, toasts, guided tour, checklist. No frameworks. */
 
+/* Interface translations: window.I18N is the current language's catalog (empty
+   for English). {0}-style placeholders are filled from `vars`. */
+const I18N = window.I18N || {};
+function _t(s, vars) {
+  const out = I18N[s] || s;
+  return vars ? out.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : out;
+}
+
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -39,10 +47,10 @@ async function copyText(text, btn) {
   }
   if (btn) {
     const orig = btn.textContent;
-    btn.textContent = 'Copied ✓'; btn.classList.add('ok');
+    btn.textContent = _t('Copied ✓'); btn.classList.add('ok');
     setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 1600);
   } else {
-    toast('Copied to clipboard ✓');
+    toast(_t('Copied to clipboard ✓'));
   }
 }
 
@@ -52,10 +60,10 @@ function runScanProgress(wrapId, phaseId, fillId) {
   const phaseEl = document.getElementById(phaseId);
   const fill = document.getElementById(fillId);
   const phases = [
-    'Resolving domain…',
-    'Collecting public records…',
-    'Evaluating configuration…',
-    'Compiling your report…'
+    _t('Resolving domain…'),
+    _t('Collecting public records…'),
+    _t('Evaluating configuration…'),
+    _t('Compiling your report…')
   ];
   wrap.classList.remove('hidden');
   let i = 0, pct = 4, finished = false;
@@ -79,7 +87,7 @@ function runScanProgress(wrapId, phaseId, fillId) {
 
 /* ---------------- report ---------------- */
 function statusBadge(status) {
-  const map = { pass: '✓ pass', warn: '! warning', fail: '✗ fail' };
+  const map = { pass: _t('✓ pass'), warn: _t('! warning'), fail: _t('✗ fail') };
   return `<span class="badge ${status}">${map[status] || escapeHtml(status)}</span>`;
 }
 
@@ -104,12 +112,12 @@ function scoreRing(score) {
 /* VirusTotal reputation badge (informational; not part of the score) */
 function reputationBadge(rep) {
   if (!rep) return '';
-  const link = rep.url ? ` <a href="${escapeHtml(rep.url)}" target="_blank" rel="noopener noreferrer">View on VirusTotal ↗</a>` : '';
-  if (!rep.known) return `<div class="rep-badge rep-unknown">◌ Not yet analysed by VirusTotal${link}</div>`;
+  const link = rep.url ? ` <a href="${escapeHtml(rep.url)}" target="_blank" rel="noopener noreferrer">${_t('View on VirusTotal ↗')}</a>` : '';
+  if (!rep.known) return `<div class="rep-badge rep-unknown">${_t('◌ Not yet analysed by VirusTotal{0}', {0: link})}</div>`;
   const flagged = (rep.malicious || 0) + (rep.suspicious || 0);
   const cls = rep.malicious ? 'rep-bad' : rep.suspicious ? 'rep-warn' : 'rep-good';
   const icon = rep.malicious ? '✗' : rep.suspicious ? '!' : '✓';
-  return `<div class="rep-badge ${cls}">${icon} Flagged by ${flagged}/${rep.total || 0} security vendors${link}</div>`;
+  return `<div class="rep-badge ${cls}">${_t('{0} Flagged by {1}/{2} security vendors{3}', {0: icon, 1: flagged, 2: rep.total || 0, 3: link})}</div>`;
 }
 
 function fmtDate(iso) {
@@ -140,8 +148,8 @@ function trendLine(history) {
   if (!t) return '';
   const cls = t.delta > 0 ? 'up' : t.delta < 0 ? 'down' : 'flat';
   const text = t.delta === 0
-    ? `Score unchanged at ${t.to_score} since ${fmtDate(t.since)}`
-    : `Your score went from ${t.from_score} to ${t.to_score} since ${fmtDate(t.since)}`;
+    ? _t('Score unchanged at {0} since {1}', {0: t.to_score, 1: fmtDate(t.since)})
+    : _t('Your score went from {0} to {1} since {2}', {0: t.from_score, 1: t.to_score, 2: fmtDate(t.since)});
   return `<div class="trend ${cls}">${t.delta > 0 ? '▲' : t.delta < 0 ? '▼' : '■'} ${escapeHtml(text)}
     ${sparkline(history.points)}</div>`;
 }
@@ -152,7 +160,7 @@ const FIX_RECORD_RE = /Add TXT(?: record)? at ([A-Za-z0-9_.-]+): "([^"]+)"/;
 function applyButton(fix, opts) {
   if (!opts.applyFix) return '';
   const m = FIX_RECORD_RE.exec(fix);
-  return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">Apply in ${escapeHtml(window.DNS_LABEL || 'DNS')}</button>` : '';
+  return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">${_t('Apply in {0}', {0: escapeHtml(window.DNS_LABEL || 'DNS')})}</button>` : '';
 }
 
 function renderReport(scan, isPublic, opts = {}) {
@@ -173,12 +181,12 @@ function renderReport(scan, isPublic, opts = {}) {
     </div>`).join('');
 
   const planHtml = plan.length
-    ? `<div class="plan"><h3>🎯 Fix these first — biggest grade gains</h3><ol>` +
-      plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">+${p.points} pts</span>
+    ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3><ol>` +
+      plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span>
         <span class="fixline"><code>${escapeHtml(p.fix)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">Copy</button>${applyButton(p.fix, opts)}</span></li>`).join('') +
+        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li>`).join('') +
       `</ol></div>`
-    : `<div class="plan good"><h3>✓ Nothing urgent — this domain is in great shape.</h3></div>`;
+    : `<div class="plan good"><h3>${_t('✓ Nothing urgent — this domain is in great shape.')}</h3></div>`;
 
   const checksHtml = checks.map((c, i) => `
     <details class="check ${c.status}" style="animation-delay:${Math.min(0.35 + i * 0.05, 1.2).toFixed(2)}s">
@@ -188,7 +196,7 @@ function renderReport(scan, isPublic, opts = {}) {
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
       ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(f)}">Copy</button>${applyButton(f, opts)}</p>`).join('')}
+        <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button>${applyButton(f, opts)}</p>`).join('')}
     </details>`).join('');
 
   return `
@@ -197,11 +205,11 @@ function renderReport(scan, isPublic, opts = {}) {
       ${scoreRing(r.score)}
       <div>
         <h2>${escapeHtml(r.domain)}</h2>
-        <p class="muted">Scanned ${escapeHtml(r.scanned_at || 'just now')}</p>
+        <p class="muted">${_t('Scanned {0}', {0: escapeHtml(r.scanned_at || _t('just now'))})}</p>
         <div class="grade-line">
-          <span class="grade ${gradeClass(r.score)}">Grade ${escapeHtml(r.grade)}</span>
-          <span class="muted small">${issues} failing · ${warnings} warnings</span>
-          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>⤓ Download PDF</a>` : ''}
+          <span class="grade ${gradeClass(r.score)}">${_t('Grade {0}', {0: escapeHtml(r.grade)})}</span>
+          <span class="muted small">${_t('{0} failing · {1} warnings', {0: issues, 1: warnings})}</span>
+          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${_t('⤓ Download PDF')}</a>` : ''}
         </div>
         ${trendLine(scan.history)}
         ${reputationBadge(r.reputation)}
@@ -209,9 +217,9 @@ function renderReport(scan, isPublic, opts = {}) {
     </div>
     ${planHtml}
     ${recHtml}
-    <h3 class="findings-title">Findings</h3>
+    <h3 class="findings-title">${_t('Findings')}</h3>
     ${checksHtml}
-    ${isPublic ? `<p class="upsell">Want drift alerts and history for your domains? <a href="/signup">Create a free account →</a></p>` : ''}
+    ${isPublic ? `<p class="upsell">${_t('Want drift alerts and history for your domains?')} <a href="/signup">${_t('Create a free account →')}</a></p>` : ''}
   </div>`;
 }
 
@@ -259,10 +267,10 @@ function startTour(steps) {
       <h3 class="tour-title"></h3>
       <p class="tour-text"></p>
       <div class="tour-actions">
-        <button class="btn ghost tiny tour-skip">Skip tour</button>
+        <button class="btn ghost tiny tour-skip">${_t('Skip tour')}</button>
         <span style="flex:1"></span>
-        <button class="btn ghost tiny tour-back">← Back</button>
-        <button class="btn tiny tour-next">Next →</button>
+        <button class="btn ghost tiny tour-back">${_t('← Back')}</button>
+        <button class="btn tiny tour-next">${_t('Next →')}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -281,11 +289,11 @@ function startTour(steps) {
       hole.style.top = (r.top - pad) + 'px';
       hole.style.width = (r.width + pad * 2) + 'px';
       hole.style.height = (r.height + pad * 2) + 'px';
-      overlay.querySelector('.tour-step').textContent = `Step ${idx + 1} of ${steps.length}`;
+      overlay.querySelector('.tour-step').textContent = _t('Step {0} of {1}', {0: idx + 1, 1: steps.length});
       overlay.querySelector('.tour-title').textContent = step.title;
       overlay.querySelector('.tour-text').textContent = step.text;
       overlay.querySelector('.tour-back').style.visibility = idx === 0 ? 'hidden' : 'visible';
-      overlay.querySelector('.tour-next').textContent = idx === steps.length - 1 ? 'Finish ✓' : 'Next →';
+      overlay.querySelector('.tour-next').textContent = idx === steps.length - 1 ? _t('Finish ✓') : _t('Next →');
       // position card: below the hole if room, else above
       const cardH = 210;
       let top = r.bottom + pad + 14;
@@ -318,8 +326,8 @@ function renderChecklist(container, steps) {
   const pct = Math.round(done / steps.length * 100);
   container.innerHTML = `
     <div class="checklist-head">
-      <h2><span class="dot"></span> Getting started</h2>
-      <span class="muted small">${done} of ${steps.length} complete</span>
+      <h2><span class="dot"></span> ${_t('Getting started')}</h2>
+      <span class="muted small">${_t('{0} of {1} complete', {0: done, 1: steps.length})}</span>
     </div>
     <div class="progress-track" style="margin-bottom:14px"><div class="progress-fill" style="width:${pct}%"></div></div>
     <div class="checklist-items">
@@ -331,7 +339,7 @@ function renderChecklist(container, steps) {
           ${s.done ? '' : '<span class="checklist-go">→</span>'}
         </button>`).join('')}
     </div>
-    ${done === steps.length ? '<p class="all-done">🎉 All set — your domain security is on autopilot.</p>' : ''}`;
+    ${done === steps.length ? ('<p class="all-done">' + _t('🎉 All set — your domain security is on autopilot.') + '</p>') : ''}`;
   container.querySelectorAll('.checklist-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = btn.getAttribute('data-target');
@@ -357,20 +365,20 @@ function countUp(el, target, dur = 1000) {
 function avgScoreTile(scans, monitors) {
   let vals = (monitors || []).map(m => m.last_score).filter(x => x != null);
   if (!vals.length) vals = (scans || []).map(s => s.score).filter(x => x != null);
-  if (!vals.length) return { num: '—', cls: 'kpi-blue', sub: 'Run a scan to set a baseline' };
+  if (!vals.length) return { num: '—', cls: 'kpi-blue', sub: _t('Run a scan to set a baseline') };
   const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   const cls = avg >= 80 ? 'kpi-green' : avg >= 60 ? 'kpi-amber' : 'kpi-red';
-  const sub = avg >= 80 ? 'Strong posture — keep monitoring' : avg >= 60 ? 'Room to improve — see action plan' : 'Critical gaps — act on the plan';
+  const sub = avg >= 80 ? _t('Strong posture — keep monitoring') : avg >= 60 ? _t('Room to improve — see action plan') : _t('Critical gaps — act on the plan');
   return { num: avg, cls, sub };
 }
 
 function renderKpis(container, { monitors = [], alerts = [], scans = [] } = {}) {
   const avg = avgScoreTile(scans, monitors);
   const tiles = [
-    { cls: 'kpi-blue', glyph: '◈', num: monitors.length, label: 'Domains monitored', sub: monitors.length ? 'Under continuous watch' : 'Add your first below', animate: true },
-    { cls: avg.cls, glyph: '✦', num: avg.num, label: 'Average score', sub: avg.sub, animate: typeof avg.num === 'number' },
-    { cls: alerts.length ? 'kpi-red' : 'kpi-green', glyph: alerts.length ? '⚠' : '✓', num: alerts.length, label: 'Open alerts', sub: alerts.length ? 'Needs your attention' : 'All quiet', animate: true, pulse: alerts.length > 0 },
-    { cls: 'kpi-violet', glyph: '◐', num: scans.length, label: 'Scans run', sub: scans.length === 1 ? '1 scan completed' : `${scans.length} scans completed`, animate: true },
+    { cls: 'kpi-blue', glyph: '◈', num: monitors.length, label: _t('Domains monitored'), sub: monitors.length ? _t('Under continuous watch') : _t('Add your first below'), animate: true },
+    { cls: avg.cls, glyph: '✦', num: avg.num, label: _t('Average score'), sub: avg.sub, animate: typeof avg.num === 'number' },
+    { cls: alerts.length ? 'kpi-red' : 'kpi-green', glyph: alerts.length ? '⚠' : '✓', num: alerts.length, label: _t('Open alerts'), sub: alerts.length ? _t('Needs your attention') : _t('All quiet'), animate: true, pulse: alerts.length > 0 },
+    { cls: 'kpi-violet', glyph: '◐', num: scans.length, label: _t('Scans run'), sub: scans.length === 1 ? _t('1 scan completed') : _t('{0} scans completed', {0: scans.length}), animate: true },
   ];
   container.innerHTML = tiles.map((t, i) => `
     <div class="kpi ${t.cls} ${t.pulse ? 'pulse' : ''}" style="animation-delay:${(i * 0.09).toFixed(2)}s">

@@ -31,8 +31,9 @@ on Cloudflare, DigitalOcean, deSEC, GoDaddy or Amazon Route 53.
 
 Free tools, no account needed: `/tools` has a phishing link checker,
 single-record checkers, record generators (DMARC, SPF, MTA-STS, TLS-RPT, BIMI)
-and a DNS propagation checker. The public pages are available in English,
-Spanish, French, German, Portuguese and Hindi.
+and a DNS propagation checker. The app (public pages, dashboard and scan
+report screens) is available in English, Spanish, French, German, Portuguese
+and Hindi. Scan findings and fix advice are still written in English.
 
 | Scan report | Dashboard |
 |---|---|

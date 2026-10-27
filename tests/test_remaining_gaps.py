@@ -334,16 +334,23 @@ import glob  # noqa: E402
 from app import i18n  # noqa: E402
 
 
+def _unescape(s):
+    return re.sub(r"\\(.)", lambda m: "\n" if m.group(1) == "n" else m.group(1), s)
+
+
 def _template_strings():
+    """Every translatable string: _("...") in templates, _t('...') in page and app.js scripts."""
     keys = set()
-    for f in glob.glob("app/templates/*.html"):
-        keys |= {m.replace('\\"', '"') for m in re.findall(r'_\("((?:[^"\\]|\\.)*)"\)', open(f, encoding="utf-8").read())}
+    for f in glob.glob("app/templates/*.html") + ["app/static/app.js"]:
+        src = open(f, encoding="utf-8").read()
+        keys |= {_unescape(m) for m in re.findall(r'(?<![\w$])_\("((?:[^"\\]|\\.)*)"\)', src)}
+        keys |= {_unescape(m) for m in re.findall(r"(?<![\w$])_t\('((?:[^'\\]|\\.)*)'", src)}
     return keys
 
 
 def test_every_catalog_covers_every_template_string():
     keys = _template_strings()
-    assert len(keys) > 50
+    assert len(keys) > 300
     for lang in i18n.LANGS:
         if lang == "en":
             continue
@@ -365,3 +372,14 @@ def test_language_from_cookie_then_accept_language():
     assert "Mot de passe oublié ?" in r.text
     c.cookies.clear()
     assert "Scan my domain" in c.get("/").text
+
+
+def test_dashboard_scripts_get_the_catalog():
+    Base.metadata.create_all(bind=sa_engine)
+    c = TestClient(app)
+    c.cookies.set("lang", "es")
+    r = c.get("/dashboard")
+    assert "window.I18N = {" in r.text and "Vigilar un dominio" in r.text
+    assert '"Scan history": "Historial de escaneos"' in r.text
+    c.cookies.set("lang", "en")
+    assert "window.I18N = {}" in c.get("/dashboard").text
