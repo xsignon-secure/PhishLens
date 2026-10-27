@@ -20,6 +20,12 @@ _ORIGINAL_TXT = dns_checks._txt
 
 
 @pytest.fixture(autouse=True)
+def _no_nameserver_lookups(monkeypatch):
+    # Scans look up who hosts the domain's DNS; tests never touch the network.
+    monkeypatch.setattr("app.scanner.guides.dns_host", lambda domain: None)
+
+
+@pytest.fixture(autouse=True)
 def _reset_module_state():
     deps._hits.clear()
     yield

@@ -14,7 +14,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const scanData = {{ scan.result | tojson }};
+const scanData = {{ result | tojson }};
 document.getElementById('shared-report').innerHTML = renderReport(
   {domain: scanData.domain, score: scanData.score, grade: scanData.grade, result: scanData}, false,
   {pdfUrl: {{ ('/api/scans/shared/' ~ scan.id ~ '/pdf') | tojson }}}

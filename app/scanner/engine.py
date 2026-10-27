@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .. import deps, models
-from . import recommendations, reputation, scoring
+from . import guides, recommendations, reputation, scoring
 
 HISTORY_POINTS = 12
 TREND_WINDOW_DAYS = 30
@@ -15,13 +15,18 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
     domain = deps.normalize_domain(domain)
     deps.assert_public_target(domain)
     # Reputation is an informational side lookup: run it alongside the checks.
-    with ThreadPoolExecutor(max_workers=1) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         rep_future = pool.submit(reputation.lookup, domain)
+        host_future = pool.submit(guides.dns_host, domain)
         results = scoring.run_all_checks(domain)
         try:
             rep = rep_future.result()
         except Exception:
             rep = None
+        try:
+            dns_host = host_future.result()
+        except Exception:
+            dns_host = None
     score, grade = scoring.score_results(results)
     result = {
         "domain": domain,
@@ -31,10 +36,12 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
         "action_plan": scoring.action_plan(results),
         "scanned_at": datetime.utcnow().isoformat() + "Z",
         "reputation": rep,
+        "dns_host": dns_host,
     }
     # Attach BEFORE persisting: SQLAlchemy does not track in-place mutations
     # of JSON columns, so mutating after commit would be silently lost.
     recommendations.attach(result)
+    guides.attach(result)
     scan = models.Scan(
         tenant_id=tenant_id,
         domain=domain,
@@ -54,13 +61,21 @@ def scan_to_dict(scan: models.Scan, db: Session | None = None) -> dict:
         "domain": scan.domain,
         "score": scan.score,
         "grade": scan.grade,
-        "result": scan.result,
+        "result": with_guides(scan.result),
         "is_public": scan.is_public,
         "created_at": scan.created_at.isoformat() + "Z",
     }
     if db is not None and scan.tenant_id:
         out["history"] = score_history(db, scan.tenant_id, scan.domain, until=scan.created_at)
     return out
+
+
+def with_guides(result: dict | None) -> dict | None:
+    """Scans saved before fix guides existed get them when they're read."""
+    if not result or any("guide" in c for c in result.get("checks") or []):
+        return result
+    import copy
+    return guides.attach(copy.deepcopy(result))
 
 
 def score_history(db: Session, tenant_id: str, domain: str,

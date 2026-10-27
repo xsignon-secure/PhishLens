@@ -293,6 +293,10 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     loadDashboard();
   } catch (err) { document.getElementById('monitor-err').textContent = err.message; }
 });
+window.rescanDomain = (domain) => {
+  document.getElementById('adhoc-domain').value = domain;
+  document.getElementById('adhoc-form').requestSubmit();
+};
 document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const domain = document.getElementById('adhoc-domain').value.trim();

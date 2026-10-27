@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .. import i18n, models
+from ..scanner import engine
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user
@@ -100,5 +101,6 @@ def shared_report(scan_id: str, request: Request, db: Session = Depends(get_db))
         brand = {k: brand[k] for k in ("name", "color", "footer", "logo_data_url")}
     return templates.TemplateResponse(
         request, "report.html",
-        {"request": request, "scan": scan, "user": _user_or_none(request, db), "brand": brand}
+        {"request": request, "scan": scan, "result": engine.with_guides(scan.result),
+         "user": _user_or_none(request, db), "brand": brand}
     )
