@@ -20,7 +20,9 @@ Tests never touch the network or your `phishlens.db`: DNS and HTTP are stubbed.
 - A new check or a sharper fix suggestion in `app/scanner/`
 - More DNS providers for one-click fixes (`app/dns_providers.py`: Route 53,
   DigitalOcean, deSEC...)
-- Translations of the UI text in `app/templates/`
+- Translations: the catalogs live in `app/locales/<lang>.json` (English text
+  maps to the translation; `_()` in templates, `_t()` in scripts). A native
+  speaker's review of the existing languages is very welcome.
 - Docs: deploy guides for more free hosts
 
 ## Pull requests

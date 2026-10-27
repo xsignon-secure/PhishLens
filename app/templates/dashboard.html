@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — PhishLens{% endblock %}
+{% block title %}{{ _("Dashboard") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="dash">
-  <h1>Dashboard</h1>
+  <h1>{{ _("Dashboard") }}</h1>
   <div id="verify-banner" class="panel warn hidden">
-    <p>Your email isn't verified yet. <button id="verify-resend" class="btn tiny">Resend verification email</button></p>
+    <p>{{ _("Your email isn't verified yet.") }} <button id="verify-resend" class="btn tiny">{{ _("Resend verification email") }}</button></p>
   </div>
 
   <div id="kpis" class="kpi-row" aria-live="polite"></div>
@@ -12,46 +12,46 @@
   <div class="panel" id="onboarding-panel">
     <div id="checklist"></div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn tiny" id="tour-btn">▶ Take the guided tour</button>
-      <button class="btn tiny ghost" id="checklist-dismiss" style="margin-left:0">Dismiss</button>
+      <button class="btn tiny" id="tour-btn">{{ _("▶ Take the guided tour") }}</button>
+      <button class="btn tiny ghost" id="checklist-dismiss" style="margin-left:0">{{ _("Dismiss") }}</button>
     </div>
   </div>
 
   <div class="dash-grid">
     <div class="panel">
-      <h2><span class="dot"></span>Monitor a domain</h2>
+      <h2><span class="dot"></span>{{ _("Monitor a domain") }}</h2>
       <form id="monitor-form" class="scanbox small">
         <input id="monitor-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
-        <input id="monitor-client" type="text" placeholder="Client (optional)" maxlength="100" style="max-width:170px">
-        <button class="btn" type="submit">Add</button>
+        <input id="monitor-client" type="text" placeholder="{{ _("Client (optional)") }}" maxlength="100" style="max-width:170px">
+        <button class="btn" type="submit">{{ _("Add") }}</button>
       </form>
       <p id="monitor-err" class="error"></p>
       <div id="monitors"></div>
     </div>
     <div class="panel">
-      <h2><span class="dot"></span>Alerts</h2>
-      <div id="alerts"><p class="muted">No alerts yet.</p></div>
+      <h2><span class="dot"></span>{{ _("Alerts") }}</h2>
+      <div id="alerts"><p class="muted">{{ _("No alerts yet.") }}</p></div>
     </div>
   </div>
   <div class="panel">
-    <h2><span class="dot"></span>Scan history</h2>
+    <h2><span class="dot"></span>{{ _("Scan history") }}</h2>
     <form id="adhoc-form" class="scanbox small">
-      <input id="adhoc-domain" type="text" placeholder="Scan another domain…" autocomplete="off" spellcheck="false">
-      <button class="btn" type="submit">Scan</button>
+      <input id="adhoc-domain" type="text" placeholder="{{ _("Scan another domain…") }}" autocomplete="off" spellcheck="false">
+      <button class="btn" type="submit">{{ _("Scan") }}</button>
     </form>
     <div id="history"></div>
   </div>
   <div class="dash-grid">
     <div class="panel" id="dmarc-panel">
-      <h2><span class="dot"></span>DMARC reports</h2>
-      <p class="muted small">Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.</p>
-      <label class="btn tiny" style="display:inline-block;cursor:pointer">Upload reports
+      <h2><span class="dot"></span>{{ _("DMARC reports") }}</h2>
+      <p class="muted small">{{ _("Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.") }}</p>
+      <label class="btn tiny" style="display:inline-block;cursor:pointer">{{ _("Upload reports") }}
         <input id="dmarc-file" type="file" accept=".xml,.gz,.zip,application/xml,application/gzip,application/zip" multiple hidden>
       </label>
-      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">Upload failure reports (.eml)
+      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">{{ _("Upload failure reports (.eml)") }}
         <input id="ruf-file" type="file" accept=".eml,message/rfc822" multiple hidden>
       </label>
-      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">Upload TLS reports (.json/.gz)
+      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">{{ _("Upload TLS reports (.json/.gz)") }}
         <input id="tls-file" type="file" accept=".json,.gz,application/json,application/gzip" multiple hidden>
       </label>
       <select id="dmarc-domain" class="hidden" aria-label="Domain"></select>
@@ -61,70 +61,70 @@
       <div id="tls-summary"></div>
     </div>
     <div class="panel" id="lookalike-panel">
-      <h2><span class="dot"></span>Lookalike domains</h2>
-      <p class="muted small">Find registered look-alikes of your domain (typos, swapped letters, other TLDs) that could be used to phish your staff or customers. Monitored domains are rechecked weekly and alert on new registrations.</p>
+      <h2><span class="dot"></span>{{ _("Lookalike domains") }}</h2>
+      <p class="muted small">{{ _("Find registered look-alikes of your domain (typos, swapped letters, other TLDs) that could be used to phish your staff or customers. Monitored domains are rechecked weekly and alert on new registrations.") }}</p>
       <form id="lookalike-form" class="scanbox small">
         <input id="lookalike-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
-        <button class="btn" type="submit">Find</button>
+        <button class="btn" type="submit">{{ _("Find") }}</button>
       </form>
       <div id="lookalike-result"></div>
     </div>
   </div>
   <div class="dash-grid">
     <div class="panel">
-      <h2><span class="dot"></span>Team</h2>
+      <h2><span class="dot"></span>{{ _("Team") }}</h2>
       <div id="members"></div>
       <form id="invite-form" class="scanbox small owner-only hidden">
         <input id="invite-email" type="email" placeholder="teammate@company.com" required>
-        <button class="btn" type="submit">Invite</button>
+        <button class="btn" type="submit">{{ _("Invite") }}</button>
       </form>
       <p id="invite-msg" class="muted"></p>
     </div>
     <div class="panel">
-      <h2><span class="dot"></span>API keys</h2>
+      <h2><span class="dot"></span>{{ _("API keys") }}</h2>
       <div id="apikeys"></div>
       <form id="apikey-form" class="scanbox small owner-only hidden">
-        <input id="apikey-name" type="text" placeholder="Key name, e.g. SIEM" required maxlength="100">
-        <button class="btn" type="submit">Create</button>
+        <input id="apikey-name" type="text" placeholder="{{ _("Key name, e.g. SIEM") }}" required maxlength="100">
+        <button class="btn" type="submit">{{ _("Create") }}</button>
       </form>
       <p id="apikey-new" class="hidden"></p>
     </div>
   </div>
   <div class="dash-grid">
     <div class="panel">
-      <h2><span class="dot"></span>Alert webhook</h2>
+      <h2><span class="dot"></span>{{ _("Alert webhook") }}</h2>
       <form id="webhook-form" class="owner-only hidden">
         <label>URL<input id="webhook-url" type="url" placeholder="https://…"></label>
-        <label>Secret (min 16 chars)<input id="webhook-secret" type="password" autocomplete="new-password"></label>
-        <button class="btn" type="submit">Save</button>
-        <button id="webhook-test" class="btn ghost" type="button">Send test</button>
-        <button id="webhook-del" class="btn ghost" type="button">Remove</button>
+        <label>{{ _("Secret (min 16 chars)") }}<input id="webhook-secret" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">{{ _("Save") }}</button>
+        <button id="webhook-test" class="btn ghost" type="button">{{ _("Send test") }}</button>
+        <button id="webhook-del" class="btn ghost" type="button">{{ _("Remove") }}</button>
       </form>
       <p id="webhook-status" class="muted"></p>
-      <p class="muted small">Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion. Slack, Microsoft Teams and Discord webhook URLs get a readable chat message instead (any 16+ character secret).</p>
+      <p class="muted small">{{ _("Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion. Slack, Microsoft Teams and Discord webhook URLs get a readable chat message instead (any 16+ character secret).") }}</p>
     </div>
     <div class="panel">
-      <h2><span class="dot"></span>Security</h2>
-      <div id="mfa-box"><p class="muted">Loading…</p></div>
-      <p><a href="/forgot-password">Reset password</a> · <button id="revoke-btn" class="btn tiny ghost">Sign out other devices</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">Export my data</button></p>
+      <h2><span class="dot"></span>{{ _("Security") }}</h2>
+      <div id="mfa-box"><p class="muted">{{ _("Loading…") }}</p></div>
+      <p><a href="/forgot-password">{{ _("Reset password") }}</a> · <button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">{{ _("Export my data") }}</button></p>
     </div>
   </div>
 
   <div class="panel" id="cloudflare-panel">
-      <h2><span class="dot"></span>DNS provider (one-click fixes)</h2>
-      <p class="muted small">Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.</p>
+      <h2><span class="dot"></span>{{ _("DNS provider (one-click fixes)") }}</h2>
+      <p class="muted small">{{ _("Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.") }}</p>
       <div id="cf-status" class="muted small"></div>
       <form id="cf-form" class="scanbox small owner-only hidden">
         <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option><option value="godaddy">GoDaddy</option><option value="route53">Amazon Route 53</option></select>
-        <input id="cf-token" type="password" placeholder="API token" autocomplete="off">
-        <button class="btn" type="submit">Connect</button>
+        <input id="cf-token" type="password" placeholder="{{ _("API token") }}" autocomplete="off">
+        <button class="btn" type="submit">{{ _("Connect") }}</button>
       </form>
-      <button id="cf-del" class="btn tiny ghost owner-only hidden">Disconnect</button>
+      <button id="cf-del" class="btn tiny ghost owner-only hidden">{{ _("Disconnect") }}</button>
   </div>
   <div class="panel" id="hosted-panel">
-    <h2><span class="dot"></span>Hosted DMARC, SPF &amp; MTA-STS</h2>
-    <p class="muted small">Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.</p>
-    <div id="hosted-off" class="muted small hidden">Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).</div>
+    <h2><span class="dot"></span>{{ _("Hosted DMARC, SPF &amp; MTA-STS") }}</h2>
+    <p class="muted small">{{ _("Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.") }}</p>
+    <div id="hosted-off" class="muted small hidden">{{ _("Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).") }}</div>
     <form id="hosted-form" class="owner-only hidden">
       <div class="scanbox small">
         <select id="hosted-domain" aria-label="Domain"></select>
@@ -133,53 +133,53 @@
         </select>
       </div>
       <div id="hosted-fields"></div>
-      <button class="btn" type="submit">Save &amp; publish</button>
+      <button class="btn" type="submit">{{ _("Save &amp; publish") }}</button>
       <p id="hosted-msg" class="muted small"></p>
     </form>
     <div id="hosted-list"></div>
   </div>
   <div class="dash-grid">
     <div class="panel" id="sso-panel">
-      <h2><span class="dot"></span>Single sign-on</h2>
-      <p class="muted small">Sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. New people from your email domain are added as members on first sign-in.</p>
+      <h2><span class="dot"></span>{{ _("Single sign-on") }}</h2>
+      <p class="muted small">{{ _("Sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. New people from your email domain are added as members on first sign-in.") }}</p>
       <div id="sso-status" class="muted small"></div>
       <form id="sso-form" class="owner-only hidden">
-        <label>Protocol<select id="sso-protocol"><option value="oidc">OpenID Connect</option><option value="saml">SAML 2.0</option></select></label>
+        <label>{{ _("Protocol") }}<select id="sso-protocol"><option value="oidc">OpenID Connect</option><option value="saml">SAML 2.0</option></select></label>
         <div id="sso-oidc">
-          <label>Issuer URL<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
-          <label>Client ID<input id="sso-client-id" type="text"></label>
-          <label>Client secret<input id="sso-secret" type="password" autocomplete="new-password" placeholder="leave blank to keep"></label>
+          <label>{{ _("Issuer URL") }}<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
+          <label>{{ _("Client ID") }}<input id="sso-client-id" type="text"></label>
+          <label>{{ _("Client secret") }}<input id="sso-secret" type="password" autocomplete="new-password" placeholder="{{ _("leave blank to keep") }}"></label>
         </div>
         <div id="sso-saml" class="hidden">
-          <label>IdP metadata XML (paste it, or fill in the three fields below)<textarea id="saml-metadata" rows="3" style="width:100%" placeholder="&lt;EntityDescriptor ...&gt;"></textarea></label>
-          <label>IdP entity ID<input id="saml-entity" type="text"></label>
-          <label>IdP sign-in URL<input id="saml-url" type="url" placeholder="https://idp.example.com/saml/sso"></label>
-          <label>IdP signing certificate (PEM)<textarea id="saml-cert" rows="2" style="width:100%" placeholder="leave blank to keep"></textarea></label>
+          <label>{{ _("IdP metadata XML (paste it, or fill in the three fields below)") }}<textarea id="saml-metadata" rows="3" style="width:100%" placeholder="&lt;EntityDescriptor ...&gt;"></textarea></label>
+          <label>{{ _("IdP entity ID") }}<input id="saml-entity" type="text"></label>
+          <label>{{ _("IdP sign-in URL") }}<input id="saml-url" type="url" placeholder="https://idp.example.com/saml/sso"></label>
+          <label>{{ _("IdP signing certificate (PEM)") }}<textarea id="saml-cert" rows="2" style="width:100%" placeholder="{{ _("leave blank to keep") }}"></textarea></label>
         </div>
-        <label>Email domain<input id="sso-domain" type="text" placeholder="acme.com"></label>
-        <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> Require SSO for members (owners can still use a password)</label>
-        <button class="btn" type="submit">Save</button>
-        <button id="sso-del" class="btn ghost" type="button">Remove</button>
+        <label>{{ _("Email domain") }}<input id="sso-domain" type="text" placeholder="acme.com"></label>
+        <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> {{ _("Require SSO for members (owners can still use a password)") }}</label>
+        <button class="btn" type="submit">{{ _("Save") }}</button>
+        <button id="sso-del" class="btn ghost" type="button">{{ _("Remove") }}</button>
       </form>
     </div>
     <div class="panel" id="brand-panel">
-      <h2><span class="dot"></span>White-label &amp; alert routing</h2>
-      <p class="muted small">Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).</p>
+      <h2><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
+      <p class="muted small">{{ _("Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).") }}</p>
       <form id="brand-form" class="owner-only hidden">
-        <label>Brand name<input id="brand-name" type="text" maxlength="100" placeholder="Acme IT Services"></label>
-        <label>Colour<input id="brand-color" type="text" maxlength="7" placeholder="#4f46e5"></label>
-        <label>Report footer<input id="brand-footer" type="text" maxlength="300" placeholder="Questions? support@acme-it.com"></label>
-        <label>Logo (PNG/JPEG, under 200 KB)<input id="brand-logo" type="file" accept="image/png,image/jpeg"></label>
+        <label>{{ _("Brand name") }}<input id="brand-name" type="text" maxlength="100" placeholder="{{ _("Acme IT Services") }}"></label>
+        <label>{{ _("Colour") }}<input id="brand-color" type="text" maxlength="7" placeholder="#4f46e5"></label>
+        <label>{{ _("Report footer") }}<input id="brand-footer" type="text" maxlength="300" placeholder="Questions? support@acme-it.com"></label>
+        <label>{{ _("Logo (PNG/JPEG, under 200 KB)") }}<input id="brand-logo" type="file" accept="image/png,image/jpeg"></label>
         <div id="brand-logo-preview"></div>
-        <label>Extra alert emails (comma-separated, up to 5)<input id="brand-alerts" type="text" placeholder="tickets@acme.itsupport.com"></label>
-        <button class="btn" type="submit">Save</button>
+        <label>{{ _("Extra alert emails (comma-separated, up to 5)") }}<input id="brand-alerts" type="text" placeholder="tickets@acme.itsupport.com"></label>
+        <button class="btn" type="submit">{{ _("Save") }}</button>
       </form>
       <p id="brand-msg" class="muted small"></p>
     </div>
   </div>
   <div class="panel owner-only hidden" id="audit-panel">
-    <h2><span class="dot"></span>Audit log</h2>
-    <div id="audit"><p class="muted">Loading…</p></div>
+    <h2><span class="dot"></span>{{ _("Audit log") }}</h2>
+    <div id="audit"><p class="muted">{{ _("Loading…") }}</p></div>
   </div>
   <div id="dash-report"></div>
 </section>
@@ -196,7 +196,7 @@ async function api(path, opts = {}) {
   const r = await fetch(path, opts);
   if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || 'Request failed');
+  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
   return d;
 }
 
@@ -204,11 +204,11 @@ async function api(path, opts = {}) {
 const dashData = { monitors: [], alerts: [], scans: [], me: null, members: [] };
 
 const TOUR_STEPS = [
-  { el: '#kpis', title: 'Your command center', text: 'These tiles track monitored domains, average score, open alerts and scan activity — everything at a glance.' },
-  { el: '#checklist', title: 'Guided setup', text: 'Work through this checklist to get fully set up. Clicking any item jumps you straight to where the action is.' },
-  { el: '#adhoc-form', title: 'Scan any domain', text: 'Type a domain and hit Scan. You get a 0–100 grade, a prioritized action plan, and the exact records to fix.' },
-  { el: '#monitor-form', title: 'Monitor for drift', text: 'Add domains here and PhishLens will alert you when a score drops or a record changes unexpectedly.' },
-  { el: '#apikey-form', title: 'Automate everything', text: 'Owners can create API keys and signed SIEM webhooks to plug PhishLens into existing tooling.' },
+  { el: '#kpis', title: _t('Your command center'), text: _t('These tiles track monitored domains, average score, open alerts and scan activity — everything at a glance.') },
+  { el: '#checklist', title: _t('Guided setup'), text: _t('Work through this checklist to get fully set up. Clicking any item jumps you straight to where the action is.') },
+  { el: '#adhoc-form', title: _t('Scan any domain'), text: _t('Type a domain and hit Scan. You get a 0–100 grade, a prioritized action plan, and the exact records to fix.') },
+  { el: '#monitor-form', title: _t('Monitor for drift'), text: _t('Add domains here and PhishLens will alert you when a score drops or a record changes unexpectedly.') },
+  { el: '#apikey-form', title: _t('Automate everything'), text: _t('Owners can create API keys and signed SIEM webhooks to plug PhishLens into existing tooling.') },
 ];
 
 async function loadDashboard() {
@@ -221,35 +221,35 @@ async function loadDashboard() {
     ? monitors.map(m => `<div class="mon">
         <strong>${escapeHtml(m.domain)}</strong>
         ${m.client ? `<span class="badge">${escapeHtml(m.client)}</span>` : ''}
-        ${m.lookalikes ? `<span class="badge warn" title="Registered lookalike domains">${m.lookalikes} lookalike${m.lookalikes > 1 ? 's' : ''}</span>` : ''}
+        ${m.lookalikes ? `<span class="badge warn" title="Registered lookalike domains">${_t('{0} lookalike{1}', {0: m.lookalikes, 1: m.lookalikes > 1 ? 's' : ''})}</span>` : ''}
         ${sparkline(m.history && m.history.points, 64, 22)}
         <span class="grade g${(m.last_score??0) >= 80 ? 'A' : (m.last_score??0) >= 60 ? 'C' : 'F'}">${m.last_score ?? '—'}</span>
-        <span class="row-actions"><button data-rescan="${m.id}" class="btn tiny">Rescan</button>
-        <button data-del="${m.id}" class="btn tiny ghost">Remove</button></span>
+        <span class="row-actions"><button data-rescan="${m.id}" class="btn tiny">${_t('Rescan')}</button>
+        <button data-del="${m.id}" class="btn tiny ghost">${_t('Remove')}</button></span>
       </div>`).join('')
-    : '<p class="muted">No monitored domains yet.</p>';
+    : ('<p class="muted">' + _t('No monitored domains yet.') + '</p>');
   document.getElementById('alerts').innerHTML = alerts.length
     ? alerts.map(a => `<div class="alert"><span class="kind">${escapeHtml(a.kind)}</span> ${escapeHtml(a.message)}<br><small>${escapeHtml(a.created_at)}</small></div>`).join('')
-    : '<p class="muted">No alerts yet.</p>';
+    : ('<p class="muted">' + _t('No alerts yet.') + '</p>');
   document.getElementById('history').innerHTML = scans.length
     ? scans.map(s => `<div class="hist"><strong>${escapeHtml(s.domain)}</strong>
         <span class="grade g${s.score >= 80 ? 'A' : s.score >= 60 ? 'C' : 'F'}">${s.score} ${escapeHtml(s.grade)}</span>
-        <span class="row-actions"><button data-view="${s.id}" class="btn tiny">View</button>
-        <button data-share="${s.id}" class="btn tiny ghost">${s.is_public ? 'Shared ✓' : 'Share'}</button></span>
+        <span class="row-actions"><button data-view="${s.id}" class="btn tiny">${_t('View')}</button>
+        <button data-share="${s.id}" class="btn tiny ghost">${s.is_public ? _t('Shared ✓') : _t('Share')}</button></span>
       </div>`).join('')
-    : '<p class="muted">No scans yet — run one above.</p>';
+    : ('<p class="muted">' + _t('No scans yet — run one above.') + '</p>');
   document.querySelectorAll('[data-rescan]').forEach(b => b.onclick = async () => {
     b.disabled = true;
     try {
       const d = await api('/api/monitors/' + b.dataset.rescan + '/rescan', {method: 'POST'});
-      toast('Rescan complete — new score: ' + d.score);
-    } catch (err) { if (err.message !== 'auth') toast('Rescan failed — ' + err.message); }
+      toast((_t('Rescan complete — new score:') + ' ') + d.score);
+    } catch (err) { if (err.message !== 'auth') toast((_t('Rescan failed —') + ' ') + err.message); }
     loadDashboard();
   });
   document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
-    if (!confirm('Remove this monitor?')) return;
+    if (!confirm(_t('Remove this monitor?'))) return;
     try { await api('/api/monitors/' + b.dataset.del, {method: 'DELETE'}); }
-    catch (err) { if (err.message !== 'auth') toast('Could not remove — ' + err.message); }
+    catch (err) { if (err.message !== 'auth') toast((_t('Could not remove —') + ' ') + err.message); }
     loadDashboard();
   });
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = async () => {
@@ -259,24 +259,24 @@ async function loadDashboard() {
       el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
       bindReportInteractions(el);
       el.scrollIntoView({behavior: 'smooth'});
-    } catch (err) { if (err.message !== 'auth') toast('Could not load report — ' + err.message); }
+    } catch (err) { if (err.message !== 'auth') toast((_t('Could not load report —') + ' ') + err.message); }
   });
   document.querySelectorAll('[data-share]').forEach(b => b.onclick = async () => {
     try {
       const scan = scans.find(s => s.id === b.dataset.share);
       if (scan && scan.is_public) {
         // Already shared: offer the link again, or revoke it (unshare endpoint).
-        if (confirm('This report is shared publicly.\n\nOK = stop sharing (the link stops working)\nCancel = keep sharing')) {
+        if (confirm(_t('This report is shared publicly.\n\nOK = stop sharing (the link stops working)\nCancel = keep sharing'))) {
           await api('/api/scans/' + scan.id + '/unshare', {method: 'POST'});
-          toast('Sharing stopped — the link no longer works.');
+          toast(_t('Sharing stopped — the link no longer works.'));
         } else {
-          prompt('Shareable report link:', location.origin + '/r/' + scan.id);
+          prompt(_t('Shareable report link:'), location.origin + '/r/' + scan.id);
         }
       } else {
         const d = await api('/api/scans/' + b.dataset.share + '/share', {method: 'POST'});
-        prompt('Shareable report link:', location.origin + d.share_url);
+        prompt(_t('Shareable report link:'), location.origin + d.share_url);
       }
-    } catch (err) { if (err.message !== 'auth') toast('Sharing failed — ' + err.message); }
+    } catch (err) { if (err.message !== 'auth') toast((_t('Sharing failed —') + ' ') + err.message); }
     loadDashboard();
   });
 }
@@ -289,7 +289,7 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     document.getElementById('monitor-domain').value = '';
     document.getElementById('monitor-client').value = '';
     document.getElementById('monitor-err').textContent = '';
-    toast('✓ Now monitoring ' + domain);
+    toast((_t('✓ Now monitoring') + ' ') + domain);
     loadDashboard();
   } catch (err) { document.getElementById('monitor-err').textContent = err.message; }
 });
@@ -299,14 +299,14 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   if (!domain) return;
   const wasFirst = dashData.scans.length === 0;
   const el = document.getElementById('dash-report');
-  el.innerHTML = '<div class="report"><p class="loading"><span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px"></span>Scanning ' + escapeHtml(domain) + '…</p></div>';
+  el.innerHTML = ('<div class="report">' + '<p class="loading">' + '<span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px">' + '</span>' + _t('Scanning') + ' ') + escapeHtml(domain) + '…</p></div>';
   try {
     const s = await api('/api/scans', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain})});
     el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
     bindReportInteractions(el);
     el.scrollIntoView({behavior: 'smooth'});
-    if (wasFirst) setTimeout(() => toast('🎉 First scan complete! Work the action plan above.'), 1600);
+    if (wasFirst) setTimeout(() => toast(_t('🎉 First scan complete! Work the action plan above.')), 1600);
     loadDashboard();
   } catch (err) { el.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p></div>'; }
 });
@@ -321,7 +321,7 @@ async function loadEnterprise() {
     document.getElementById('verify-banner').classList.remove('hidden');
     document.getElementById('verify-resend').onclick = async () => {
       await api('/api/auth/verify/resend', {method: 'POST'});
-      document.getElementById('verify-banner').innerHTML = '<p>Verification email sent — check your inbox.</p>';
+      document.getElementById('verify-banner').innerHTML = ('<p>' + _t('Verification email sent — check your inbox.') + '</p>');
     };
   }
   // team
@@ -329,16 +329,16 @@ async function loadEnterprise() {
   dashData.members = members;
   document.getElementById('members').innerHTML = members.map(m =>
     `<div class="mon"><strong>${escapeHtml(m.email)}</strong>
-     <span class="muted">${escapeHtml(m.role)}${m.is_verified ? '' : ' · unverified'}</span></div>`).join('');
+     <span class="muted">${escapeHtml(m.role)}${m.is_verified ? '' : (' ' + _t('· unverified'))}</span></div>`).join('');
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length
     ? keys.map(k => `<div class="mon"><strong>${escapeHtml(k.name)}</strong>
-        <span class="muted">${escapeHtml(k.prefix)}…${k.last_used_at ? ' · used ' + escapeHtml(k.last_used_at.slice(0,10)) : ' · never used'}</span>
-        ${isOwner ? `<span class="row-actions"><button data-keydel="${k.id}" class="btn tiny ghost">Revoke</button></span>` : ''}</div>`).join('')
-    : '<p class="muted">No API keys yet.</p>';
+        <span class="muted">${escapeHtml(k.prefix)}…${k.last_used_at ? (' ' + _t('· used') + ' ') + escapeHtml(k.last_used_at.slice(0,10)) : (' ' + _t('· never used'))}</span>
+        ${isOwner ? `<span class="row-actions"><button data-keydel="${k.id}" class="btn tiny ghost">${_t('Revoke')}</button></span>` : ''}</div>`).join('')
+    : ('<p class="muted">' + _t('No API keys yet.') + '</p>');
   document.querySelectorAll('[data-keydel]').forEach(b => b.onclick = async () => {
-    if (!confirm('Revoke this API key?')) return;
+    if (!confirm(_t('Revoke this API key?'))) return;
     await api('/api/team/keys/' + b.dataset.keydel, {method: 'DELETE'});
     loadEnterprise();
   });
@@ -346,30 +346,30 @@ async function loadEnterprise() {
   const wh = await api('/api/team/webhook');
   document.getElementById('webhook-url').value = wh.url || '';
   document.getElementById('webhook-status').textContent =
-    wh.url ? 'Configured: ' + wh.url : 'Not configured.';
+    wh.url ? (_t('Configured:') + ' ') + wh.url : _t('Not configured.');
   // mfa
   document.getElementById('mfa-box').innerHTML = me.mfa_enabled
-    ? `<p>✓ Authenticator MFA is on. <button id="mfa-disable" class="btn tiny ghost">Disable</button></p>`
-    : `<p class="muted">Add a second factor to your login.</p><button id="mfa-setup" class="btn tiny">Set up authenticator</button>`;
+    ? `<p>${_t('✓ Authenticator MFA is on.')} <button id="mfa-disable" class="btn tiny ghost">${_t('Disable')}</button></p>`
+    : `<p class="muted">${_t('Add a second factor to your login.')}</p><button id="mfa-setup" class="btn tiny">${_t('Set up authenticator')}</button>`;
   const setupBtn = document.getElementById('mfa-setup');
   if (setupBtn) setupBtn.onclick = async () => {
     const d = await api('/api/auth/mfa/setup', {method: 'POST'}).catch(err => { toast(err.message); return null; });
     if (!d) return;
-    const code = prompt('Scan this in your authenticator app (or enter the secret manually):\n\n' + d.secret + '\n\nThen enter the 6-digit code:');
+    const code = prompt((_t('Scan this in your authenticator app (or enter the secret manually):') + '\n\n') + d.secret + ('\n\n' + _t('Then enter the 6-digit code:')));
     if (!code) return;
     const v = await api('/api/auth/mfa/verify', {method: 'POST',
       headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code})}).catch(() => null);
-    toast(v ? '✓ MFA enabled.' : 'Invalid code — try again.');
+    toast(v ? _t('✓ MFA enabled.') : _t('Invalid code — try again.'));
     loadEnterprise();
   };
   const disBtn = document.getElementById('mfa-disable');
   if (disBtn) disBtn.onclick = async () => {
-    const pw = prompt('Enter your password to disable MFA:');
+    const pw = prompt(_t('Enter your password to disable MFA:'));
     if (!pw) return;
     try {
       await api('/api/auth/mfa/disable', {method: 'POST',
         headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw})});
-      toast('MFA disabled.');
+      toast(_t('MFA disabled.'));
     } catch (err) { if (err.message !== 'auth') toast(err.message); }
     loadEnterprise();
   };
@@ -379,7 +379,7 @@ async function loadEnterprise() {
     document.getElementById('audit').innerHTML = events.length
       ? events.map(e => `<div class="alert"><span class="kind">${escapeHtml(e.action)}</span>
           ${escapeHtml(e.ip || '')} <small>${escapeHtml(e.created_at)}</small></div>`).join('')
-      : '<p class="muted">No events yet.</p>';
+      : ('<p class="muted">' + _t('No events yet.') + '</p>');
   }
   renderOnboarding();
 }
@@ -390,9 +390,9 @@ document.getElementById('invite-form').addEventListener('submit', async (e) => {
   try {
     await api('/api/team/invite', {method: 'POST',
       headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email})});
-    msg.textContent = 'Invite sent to ' + email;
+    msg.textContent = (_t('Invite sent to') + ' ') + email;
     document.getElementById('invite-email').value = '';
-    toast('✓ Invite sent to ' + email);
+    toast((_t('✓ Invite sent to') + ' ') + email);
     loadEnterprise();
   } catch (err) { msg.textContent = err.message; }
 });
@@ -403,11 +403,11 @@ document.getElementById('apikey-form').addEventListener('submit', async (e) => {
   try {
     d = await api('/api/team/keys', {method: 'POST',
       headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name})});
-  } catch (err) { if (err.message !== 'auth') toast('Could not create key — ' + err.message); return; }
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not create key —') + ' ') + err.message); return; }
   const el = document.getElementById('apikey-new');
   el.classList.remove('hidden');
-  el.innerHTML = '<strong>Copy this key now — it will never be shown again:</strong><br><code>' +
-    escapeHtml(d.api_key) + '</code> <button class="copy-btn" id="copy-new-key">Copy</button>';
+  el.innerHTML = ('<strong>' + _t('Copy this key now — it will never be shown again:') + '</strong>' + '<br>' + '<code>') +
+    escapeHtml(d.api_key) + ('</code>' + ' ' + '<button class="copy-btn" id="copy-new-key">' + _t('Copy') + '</button>');
   document.getElementById('copy-new-key').onclick = (ev) => copyText(d.api_key, ev.target);
   document.getElementById('apikey-name').value = '';
   loadEnterprise();
@@ -419,24 +419,24 @@ document.getElementById('webhook-form').addEventListener('submit', async (e) => 
   try {
     await api('/api/team/webhook', {method: 'PUT',
       headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url, secret})});
-    document.getElementById('webhook-status').textContent = 'Saved: ' + url;
-    toast('✓ Webhook saved');
+    document.getElementById('webhook-status').textContent = (_t('Saved:') + ' ') + url;
+    toast(_t('✓ Webhook saved'));
   } catch (err) { document.getElementById('webhook-status').textContent = err.message; }
 });
 document.getElementById('webhook-test').onclick = async () => {
   const d = await api('/api/team/webhook/test', {method: 'POST'}).catch(e => ({ok: false}));
-  document.getElementById('webhook-status').textContent = d.ok ? 'Test delivered ✓' : 'Test failed — check the URL.';
-  toast(d.ok ? '✓ Test delivered' : 'Test failed — check the URL.');
+  document.getElementById('webhook-status').textContent = d.ok ? _t('Test delivered ✓') : _t('Test failed — check the URL.');
+  toast(d.ok ? _t('✓ Test delivered') : _t('Test failed — check the URL.'));
 };
 document.getElementById('webhook-del').onclick = async () => {
   try { await api('/api/team/webhook', {method: 'DELETE'}); }
   catch (err) { if (err.message !== 'auth') toast(err.message); return; }
   document.getElementById('webhook-url').value = '';
-  document.getElementById('webhook-status').textContent = 'Removed.';
+  document.getElementById('webhook-status').textContent = _t('Removed.');
 };
 document.getElementById('revoke-btn').onclick = async () => {
-  if (!confirm('Sign out every other browser and device? This one stays signed in.')) return;
-  try { await api('/api/auth/sessions/revoke', {method: 'POST'}); toast('Other sessions signed out.'); }
+  if (!confirm(_t('Sign out every other browser and device? This one stays signed in.'))) return;
+  try { await api('/api/auth/sessions/revoke', {method: 'POST'}); toast(_t('Other sessions signed out.')); }
   catch (err) { toast(err.message); }
 };
 document.getElementById('export-btn').onclick = async () => {
@@ -447,7 +447,7 @@ document.getElementById('export-btn').onclick = async () => {
   a.href = URL.createObjectURL(blob);
   a.download = 'phishlens-export.json';
   a.click();
-  toast('✓ Export downloaded');
+  toast(_t('✓ Export downloaded'));
 };
 
 /* ---------------- guided onboarding ---------------- */
@@ -459,19 +459,19 @@ function renderOnboarding() {
   const panel = document.getElementById('onboarding-panel');
   if (dismissed) { panel.classList.add('hidden'); return; }
   const steps = [
-    { label: 'Verify your email', hint: 'Unlocks alerts and team invites', done: me.is_verified, target: '#verify-banner', num: '1' },
-    { label: 'Run your first scan', hint: 'Grade any domain — no setup needed', done: scans.length > 0, target: '#adhoc-form', num: '2' },
-    { label: 'Monitor a domain', hint: 'Get drift alerts when records change', done: monitors.length > 0, target: '#monitor-form', num: '3' },
+    { label: _t('Verify your email'), hint: _t('Unlocks alerts and team invites'), done: me.is_verified, target: '#verify-banner', num: '1' },
+    { label: _t('Run your first scan'), hint: _t('Grade any domain — no setup needed'), done: scans.length > 0, target: '#adhoc-form', num: '2' },
+    { label: _t('Monitor a domain'), hint: _t('Get drift alerts when records change'), done: monitors.length > 0, target: '#monitor-form', num: '3' },
   ];
   if (me.role === 'owner') steps.push(
-    { label: 'Invite a teammate', hint: 'Owners can add team members', done: members.length > 1, target: '#invite-form', num: '4' });
+    { label: _t('Invite a teammate'), hint: _t('Owners can add team members'), done: members.length > 1, target: '#invite-form', num: '4' });
   renderChecklist(document.getElementById('checklist'), steps);
 }
 document.getElementById('tour-btn').addEventListener('click', () => startTour(TOUR_STEPS));
 document.getElementById('checklist-dismiss').addEventListener('click', () => {
   try { localStorage.setItem('phishlens_checklist_dismissed', '1'); } catch (_) {}
   document.getElementById('onboarding-panel').classList.add('hidden');
-  toast('Checklist dismissed — you can retake the tour anytime.');
+  toast(_t('Checklist dismissed — you can retake the tour anytime.'));
 });
 
 function maybeWelcome() {
@@ -481,16 +481,16 @@ function maybeWelcome() {
   if (p.get('welcome') !== '1' || tourDone) return;
   const root = document.getElementById('welcome-root');
   root.innerHTML = `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true">
-    <span class="eyebrow">Welcome aboard</span>
-    <h2>Let's secure your first domain</h2>
-    <p>PhishLens grades your domain's email security and hands you the exact fixes — in three guided steps:</p>
+    <span class="eyebrow">${_t('Welcome aboard')}</span>
+    <h2>${_t('Let\'s secure your first domain')}</h2>
+    <p>${_t('PhishLens grades your domain\'s email security and hands you the exact fixes — in three guided steps:')}</p>
     <div class="steps-mini">
-      <div><span class="n">1</span><span><strong>Run your first scan</strong> — get a 0–100 grade</span></div>
-      <div><span class="n">2</span><span><strong>Work the action plan</strong> — copy-paste DNS fixes</span></div>
-      <div><span class="n">3</span><span><strong>Turn on monitoring</strong> — get drift alerts</span></div>
+      <div><span class="n">1</span><span><strong>${_t('Run your first scan')}</strong> ${_t('— get a 0–100 grade')}</span></div>
+      <div><span class="n">2</span><span><strong>${_t('Work the action plan')}</strong> ${_t('— copy-paste DNS fixes')}</span></div>
+      <div><span class="n">3</span><span><strong>${_t('Turn on monitoring')}</strong> ${_t('— get drift alerts')}</span></div>
     </div>
-    <button class="btn big" id="welcome-tour">Show me around</button><br>
-    <button class="btn ghost" id="welcome-skip" style="margin-top:10px">Explore on my own</button>
+    <button class="btn big" id="welcome-tour">${_t('Show me around')}</button><br>
+    <button class="btn ghost" id="welcome-skip" style="margin-top:10px">${_t('Explore on my own')}</button>
   </div></div>`;
   const close = () => { root.innerHTML = ''; history.replaceState(null, '', location.pathname); };
   document.getElementById('welcome-tour').onclick = () => { close(); startTour(TOUR_STEPS); };
@@ -505,7 +505,7 @@ async function loadDmarc(selected) {
   const box = document.getElementById('dmarc-summary');
   if (!domains.length) {
     sel.classList.add('hidden');
-    box.innerHTML = '<p class="muted">No reports yet.</p>';
+    box.innerHTML = ('<p class="muted">' + _t('No reports yet.') + '</p>');
     return;
   }
   const current = selected && domains.includes(selected) ? selected : (sel.value && domains.includes(sel.value) ? sel.value : domains[0]);
@@ -515,13 +515,13 @@ async function loadDmarc(selected) {
   const v = s.verdict || {};
   box.innerHTML = `
     <div class="mon"><strong>${escapeHtml(s.domain)}</strong>
-      <span class="muted">${s.messages.toLocaleString()} messages · ${s.reports} report(s) · policy p=${escapeHtml((s.policy || {}).p || '?')}</span>
+      <span class="muted">${_t('{0} messages · {1} report(s) · policy p={2}', {0: s.messages.toLocaleString(), 1: s.reports, 2: escapeHtml((s.policy || {}).p || '?')})}</span>
       <span class="grade g${(s.pass_rate ?? 0) >= 98 ? 'A' : (s.pass_rate ?? 0) >= 80 ? 'C' : 'F'}">${s.pass_rate ?? '—'}%</span></div>
     <p>${statusBadge(v.level === 'info' ? 'warn' : v.level)} ${escapeHtml(v.message || '')}</p>
     ${v.record ? `<p><code>${escapeHtml(v.record)}</code></p>` : ''}
     ${s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
       ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
-      <div class="meta">${r.messages.toLocaleString()} messages from ${r.ip_count} IP(s) · DKIM aligned ${r.dkim_aligned.toLocaleString()} · SPF aligned ${r.spf_aligned.toLocaleString()}</div>
+      <div class="meta">${_t('{0} messages from {1} IP(s) · DKIM aligned {2} · SPF aligned {3}', {0: r.messages.toLocaleString(), 1: r.ip_count, 2: r.dkim_aligned.toLocaleString(), 3: r.spf_aligned.toLocaleString()})}</div>
       ${r.hint ? `<div class="meta">${escapeHtml(r.hint)}</div>` : ''}
       ${(r.sources || []).length ? `<div class="meta muted">${r.sources.map(x => escapeHtml(x.ip + (x.ptr ? ' (' + x.ptr + ')' : '') + (x.country ? ' ' + x.country : ''))).join(' · ')}</div>` : ''}
       ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}`;
@@ -533,7 +533,7 @@ document.getElementById('dmarc-file').addEventListener('change', async (e) => {
   let ok = 0, dup = 0, lastDomain = null;
   const errors = [];
   for (const f of files) {
-    msg.textContent = `Uploading ${f.name}…`;
+    msg.textContent = _t('Uploading {0}…', {0: f.name});
     try {
       const d = await api('/api/dmarc/reports', {method: 'POST',
         headers: {'Content-Type': 'application/octet-stream'}, body: f});
@@ -542,7 +542,7 @@ document.getElementById('dmarc-file').addEventListener('change', async (e) => {
     } catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
   }
   e.target.value = '';
-  msg.textContent = `${ok} report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  msg.textContent = _t('{0} report(s) added{1}.', {0: ok, 1: dup ? _t(', {0} already uploaded', {0: dup}) : ''}) + (errors.length ? ' ' + errors.join(' · ') : '');
   loadDmarc(lastDomain);
 });
 
@@ -552,11 +552,11 @@ async function loadTls(selected) {
   const box = document.getElementById('tls-summary');
   if (!domains.length) { box.innerHTML = ''; return; }
   const parts = await Promise.all(domains.slice(0, 5).map(d => api('/api/tlsrpt/summary/' + encodeURIComponent(d) + '?days=30')));
-  box.innerHTML = '<h3 class="muted small" style="margin:14px 0 4px">TLS delivery reports (last 30 days)</h3>' + parts.map(t => `
+  box.innerHTML = ('<h3 class="muted small" style="margin:14px 0 4px">' + _t('TLS delivery reports (last 30 days)') + '</h3>') + parts.map(t => `
     <div class="dm-row"><div class="top"><strong>${escapeHtml(t.domain)}</strong>
       ${statusBadge(t.failed_sessions ? (t.success_rate >= 99 ? 'warn' : 'fail') : 'pass')}
-      <span class="muted">${t.success_rate ?? '—'}% of ${(t.successful_sessions + t.failed_sessions).toLocaleString()} TLS sessions succeeded</span></div>
-      ${t.failures.map(f => `<div class="meta">${escapeHtml(f.result_type)}: ${f.sessions.toLocaleString()} session(s)${f.mx.length ? ' to ' + escapeHtml(f.mx.join(', ')) : ''}</div>
+      <span class="muted">${_t('{0}% of {1} TLS sessions succeeded', {0: t.success_rate ?? '—', 1: (t.successful_sessions + t.failed_sessions).toLocaleString()})}</span></div>
+      ${t.failures.map(f => `<div class="meta">${_t('{0}: {1} session(s){2}', {0: escapeHtml(f.result_type), 1: f.sessions.toLocaleString(), 2: f.mx.length ? ' → ' + escapeHtml(f.mx.join(', ')) : ''})}</div>
         <div class="meta fix">${escapeHtml(f.fix)}</div>`).join('')}</div>`).join('');
 }
 document.getElementById('tls-file').addEventListener('change', async (e) => {
@@ -569,7 +569,7 @@ document.getElementById('tls-file').addEventListener('change', async (e) => {
     } catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
   }
   e.target.value = '';
-  msg.textContent = `${ok} TLS report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  msg.textContent = _t('{0} TLS report(s) added{1}.', {0: ok, 1: dup ? _t(', {0} already uploaded', {0: dup}) : ''}) + (errors.length ? ' ' + errors.join(' · ') : '');
   loadTls();
 });
 
@@ -579,17 +579,17 @@ document.getElementById('lookalike-form').addEventListener('submit', async (e) =
   const domain = document.getElementById('lookalike-domain').value.trim();
   const box = document.getElementById('lookalike-result');
   if (!domain) return;
-  box.innerHTML = '<p class="loading"><span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px"></span>Checking a few hundred look-alike spellings…</p>';
+  box.innerHTML = ('<p class="loading">' + '<span class="spinner" style="display:inline-block;vertical-align:-4px;margin-right:8px">' + '</span>' + _t('Checking a few hundred look-alike spellings…') + '</p>');
   try {
     const r = await api('/api/tools/lookalikes', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain})});
     const risk = {high: 'fail', medium: 'warn', low: 'pass'};
-    box.innerHTML = `<p class="muted small">Checked ${r.checked} spellings of ${escapeHtml(r.domain)}: ${r.registered.length} registered, ${r.high_risk} can receive email.</p>` +
+    box.innerHTML = `<p class="muted small">${_t('Checked {0} spellings of {1}: {2} registered, {3} can receive email.', {0: r.checked, 1: escapeHtml(r.domain), 2: r.registered.length, 3: r.high_risk})}</p>` +
       (r.registered.length ? r.registered.map(x => `<div class="dm-row"><div class="top"><strong>${escapeHtml(x.domain)}</strong>
-        <span class="badge ${risk[x.risk]}">${escapeHtml(x.risk)} risk</span></div>
-        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? ' · mail servers: ' + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? ' · has a website' : ''}</div></div>`).join('')
-        + '<p class="muted small">High risk = the domain has mail servers and could send phishing as a look-alike of you. Check who owns it (WHOIS) and, if it is abusive, report it to the registrar\'s abuse contact.</p>'
-      : '<p>✓ No registered look-alikes found.</p>');
+        <span class="badge ${risk[x.risk]}">${_t('{0} risk', {0: escapeHtml(x.risk)})}</span></div>
+        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? (' ' + _t('· mail servers:') + ' ') + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? (' ' + _t('· has a website')) : ''}</div></div>`).join('')
+        + ('<p class="muted small">' + _t('High risk = the domain has mail servers and could send phishing as a look-alike of you. Check who owns it (WHOIS) and, if it is abusive, report it to the registrar\'s abuse contact.') + '</p>')
+      : ('<p>' + _t('✓ No registered look-alikes found.') + '</p>'));
   } catch (err) { if (err.message !== 'auth') box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
 
@@ -598,9 +598,9 @@ document.getElementById('lookalike-form').addEventListener('submit', async (e) =
 async function loadForensic() {
   const rows = await api('/api/dmarc/forensic');
   document.getElementById('ruf-list').innerHTML = rows.length
-    ? '<h3 class="muted small" style="margin:14px 0 4px">Recent failure reports</h3>' + rows.slice(0, 10).map(r => `<div class="dm-row"><div class="top">
+    ? ('<h3 class="muted small" style="margin:14px 0 4px">' + _t('Recent failure reports') + '</h3>') + rows.slice(0, 10).map(r => `<div class="dm-row"><div class="top">
         <strong>${escapeHtml(r.header_from || r.domain)}</strong>${statusBadge('fail')}</div>
-        <div class="meta">${escapeHtml(r.subject || '(no subject)')} · from ${escapeHtml(r.source_ip || '?')} · ${escapeHtml(r.auth_failure || 'dmarc')} failure${r.arrival_date ? ' · ' + escapeHtml(r.arrival_date.slice(0, 16).replace('T', ' ')) : ''}${r.reporter ? ' · reported by ' + escapeHtml(r.reporter) : ''}</div></div>`).join('')
+        <div class="meta">${_t('{0} · from {1} · {2} failure{3}{4}', {0: escapeHtml(r.subject || _t('(no subject)')), 1: escapeHtml(r.source_ip || '?'), 2: escapeHtml(r.auth_failure || 'dmarc'), 3: r.arrival_date ? ' · ' + escapeHtml(r.arrival_date.slice(0, 16).replace('T', ' ')) : '', 4: r.reporter ? (' ' + _t('· reported by') + ' ') + escapeHtml(r.reporter) : ''})}</div></div>`).join('')
     : '';
 }
 document.getElementById('ruf-file').addEventListener('change', async (e) => {
@@ -611,7 +611,7 @@ document.getElementById('ruf-file').addEventListener('change', async (e) => {
     catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
   }
   e.target.value = '';
-  msg.textContent = `${ok} failure report(s) added.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  msg.textContent = _t('{0} failure report(s) added.', {0: ok}) + (errors.length ? ' ' + errors.join(' · ') : '');
   loadForensic();
 });
 
@@ -621,18 +621,18 @@ async function loadCloudflare() {
   dashData.cfConnected = c.connected;
   dashData.dnsLabel = c.label || 'DNS';
   window.DNS_LABEL = dashData.dnsLabel;
-  document.getElementById('cf-status').textContent = c.connected ? `✓ ${c.label} connected.` : 'Not connected.';
+  document.getElementById('cf-status').textContent = c.connected ? _t('✓ {0} connected.', {0: c.label}) : _t('Not connected.');
   document.getElementById('cf-del').style.display = c.connected ? '' : 'none';
 }
 window.applyDnsFix = async (name, type, value, btn) => {
-  if (!confirm(`Publish this record in ${dashData.dnsLabel}?\n\n${name}  ${type}  ${value}`)) return;
+  if (!confirm(_t('Publish this record in {0}?\n\n{1}  {2}  {3}', {0: dashData.dnsLabel, 1: name, 2: type, 3: value}))) return;
   if (btn) btn.disabled = true;
   try {
     const r = await api('/api/dns/apply', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({name, type, value})});
-    toast(r.result === 'unchanged' ? 'Already published.' : '✓ Record ' + r.result + ' in ' + dashData.dnsLabel + '. Rescan in a few minutes.');
-    if (btn) btn.textContent = 'Applied ✓';
-  } catch (err) { if (err.message !== 'auth') toast('Could not apply: ' + err.message); if (btn) btn.disabled = false; }
+    toast(r.result === 'unchanged' ? _t('Already published.') : _t('✓ Record {0} in {1}. Rescan in a few minutes.', {0: r.result, 1: dashData.dnsLabel}));
+    if (btn) btn.textContent = _t('Applied ✓');
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not apply:') + ' ') + err.message); if (btn) btn.disabled = false; }
 };
 document.getElementById('cf-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -641,25 +641,25 @@ document.getElementById('cf-form').addEventListener('submit', async (e) => {
       body: JSON.stringify({provider: document.getElementById('cf-provider').value,
                             token: document.getElementById('cf-token').value.trim()})});
     document.getElementById('cf-token').value = '';
-    toast(`✓ ${c.label} connected`);
+    toast(_t('✓ {0} connected', {0: c.label}));
   } catch (err) { if (err.message !== 'auth') toast(err.message); }
   loadCloudflare();
 });
 document.getElementById('cf-del').addEventListener('click', async () => {
-  if (!confirm(`Disconnect ${dashData.dnsLabel}?`)) return;
+  if (!confirm(_t('Disconnect {0}?', {0: dashData.dnsLabel}))) return;
   await api('/api/team/dns', {method: 'DELETE'}); loadCloudflare();
 });
 
 /* ---------------- hosted records ---------------- */
 const HOSTED_FIELDS = {
   dmarc: c => `<div class="scanbox small"><select id="h-p" aria-label="Policy">${['none','quarantine','reject'].map(v => `<option${(c.p||'none')===v?' selected':''}>${v}</option>`).join('')}</select>
-    <select id="h-np" aria-label="Non-existent subdomains (np)"><option value="">np: inherit</option>${['none','quarantine','reject'].map(v => `<option value="${v}"${c.np===v?' selected':''}>np=${v}</option>`).join('')}</select>
-    <label class="small"><input id="h-t" type="checkbox"${(c.t || (c.pct ?? 100) < 100) ? ' checked' : ''}> Testing (t=y)</label></div>
-    <label>Report addresses (rua, comma-separated; blank = PhishLens mailbox)<input id="h-rua" type="text" value="${escapeHtml((c.rua||[]).join(', '))}"></label>`,
-  spf: c => `<label>Senders, one per line (e.g. include:_spf.google.com, ip4:203.0.113.5)<textarea id="h-sources" rows="4" style="width:100%">${escapeHtml((c.sources||[]).join('\n'))}</textarea></label>
+    <select id="h-np" aria-label="Non-existent subdomains (np)"><option value="">${_t('np: inherit')}</option>${['none','quarantine','reject'].map(v => `<option value="${v}"${c.np===v?' selected':''}>${_t('np={0}', {0: v})}</option>`).join('')}</select>
+    <label class="small"><input id="h-t" type="checkbox"${(c.t || (c.pct ?? 100) < 100) ? ' checked' : ''}> ${_t('Testing (t=y)')}</label></div>
+    <label>${_t('Report addresses (rua, comma-separated; blank = PhishLens mailbox)')}<input id="h-rua" type="text" value="${escapeHtml((c.rua||[]).join(', '))}"></label>`,
+  spf: c => `<label>${_t('Senders, one per line (e.g. include:_spf.google.com, ip4:203.0.113.5)')}<textarea id="h-sources" rows="4" style="width:100%">${escapeHtml((c.sources||[]).join('\n'))}</textarea></label>
     <div class="scanbox small"><select id="h-all" aria-label="Unlisted senders">${['-all','~all'].map(v => `<option${(c.all||'-all')===v?' selected':''}>${v}</option>`).join('')}</select></div>`,
   mta_sts: c => `<div class="scanbox small"><select id="h-mode" aria-label="Mode">${['testing','enforce','none'].map(v => `<option${(c.mode||'testing')===v?' selected':''}>${v}</option>`).join('')}</select></div>
-    <label>MX hosts, one per line (wildcards like *.mail.protection.outlook.com are fine)<textarea id="h-mx" rows="3" style="width:100%">${escapeHtml((c.mx||[]).join('\n'))}</textarea></label>`,
+    <label>${_t('MX hosts, one per line (wildcards like *.mail.protection.outlook.com are fine)')}<textarea id="h-mx" rows="3" style="width:100%">${escapeHtml((c.mx||[]).join('\n'))}</textarea></label>`,
 };
 function hostedConfig(kind) {
   const lines = id => document.getElementById(id).value.split(/[\n,]/).map(x => x.trim()).filter(Boolean);
@@ -681,17 +681,17 @@ async function loadHosted() {
   const sel = document.getElementById('hosted-domain'), cur = sel.value;
   sel.innerHTML = domains.length
     ? domains.map(d => `<option${d === cur ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('')
-    : '<option value="">Scan a domain first</option>';
+    : ('<option value="">' + _t('Scan a domain first') + '</option>');
   renderHostedFields();
   const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS'};
   document.getElementById('hosted-list').innerHTML = h.records.map(r => `<div class="dm-row" data-hosted="${escapeHtml(r.domain)}|${r.kind}">
     <div class="top"><strong>${escapeHtml(r.domain)} · ${labels[r.kind]}</strong>
-      <button class="btn tiny" data-hcheck>Check DNS</button>
-      <button class="btn tiny ghost owner-only" data-hdel>Stop hosting</button></div>
-    <div class="meta">Publish once in your DNS:</div>
+      <button class="btn tiny" data-hcheck>${_t('Check DNS')}</button>
+      <button class="btn tiny ghost owner-only" data-hdel>${_t('Stop hosting')}</button></div>
+    <div class="meta">${_t('Publish once in your DNS:')}</div>
     ${r.customer_records.map(c => `<div class="meta fix"><code>${escapeHtml(c.name)}  ${c.type}  ${escapeHtml(c.value)}</code>
-      <button class="copy-btn" data-copy="${escapeHtml(c.value)}">Copy</button>
-      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>Apply in ${escapeHtml(dashData.dnsLabel)}</button>` : ''}
+      <button class="copy-btn" data-copy="${escapeHtml(c.value)}">${_t('Copy')}</button>
+      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>${_t('Apply in {0}', {0: escapeHtml(dashData.dnsLabel)})}</button>` : ''}
       <br><small>${escapeHtml(c.note)}</small></div>`).join('')}
     <div class="meta" data-hstatus></div></div>`).join('');
   const list = document.getElementById('hosted-list');
@@ -705,11 +705,11 @@ async function loadHosted() {
     const row = b.closest('[data-hosted]'); const [d, k] = row.dataset.hosted.split('|');
     const st = await api(`/api/hosted/${encodeURIComponent(d)}/${k}/status`);
     row.querySelector('[data-hstatus]').innerHTML = st.delegation.map(x =>
-      `${x.ok ? '✓' : '✗'} ${escapeHtml(x.name)} ${x.ok ? 'points at PhishLens' : 'not delegated yet' + (x.found.length ? ' (found ' + escapeHtml(x.found.join(', ')) + ')' : '')}`).join('<br>');
+      `${x.ok ? '✓' : '✗'} ${escapeHtml(x.name)} ${x.ok ? _t('points at PhishLens') : _t('not delegated yet') + (x.found.length ? ' (found ' + escapeHtml(x.found.join(', ')) + ')' : '')}`).join('<br>');
   });
   list.querySelectorAll('[data-hdel]').forEach(b => b.onclick = async () => {
     const [d, k] = b.closest('[data-hosted]').dataset.hosted.split('|');
-    if (!confirm('Stop hosting this record? Put a record back in your own DNS first, or the delegation will point at nothing.')) return;
+    if (!confirm(_t('Stop hosting this record? Put a record back in your own DNS first, or the delegation will point at nothing.'))) return;
     try { await api(`/api/hosted/${encodeURIComponent(d)}/${k}`, {method: 'DELETE'}); } catch (err) { toast(err.message); }
     loadHosted();
   });
@@ -720,12 +720,12 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const d = document.getElementById('hosted-domain').value, k = document.getElementById('hosted-kind').value;
   const msg = document.getElementById('hosted-msg');
-  if (!d) { msg.textContent = 'Scan or monitor a domain first.'; return; }
-  msg.textContent = 'Publishing…';
+  if (!d) { msg.textContent = _t('Scan or monitor a domain first.'); return; }
+  msg.textContent = _t('Publishing…');
   try {
     await api(`/api/hosted/${encodeURIComponent(d)}/${k}`, {method: 'PUT', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({config: hostedConfig(k)})});
-    msg.textContent = '✓ Published. Add the records below to your DNS once (if you haven\'t already).';
+    msg.textContent = _t('✓ Published. Add the records below to your DNS once (if you haven\'t already).');
   } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
   loadHosted();
 });
@@ -734,9 +734,9 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
 async function loadSso() {
   const c = await api('/api/team/sso');
   document.getElementById('sso-status').innerHTML = (c.configured
-    ? `✓ ${c.protocol === 'saml' ? 'SAML' : 'OpenID Connect'} SSO on for @${escapeHtml(c.email_domain)}${c.enforced ? ' (required for members)' : ''}.`
-    : 'Not set up.') + `<br>OpenID Connect redirect URI: <code>${escapeHtml(c.redirect_uri)}</code>` +
-    `<br>SAML: entity ID / metadata <code>${escapeHtml(c.sp_entity_id)}</code>, ACS URL <code>${escapeHtml(c.acs_url)}</code>`;
+    ? _t('✓ {0} SSO on for @{1}{2}.', {0: c.protocol === 'saml' ? 'SAML' : 'OpenID Connect', 1: escapeHtml(c.email_domain), 2: c.enforced ? (' ' + _t('(required for members)')) : ''})
+    : _t('Not set up.')) + `<br>${_t('OpenID Connect redirect URI:')} <code>${escapeHtml(c.redirect_uri)}</code>` +
+    `<br>${_t('SAML: entity ID / metadata')} <code>${escapeHtml(c.sp_entity_id)}</code>${_t(', ACS URL')} <code>${escapeHtml(c.acs_url)}</code>`;
   document.getElementById('sso-protocol').value = c.protocol || 'oidc';
   showSsoProtocol();
   document.getElementById('saml-entity').value = c.saml_entity_id || '';
@@ -764,7 +764,7 @@ document.getElementById('sso-form').addEventListener('submit', async (e) => {
         email_domain: document.getElementById('sso-domain').value.trim(),
         enforced: document.getElementById('sso-enforced').checked})});
       document.getElementById('saml-metadata').value = document.getElementById('saml-cert').value = '';
-      toast('✓ SSO saved. Test it from the login page in a private window before requiring it.');
+      toast(_t('✓ SSO saved. Test it from the login page in a private window before requiring it.'));
       loadSso();
       return;
     }
@@ -773,12 +773,12 @@ document.getElementById('sso-form').addEventListener('submit', async (e) => {
       client_secret: document.getElementById('sso-secret').value || null, email_domain: document.getElementById('sso-domain').value.trim(),
       enforced: document.getElementById('sso-enforced').checked})});
     document.getElementById('sso-secret').value = '';
-    toast('✓ SSO saved. Test it from the login page in a private window before requiring it.');
+    toast(_t('✓ SSO saved. Test it from the login page in a private window before requiring it.'));
   } catch (err) { if (err.message !== 'auth') toast(err.message); }
   loadSso();
 });
 document.getElementById('sso-del').addEventListener('click', async () => {
-  if (!confirm('Turn off SSO?')) return;
+  if (!confirm(_t('Turn off SSO?'))) return;
   try { await api('/api/team/sso', {method: 'DELETE'}); } catch (err) { toast(err.message); }
   loadSso();
 });
@@ -791,7 +791,7 @@ async function loadBranding() {
   document.getElementById('brand-footer').value = b.report_footer || '';
   document.getElementById('brand-alerts').value = (b.alert_emails || []).join(', ');
   document.getElementById('brand-logo-preview').innerHTML = b.logo
-    ? `<img src="${escapeHtml(b.logo)}" alt="Current logo" class="brand-logo"> <button type="button" class="btn tiny ghost" id="brand-logo-del">Remove logo</button>` : '';
+    ? `<img src="${escapeHtml(b.logo)}" alt="Current logo" class="brand-logo"> <button type="button" class="btn tiny ghost" id="brand-logo-del">${_t('Remove logo')}</button>` : '';
   const del = document.getElementById('brand-logo-del');
   if (del) del.onclick = () => saveBranding('');
 }
@@ -807,7 +807,7 @@ async function saveBranding(logoOverride) {
       report_footer: document.getElementById('brand-footer').value, logo,
       alert_emails: document.getElementById('brand-alerts').value.split(',').map(x => x.trim()).filter(Boolean)})});
     document.getElementById('brand-logo').value = '';
-    document.getElementById('brand-msg').textContent = '✓ Saved. Shared reports, PDFs and alert emails now use your branding.';
+    document.getElementById('brand-msg').textContent = _t('✓ Saved. Shared reports, PDFs and alert emails now use your branding.');
   } catch (err) { if (err.message !== 'auth') document.getElementById('brand-msg').textContent = err.message; }
   loadBranding();
 }
@@ -827,7 +827,7 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     loadBranding().catch(() => {});
     maybeWelcome();
   } catch (e) {
-    if (e.message !== 'auth') toast('Could not load dashboard — ' + e.message);
+    if (e.message !== 'auth') toast((_t('Could not load dashboard —') + ' ') + e.message);
   }
 })();
 </script>

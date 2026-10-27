@@ -18,7 +18,7 @@
 <script>
 const inviteToken = new URLSearchParams(location.search).get('invite');
 if (inviteToken) {
-  document.getElementById('signup-sub').textContent = "You've been invited to join a team — create your account to accept.";
+  document.getElementById('signup-sub').textContent = _t('You\'ve been invited to join a team — create your account to accept.');
   document.querySelector('input[name="company"]').closest('label').style.display = 'none';
 }
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
@@ -29,7 +29,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     body: JSON.stringify({email: fd.get('email'), password: fd.get('password'),
       company: fd.get('company') || 'Team', invite_token: inviteToken})});
   if (r.ok) { location.href = '/dashboard?welcome=1'; }
-  else { const d = await r.json(); document.getElementById('signup-err').textContent = d.detail || 'Signup failed'; }
+  else { const d = await r.json(); document.getElementById('signup-err').textContent = d.detail || _t('Signup failed'); }
 });
 </script>
 {% endblock %}

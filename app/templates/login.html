@@ -26,7 +26,7 @@ if (ssoError) document.getElementById('login-err').textContent = ssoError;
 document.getElementById('sso-btn').addEventListener('click', () => {
   const email = document.querySelector('#login-form input[name=email]').value.trim();
   const err = document.getElementById('login-err');
-  if (!email.includes('@')) { err.textContent = 'Enter your work email, then choose Sign in with SSO.'; return; }
+  if (!email.includes('@')) { err.textContent = _t('Enter your work email, then choose Sign in with SSO.'); return; }
   location.href = '/api/auth/sso/start?email=' + encodeURIComponent(email);
 });
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -45,7 +45,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     return;
   }
   if (r.ok) { location.href = '/dashboard'; }
-  else { err.textContent = d.detail || 'Login failed'; }
+  else { err.textContent = d.detail || _t('Login failed'); }
 });
 document.getElementById('mfa-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -55,7 +55,7 @@ document.getElementById('mfa-form').addEventListener('submit', async (e) => {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({mfa_token: mfaToken, code})});
   if (r.ok) { location.href = '/dashboard'; }
-  else { err.textContent = 'Invalid code — try again'; }
+  else { err.textContent = _t('Invalid code — try again'); }
 });
 </script>
 {% endblock %}

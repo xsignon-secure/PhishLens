@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Report: {{ scan.domain }} — {{ brand.name if brand and brand.name else 'PhishLens' }}{% endblock %}
+{% block title %}{{ _("Report:") }} {{ scan.domain }} — {{ brand.name if brand and brand.name else 'PhishLens' }}{% endblock %}
 {% block content %}
 <section class="report-page">
   {% if brand %}

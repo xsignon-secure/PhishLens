@@ -34,6 +34,7 @@
   <p><select id="lang-pick" aria-label="Language" class="small">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == current_lang() %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></p>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>window.I18N = {{ i18n_catalog()|tojson }};</script>
 <script src="/static/app.js"></script>
 <script>
 document.getElementById('lang-pick').addEventListener('change', (e) => {

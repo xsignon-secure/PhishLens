@@ -53,5 +53,11 @@ def current_lang(ctx) -> str:
     return pick(ctx.get("request"))
 
 
+@pass_context
+def catalog(ctx) -> dict:
+    """The current language's catalog, for the page's JavaScript (_t in app.js)."""
+    return _catalogs.get(pick(ctx.get("request")), {})
+
+
 def install(env) -> None:
-    env.globals.update(_=gettext, current_lang=current_lang, languages=LANGS)
+    env.globals.update(_=gettext, current_lang=current_lang, languages=LANGS, i18n_catalog=catalog)

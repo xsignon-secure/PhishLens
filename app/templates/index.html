@@ -62,7 +62,7 @@ document.getElementById('scan-form').addEventListener('submit', async (e) => {
       body: JSON.stringify({domain})
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || 'Scan failed');
+    if (!r.ok) throw new Error(data.detail || _t('Scan failed'));
     prog.done();
     box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf'});
     bindReportInteractions(box);
@@ -70,7 +70,7 @@ document.getElementById('scan-form').addEventListener('submit', async (e) => {
   } catch (err) {
     prog.done();
     box.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p>' +
-      '<p class="muted">Tip: enter a bare domain like <code>example.com</code> — no http://, no paths.</p></div>';
+      ('<p class="muted">' + _t('Tip: enter a bare domain like') + ' ' + '<code>example.com</code>' + ' ' + _t('— no http://, no paths.') + '</p>' + '</div>');
   }
 });
 </script>
