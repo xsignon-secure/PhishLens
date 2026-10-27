@@ -1,7 +1,15 @@
 # Deploy PhishLens on Render
 
-There are two ways to deploy:
+There are three ways to deploy:
 
+- **Option 0: the prebuilt image (easiest).** GitHub Actions publishes
+  `ghcr.io/xsignon-secure/phishlens:latest` on every push to `main`. In Render,
+  create a Web Service from an existing image with that URL (make the GHCR
+  package public under the repo's Packages settings, or add a registry
+  credential). To redeploy automatically, copy the service's Deploy Hook URL
+  from Render's Settings and save it as the `RENDER_DEPLOY_HOOK` repository
+  secret. Use Neon or Supabase free Postgres for `DATABASE_URL`: Render's free
+  Postgres expires after its trial.
 - **Option A: from your laptop (no GitHub).** You build a Docker image on your
   laptop, push it to Docker Hub, and Render runs that image.
 - **Option B: from a GitHub repo.** Render builds from `render.yaml` and

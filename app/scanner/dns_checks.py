@@ -193,13 +193,16 @@ def check_dmarc(domain: str) -> dict:
         return {
             "key": "dmarc", "title": "DMARC", "status": "fail", "score": 0, "max_score": max_score,
             "details": f"{len(records)} DMARC records found; receivers ignore DMARC when more than one exists.",
-            "issues": ["Multiple DMARC records: the policy is not applied at all (RFC 7489 §6.6.3)."],
+            "issues": ["Multiple DMARC records: the policy is not applied at all (RFC 9989)."],
             "fixes": [f"Delete all but one TXT record at _dmarc.{domain}."],
         }
     tags = _parse_tag_list(records[0])
     policy = tags.get("p", "none").lower()
+    # DMARC is RFC 9989 (2026): pct, rf and ri are gone; t=y (testing) replaces
+    # pct<100, np= covers non-existent subdomains. Old pct is still honoured.
     pct = int(tags.get("pct", "100")) if tags.get("pct", "100").isdigit() else 100
     pct = min(pct, 100)
+    testing = tags.get("t", "n").lower() == "y"
     issues, fixes = [], []
     if policy == "reject":
         status, score = "pass", max_score
@@ -211,22 +214,47 @@ def check_dmarc(domain: str) -> dict:
         issues.append("Policy is none: DMARC only monitors, takes no enforcement action.")
         fixes.append("Move to p=quarantine, then p=reject.")
         status, score = "warn", 5
-    if pct < 100:
-        issues.append(f"Policy applies to only {pct}% of mail.")
-        fixes.append("Raise pct to 100 when ready to fully enforce.")
+    if testing and policy in ("quarantine", "reject"):
+        issues.append("Testing mode (t=y): receivers apply one step weaker than the published policy.")
+        fixes.append("Remove t=y when ready to fully enforce.")
         score = max(0, score - 3)
+    if "pct" in tags:
+        if pct < 100:
+            issues.append(f"Policy applies to only {pct}% of mail (pct is removed in RFC 9989; most receivers now treat it as t=y).")
+            fixes.append("Replace pct with t=y while testing, then remove both to fully enforce.")
+            if not testing:
+                score = max(0, score - 3)
+        else:
+            issues.append("pct is obsolete in RFC 9989 and can be removed.")
+    for old in ("rf", "ri"):
+        if old in tags:
+            issues.append(f"{old}= is obsolete in RFC 9989: receivers ignore it, so it can be removed.")
     if "rua" not in tags:
         issues.append("No rua tag: you receive no aggregate reports about who sends as your domain.")
         fixes.append(f'Add rua=mailto:dmarc@{domain} to the DMARC record.')
         score = max(0, score - 2)
     # --- advanced signals (no score change unless noted) ---
-    detail_bits = [f"p={policy}", f"pct={pct}", f"rua={'set' if 'rua' in tags else 'missing'}"]
+    detail_bits = [f"p={policy}", f"rua={'set' if 'rua' in tags else 'missing'}"]
+    if testing:
+        detail_bits.append("t=y")
+    if "pct" in tags:
+        detail_bits.append(f"pct={pct}")
     sp = tags.get("sp")
     if sp:
         detail_bits.append(f"sp={sp}")
         if sp.lower() == "none" and policy in ("quarantine", "reject"):
             issues.append("Subdomain policy (sp=none) is weaker than the organizational policy: subdomains remain spoofable.")
             fixes.append("Set sp= to match p (or omit it to inherit).")
+    np_ = tags.get("np")
+    if np_:
+        detail_bits.append(f"np={np_}")
+    elif policy == "reject" and (sp or "reject").lower() == "reject":
+        fixes.append("Optional (RFC 9989): add np=reject so made-up subdomains are rejected too.")
+    if np_ and np_.lower() == "none" and policy in ("quarantine", "reject"):
+        issues.append("np=none leaves non-existent subdomains spoofable.")
+        fixes.append("Set np=reject (or omit np to inherit sp/p).")
+    if "psd" in tags:
+        detail_bits.append(f"psd={tags['psd']}")
     for tag, name in (("adkim", "DKIM"), ("aspf", "SPF")):
         if tags.get(tag, "r").lower() == "s":
             detail_bits.append(f"{tag}=strict")
@@ -470,6 +498,67 @@ def check_tls_rpt(domain: str) -> dict:
             "fixes": [f'Add TXT at _smtp._tls.{domain}: "v=TLSRPTv1; rua=mailto:tls@{domain}"']}
 
 
+BIMI_EKU = "1.3.6.1.5.5.7.3.31"     # id-kp-BrandIndicatorforMessageIdentification
+LOGOTYPE_EXT = "1.3.6.1.5.5.7.1.12"  # embeds the SVG logo in a VMC / CMC
+SVG_MAX = 32 * 1024                  # BIMI limit for the logo file
+
+
+def _svg_problems(body: bytes) -> list[str]:
+    """SVG Tiny Portable/Secure rules mailbox providers enforce."""
+    low = body.lower()
+    problems = []
+    if len(body) > SVG_MAX:
+        problems.append(f"Logo is {len(body) // 1024} KB; BIMI allows at most 32 KB.")
+    if b'baseprofile="tiny-ps"' not in low.replace(b"'", b'"'):
+        problems.append('Logo isn\'t SVG Tiny PS: the <svg> element needs baseProfile="tiny-ps" and version="1.2".')
+    if b"<script" in low:
+        problems.append("Logo contains a <script>, which BIMI forbids.")
+    if b"<title" not in low:
+        problems.append("Logo has no <title> element (required by SVG Tiny PS).")
+    if b"xlink:href=\"http" in low or b"href=\"http" in low:
+        problems.append("Logo references external files, which BIMI forbids.")
+    return problems
+
+
+def _bimi_cert_problems(url: str, domain: str) -> tuple[list[str], str]:
+    """Check the VMC / CMC at the a= URL. Returns (problems, summary)."""
+    from datetime import datetime, timezone
+
+    from cryptography import x509
+
+    if not url.lower().startswith("https://"):
+        return ["The a= certificate URL must use HTTPS."], ""
+    status_code, body = net.safe_fetch_head(url, timeout=TIMEOUT, limit=200_000)
+    if status_code != 200:
+        return [f"Certificate URL returned HTTP {status_code}."], ""
+    try:
+        certs = x509.load_pem_x509_certificates(body)
+    except ValueError:
+        return ["The a= URL doesn't serve a PEM certificate chain."], ""
+    leaf = certs[0]
+    problems = []
+    now = datetime.now(timezone.utc)
+    if leaf.not_valid_after_utc < now:
+        problems.append(f"The BIMI certificate expired on {leaf.not_valid_after_utc:%Y-%m-%d}.")
+    try:
+        ekus = {e.dotted_string for e in leaf.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value}
+    except x509.ExtensionNotFound:
+        ekus = set()
+    if BIMI_EKU not in ekus:
+        problems.append("The certificate isn't a BIMI certificate (no Brand Indicator EKU): use a VMC or CMC.")
+    try:
+        names = [n.lower() for n in leaf.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName).value.get_values_for_type(x509.DNSName)]
+    except x509.ExtensionNotFound:
+        names = []
+    if names and not any(n == domain or domain.endswith("." + n) or n.endswith("._bimi." + domain) for n in names):
+        problems.append(f"The certificate is for {', '.join(names[:3])}, not {domain}.")
+    has_logo = any(e.oid.dotted_string == LOGOTYPE_EXT for e in leaf.extensions)
+    if not has_logo:
+        problems.append("The certificate doesn't embed a logo (logotype extension).")
+    return problems, f"certificate valid until {leaf.not_valid_after_utc:%Y-%m-%d}"
+
+
 def check_bimi(domain: str) -> dict:
     max_score = 2
     records = [t for t in _txt(f"default._bimi.{domain}") if "v=bimi1" in t.lower().replace(" ", "")]
@@ -485,23 +574,39 @@ def check_bimi(domain: str) -> dict:
                 "issues": ["BIMI record has no logo URL."],
                 "fixes": ["Add l= with your SVG logo URL and a VMC certificate."]}
     # Verify the logo actually exists and is an SVG (size-capped fetch).
+    body = b""
     try:
         if not logo.lower().startswith("https://"):
             raise ValueError("BIMI logos must be served over HTTPS")
-        status_code, head = net.safe_fetch_head(logo, timeout=TIMEOUT)
+        status_code, body = net.safe_fetch_head(logo, timeout=TIMEOUT, limit=SVG_MAX + 1)
         # SVG files commonly start with an XML declaration or comment before <svg
-        is_svg = b"<svg" in head.lower()
-        ok = status_code == 200 and is_svg
+        ok = status_code == 200 and b"<svg" in body.lower()
     except Exception:
         ok = False
-    if ok:
-        return {"key": "bimi", "title": "BIMI", "status": "pass", "score": max_score,
-                "max_score": max_score, "details": "BIMI record published; logo URL serves a valid SVG.",
-                "issues": [], "fixes": []}
-    return {"key": "bimi", "title": "BIMI", "status": "warn", "score": 1, "max_score": max_score,
-            "details": "BIMI record published, but the logo URL is unreachable or not an SVG.",
-            "issues": ["Logo URL does not serve a valid SVG; inboxes will not display it."],
-            "fixes": ["Host a valid SVG Tiny PS logo at the l= URL over HTTPS."]}
+    if not ok:
+        return {"key": "bimi", "title": "BIMI", "status": "warn", "score": 1, "max_score": max_score,
+                "details": "BIMI record published, but the logo URL is unreachable or not an SVG.",
+                "issues": ["Logo URL does not serve a valid SVG; inboxes will not display it."],
+                "fixes": ["Host a valid SVG Tiny PS logo at the l= URL over HTTPS."]}
+    issues = _svg_problems(body)
+    fixes = ["Convert the logo to SVG Tiny PS (most BIMI generators do this) and keep it under 32 KB."] if issues else []
+    cert_url = tags.get("a", "")
+    cert_note = "no certificate (a=)"
+    if cert_url:
+        try:
+            cert_issues, cert_note = _bimi_cert_problems(cert_url, domain)
+        except Exception as exc:
+            cert_issues = [f"Could not fetch the BIMI certificate: {type(exc).__name__}."]
+        issues += cert_issues
+        if cert_issues:
+            fixes.append("Renew or replace the VMC / CMC with your certificate authority and update a=.")
+    else:
+        issues.append("No VMC or CMC certificate (a= tag): Gmail and Apple Mail only show logos backed by one.")
+        fixes.append("Get a Verified Mark Certificate (trademarked logo) or Common Mark Certificate and add a=<its URL>.")
+    status = "pass" if not issues else "warn"
+    return {"key": "bimi", "title": "BIMI", "status": status, "score": max_score, "max_score": max_score,
+            "details": f"BIMI record published; logo URL serves an SVG; {cert_note}.",
+            "issues": issues, "fixes": fixes}
 
 
 # ------------------------------------------------------------------ CAA

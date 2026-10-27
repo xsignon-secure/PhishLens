@@ -4,6 +4,8 @@
 services:
   app:
     build: .
+    # Or use the prebuilt image instead of building:
+    # image: ghcr.io/xsignon-secure/phishlens:latest
     ports:
       - "8000:8000"
     environment:
@@ -11,6 +13,7 @@ services:
       DATABASE_URL: postgresql+psycopg://phishlens:phishlens@db:5432/phishlens
       APP_URL: ${APP_URL:-http://localhost:8000}
       RESCAN_INTERVAL_HOURS: ${RESCAN_INTERVAL_HOURS:-168}
+      REPORT_FETCH_MINUTES: ${REPORT_FETCH_MINUTES:-0}
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

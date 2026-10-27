@@ -152,7 +152,7 @@ const FIX_RECORD_RE = /Add TXT(?: record)? at ([A-Za-z0-9_.-]+): "([^"]+)"/;
 function applyButton(fix, opts) {
   if (!opts.applyFix) return '';
   const m = FIX_RECORD_RE.exec(fix);
-  return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">Apply in Cloudflare</button>` : '';
+  return m ? `<button class="copy-btn" data-apply-name="${escapeHtml(m[1])}" data-apply-value="${escapeHtml(m[2])}">Apply in ${escapeHtml(window.DNS_LABEL || 'DNS')}</button>` : '';
 }
 
 function renderReport(scan, isPublic, opts = {}) {

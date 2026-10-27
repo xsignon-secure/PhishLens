@@ -132,7 +132,7 @@ def sso_callback(request: Request, code: str | None = None, state: str | None = 
         user.is_verified = True
         db.commit()
     audit.log_request(db, request, "auth.login", user, {"sso": True})
-    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
     resp = RedirectResponse("/dashboard", status_code=303)
     _set_session_cookies(resp, token)
     resp.delete_cookie(COOKIE, path="/api/auth/sso")

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Free email security tools — PhishLens{% endblock %}
+{% block content %}
+<section class="tool">
+  <span class="eyebrow">Free tools · no sign-up</span>
+  <h1>Check one record, build a record, or watch it propagate</h1>
+  <p class="sub">Quick checks for a single part of your email security, record generators that write the exact DNS value, and a propagation checker. Want everything at once? <a href="/">Run a full scan</a>.</p>
+
+  <div class="panel">
+    <h2><span class="dot"></span>Record checker</h2>
+    <form id="chk-form" class="scanbox small">
+      <input id="chk-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" aria-label="Domain">
+      <select id="chk-type" aria-label="Check">
+        <option value="spf">SPF</option><option value="dmarc">DMARC</option><option value="dkim">DKIM</option>
+        <option value="mx">MX</option><option value="mta-sts">MTA-STS</option><option value="tls-rpt">TLS-RPT</option>
+        <option value="bimi">BIMI</option><option value="dane">DANE (TLSA)</option><option value="ptr">Reverse DNS (PTR)</option>
+        <option value="ipv6">IPv6</option><option value="dnssec">DNSSEC</option><option value="caa">CAA</option>
+        <option value="blocklists">Blocklists</option><option value="tls-cert">TLS certificate</option>
+      </select>
+      <button class="btn" type="submit">Check</button>
+    </form>
+    <div id="chk-result" aria-live="polite"></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="dot"></span>Record generator</h2>
+    <div class="scanbox small">
+      <select id="gen-kind" aria-label="Record">
+        <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta-sts">MTA-STS</option>
+        <option value="tls-rpt">TLS-RPT</option><option value="bimi">BIMI</option>
+      </select>
+      <input id="gen-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" aria-label="Domain">
+    </div>
+    <div id="gen-fields"></div>
+    <div id="gen-out"></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="dot"></span>DNS propagation</h2>
+    <p class="muted small">Asks the domain's own nameservers and six public resolvers. If they disagree, the change is still spreading (wait for the old record's TTL).</p>
+    <form id="prop-form" class="scanbox small">
+      <input id="prop-name" type="text" placeholder="_dmarc.example.com" autocomplete="off" spellcheck="false" aria-label="Record name">
+      <select id="prop-type" aria-label="Type">
+        <option>TXT</option><option>A</option><option>AAAA</option><option>MX</option><option>CNAME</option>
+        <option>NS</option><option>CAA</option><option>TLSA</option>
+      </select>
+      <button class="btn" type="submit">Check</button>
+    </form>
+    <div id="prop-result" aria-live="polite"></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelector('section.tool').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-copy]');
+  if (btn) { e.preventDefault(); copyText(btn.getAttribute('data-copy'), btn); }
+});
+async function post(path, body) {
+  const r = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || 'Request failed');
+  return d;
+}
+document.getElementById('chk-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('chk-result');
+  const domain = document.getElementById('chk-domain').value.trim();
+  if (!domain) return;
+  box.innerHTML = '<p class="loading">Checking…</p>';
+  try {
+    const c = await post('/api/tools/check', {domain, check: document.getElementById('chk-type').value});
+    box.innerHTML = `<div class="check ${c.status}" style="margin-top:12px;padding:14px">
+      <p>${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>${c.max_score ? ` <span class="pts">${c.score}/${c.max_score}</span>` : ''}</p>
+      <p class="details">${escapeHtml(c.details || '')}</p>
+      ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
+      ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code> <button class="copy-btn" data-copy="${escapeHtml(f)}">Copy</button></p>`).join('')}</div>`;
+  } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+
+const GEN = {
+  dmarc: {fields: `<div class="scanbox small"><select id="g-p" aria-label="Policy"><option>none</option><option>quarantine</option><option selected>reject</option></select>
+      <select id="g-np" aria-label="Non-existent subdomains"><option value="">np: inherit</option><option>reject</option><option>quarantine</option><option>none</option></select>
+      <label class="small"><input id="g-t" type="checkbox"> Testing (t=y)</label></div>
+      <label>Report address (rua)<input id="g-rua" type="email" placeholder="dmarc@example.com"></label>`,
+    build: d => { const v = ['v=DMARC1', 'p=' + val('g-p')]; if (val('g-np')) v.push('np=' + val('g-np'));
+      if (document.getElementById('g-t').checked) v.push('t=y'); if (val('g-rua')) v.push('rua=mailto:' + val('g-rua'));
+      return [[`_dmarc.${d}`, 'TXT', v.join('; ')]]; }},
+  spf: {fields: `<label>Senders, one per line (e.g. include:_spf.google.com, include:spf.protection.outlook.com, ip4:203.0.113.5)
+      <textarea id="g-src" rows="3" style="width:100%">include:_spf.google.com</textarea></label>
+      <div class="scanbox small"><select id="g-all" aria-label="Everyone else"><option value="-all">-all (reject others)</option><option value="~all">~all (soft fail)</option></select></div>`,
+    build: d => [[d, 'TXT', ['v=spf1', ...lines('g-src'), val('g-all')].join(' ')]]},
+  'mta-sts': {fields: `<div class="scanbox small"><select id="g-mode" aria-label="Mode"><option>testing</option><option>enforce</option></select></div>
+      <label>MX hosts, one per line<textarea id="g-mx" rows="2" style="width:100%">*.mail.protection.outlook.com</textarea></label>`,
+    build: d => { const id = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+      return [[`_mta-sts.${d}`, 'TXT', `v=STSv1; id=${id}`],
+        [`https://mta-sts.${d}/.well-known/mta-sts.txt`, 'FILE', ['version: STSv1', 'mode: ' + val('g-mode'), ...lines('g-mx').map(m => 'mx: ' + m), 'max_age: 604800'].join('\n')]]; }},
+  'tls-rpt': {fields: `<label>Report address<input id="g-tls" type="email" placeholder="tls-reports@example.com"></label>`,
+    build: d => [[`_smtp._tls.${d}`, 'TXT', `v=TLSRPTv1; rua=mailto:${val('g-tls') || 'tls-reports@' + d}`]]},
+  bimi: {fields: `<label>Logo URL (SVG Tiny PS, HTTPS)<input id="g-l" type="url" placeholder="https://example.com/logo.svg"></label>
+      <label>Certificate URL (VMC or CMC .pem, optional)<input id="g-a" type="url" placeholder="https://example.com/vmc.pem"></label>`,
+    build: d => [[`default._bimi.${d}`, 'TXT', `v=BIMI1; l=${val('g-l')}; a=${val('g-a')}`]]},
+};
+const val = id => (document.getElementById(id)?.value || '').trim();
+const lines = id => val(id).split(/[\n,]/).map(x => x.trim()).filter(Boolean);
+function renderGen() {
+  const k = document.getElementById('gen-kind').value;
+  document.getElementById('gen-fields').innerHTML = GEN[k].fields;
+  document.querySelectorAll('#gen-fields input, #gen-fields select, #gen-fields textarea').forEach(el => el.addEventListener('input', buildGen));
+  buildGen();
+}
+function buildGen() {
+  const k = document.getElementById('gen-kind').value;
+  const d = val('gen-domain') || 'example.com';
+  document.getElementById('gen-out').innerHTML = GEN[k].build(d).map(([name, type, value]) =>
+    `<p class="fix" style="margin-top:10px"><strong>${escapeHtml(name)}</strong> <span class="muted">${type}</span><br>
+     <code style="white-space:pre-wrap">${escapeHtml(value)}</code> <button class="copy-btn" data-copy="${escapeHtml(value)}">Copy</button></p>`).join('');
+}
+document.getElementById('gen-kind').addEventListener('change', renderGen);
+document.getElementById('gen-domain').addEventListener('input', buildGen);
+renderGen();
+
+document.getElementById('prop-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('prop-result');
+  const name = document.getElementById('prop-name').value.trim();
+  if (!name) return;
+  box.innerHTML = '<p class="loading">Asking resolvers…</p>';
+  try {
+    const r = await post('/api/tools/propagation', {name, type: document.getElementById('prop-type').value});
+    box.innerHTML = `<p>${statusBadge(r.consistent ? 'pass' : 'warn')} ${r.consistent ? 'All resolvers agree.' : 'Resolvers disagree: the change is still propagating.'}</p>` +
+      r.results.map(x => `<div class="dm-row"><div class="top"><strong>${escapeHtml(x.resolver)}</strong> <span class="muted">${escapeHtml(x.ip)}</span></div>
+        <div class="meta">${x.error ? 'No answer (' + escapeHtml(x.error) + ')' : x.answers.length ? x.answers.map(escapeHtml).join('<br>') : '<span class="muted">no record</span>'}</div></div>`).join('');
+  } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+</script>
+{% endblock %}

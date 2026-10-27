@@ -51,10 +51,14 @@
       <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">Upload failure reports (.eml)
         <input id="ruf-file" type="file" accept=".eml,message/rfc822" multiple hidden>
       </label>
+      <label class="btn tiny ghost" style="display:inline-block;cursor:pointer">Upload TLS reports (.json/.gz)
+        <input id="tls-file" type="file" accept=".json,.gz,application/json,application/gzip" multiple hidden>
+      </label>
       <select id="dmarc-domain" class="hidden" aria-label="Domain"></select>
       <p id="dmarc-msg" class="muted small"></p>
       <div id="dmarc-summary"></div>
       <div id="ruf-list"></div>
+      <div id="tls-summary"></div>
     </div>
     <div class="panel" id="lookalike-panel">
       <h2><span class="dot"></span>Lookalike domains</h2>
@@ -102,16 +106,17 @@
     <div class="panel">
       <h2><span class="dot"></span>Security</h2>
       <div id="mfa-box"><p class="muted">Loading…</p></div>
-      <p><a href="/forgot-password">Reset password</a> · <button id="export-btn" class="btn tiny ghost owner-only hidden">Export my data</button></p>
+      <p><a href="/forgot-password">Reset password</a> · <button id="revoke-btn" class="btn tiny ghost">Sign out other devices</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">Export my data</button></p>
     </div>
   </div>
 
   <div class="panel" id="cloudflare-panel">
       <h2><span class="dot"></span>DNS provider (one-click fixes)</h2>
-      <p class="muted small">Connect Cloudflare and fix records with one click: an <b>Apply in Cloudflare</b> button appears next to each record in your reports. Create an API token with <i>Zone → DNS → Edit</i> for your zones.</p>
+      <p class="muted small">Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page.</p>
       <div id="cf-status" class="muted small"></div>
       <form id="cf-form" class="scanbox small owner-only hidden">
-        <input id="cf-token" type="password" placeholder="Cloudflare API token" autocomplete="off">
+        <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option></select>
+        <input id="cf-token" type="password" placeholder="API token" autocomplete="off">
         <button class="btn" type="submit">Connect</button>
       </form>
       <button id="cf-del" class="btn tiny ghost owner-only hidden">Disconnect</button>
@@ -420,6 +425,11 @@ document.getElementById('webhook-del').onclick = async () => {
   document.getElementById('webhook-url').value = '';
   document.getElementById('webhook-status').textContent = 'Removed.';
 };
+document.getElementById('revoke-btn').onclick = async () => {
+  if (!confirm('Sign out every other browser and device? This one stays signed in.')) return;
+  try { await api('/api/auth/sessions/revoke', {method: 'POST'}); toast('Other sessions signed out.'); }
+  catch (err) { toast(err.message); }
+};
 document.getElementById('export-btn').onclick = async () => {
   const d = await api('/api/team/export').catch(err => { if (err.message !== 'auth') toast(err.message); return null; });
   if (!d) return;
@@ -503,6 +513,8 @@ async function loadDmarc(selected) {
     ${s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
       ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
       <div class="meta">${r.messages.toLocaleString()} messages from ${r.ip_count} IP(s) · DKIM aligned ${r.dkim_aligned.toLocaleString()} · SPF aligned ${r.spf_aligned.toLocaleString()}</div>
+      ${r.hint ? `<div class="meta">${escapeHtml(r.hint)}</div>` : ''}
+      ${(r.sources || []).length ? `<div class="meta muted">${r.sources.map(x => escapeHtml(x.ip + (x.ptr ? ' (' + x.ptr + ')' : '') + (x.country ? ' ' + x.country : ''))).join(' · ')}</div>` : ''}
       ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}`;
 }
 document.getElementById('dmarc-domain').addEventListener('change', e => loadDmarc(e.target.value));
@@ -523,6 +535,33 @@ document.getElementById('dmarc-file').addEventListener('change', async (e) => {
   e.target.value = '';
   msg.textContent = `${ok} report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
   loadDmarc(lastDomain);
+});
+
+/* ---------------- TLS-RPT reports ---------------- */
+async function loadTls(selected) {
+  const domains = await api('/api/tlsrpt/domains');
+  const box = document.getElementById('tls-summary');
+  if (!domains.length) { box.innerHTML = ''; return; }
+  const parts = await Promise.all(domains.slice(0, 5).map(d => api('/api/tlsrpt/summary/' + encodeURIComponent(d) + '?days=30')));
+  box.innerHTML = '<h3 class="muted small" style="margin:14px 0 4px">TLS delivery reports (last 30 days)</h3>' + parts.map(t => `
+    <div class="dm-row"><div class="top"><strong>${escapeHtml(t.domain)}</strong>
+      ${statusBadge(t.failed_sessions ? (t.success_rate >= 99 ? 'warn' : 'fail') : 'pass')}
+      <span class="muted">${t.success_rate ?? '—'}% of ${(t.successful_sessions + t.failed_sessions).toLocaleString()} TLS sessions succeeded</span></div>
+      ${t.failures.map(f => `<div class="meta">${escapeHtml(f.result_type)}: ${f.sessions.toLocaleString()} session(s)${f.mx.length ? ' to ' + escapeHtml(f.mx.join(', ')) : ''}</div>
+        <div class="meta fix">${escapeHtml(f.fix)}</div>`).join('')}</div>`).join('');
+}
+document.getElementById('tls-file').addEventListener('change', async (e) => {
+  const msg = document.getElementById('dmarc-msg');
+  let ok = 0, dup = 0; const errors = [];
+  for (const f of [...e.target.files]) {
+    try {
+      const d = await api('/api/tlsrpt/reports', {method: 'POST', headers: {'Content-Type': 'application/octet-stream'}, body: f});
+      if (d.duplicate) dup++; else ok++;
+    } catch (err) { if (err.message !== 'auth') errors.push(f.name + ': ' + err.message); }
+  }
+  e.target.value = '';
+  msg.textContent = `${ok} TLS report(s) added${dup ? `, ${dup} already uploaded` : ''}.` + (errors.length ? ' ' + errors.join(' · ') : '');
+  loadTls();
 });
 
 /* ---------------- lookalike domains ---------------- */
@@ -567,42 +606,46 @@ document.getElementById('ruf-file').addEventListener('change', async (e) => {
   loadForensic();
 });
 
-/* ---------------- Cloudflare one-click ---------------- */
+/* ---------------- DNS provider one-click ---------------- */
 async function loadCloudflare() {
-  const c = await api('/api/team/cloudflare');
+  const c = await api('/api/team/dns');
   dashData.cfConnected = c.connected;
-  document.getElementById('cf-status').textContent = c.connected ? '✓ Cloudflare connected.' : 'Not connected.';
+  dashData.dnsLabel = c.label || 'DNS';
+  window.DNS_LABEL = dashData.dnsLabel;
+  document.getElementById('cf-status').textContent = c.connected ? `✓ ${c.label} connected.` : 'Not connected.';
   document.getElementById('cf-del').style.display = c.connected ? '' : 'none';
 }
 window.applyDnsFix = async (name, type, value, btn) => {
-  if (!confirm(`Publish this record in Cloudflare?\n\n${name}  ${type}  ${value}`)) return;
+  if (!confirm(`Publish this record in ${dashData.dnsLabel}?\n\n${name}  ${type}  ${value}`)) return;
   if (btn) btn.disabled = true;
   try {
     const r = await api('/api/dns/apply', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({name, type, value})});
-    toast(r.result === 'unchanged' ? 'Already published.' : '✓ Record ' + r.result + ' in Cloudflare. Rescan in a few minutes.');
+    toast(r.result === 'unchanged' ? 'Already published.' : '✓ Record ' + r.result + ' in ' + dashData.dnsLabel + '. Rescan in a few minutes.');
     if (btn) btn.textContent = 'Applied ✓';
   } catch (err) { if (err.message !== 'auth') toast('Could not apply: ' + err.message); if (btn) btn.disabled = false; }
 };
 document.getElementById('cf-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    await api('/api/team/cloudflare', {method: 'PUT', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({token: document.getElementById('cf-token').value.trim()})});
+    const c = await api('/api/team/dns', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({provider: document.getElementById('cf-provider').value,
+                            token: document.getElementById('cf-token').value.trim()})});
     document.getElementById('cf-token').value = '';
-    toast('✓ Cloudflare connected');
+    toast(`✓ ${c.label} connected`);
   } catch (err) { if (err.message !== 'auth') toast(err.message); }
   loadCloudflare();
 });
 document.getElementById('cf-del').addEventListener('click', async () => {
-  if (!confirm('Disconnect Cloudflare?')) return;
-  await api('/api/team/cloudflare', {method: 'DELETE'}); loadCloudflare();
+  if (!confirm(`Disconnect ${dashData.dnsLabel}?`)) return;
+  await api('/api/team/dns', {method: 'DELETE'}); loadCloudflare();
 });
 
 /* ---------------- hosted records ---------------- */
 const HOSTED_FIELDS = {
   dmarc: c => `<div class="scanbox small"><select id="h-p" aria-label="Policy">${['none','quarantine','reject'].map(v => `<option${(c.p||'none')===v?' selected':''}>${v}</option>`).join('')}</select>
-    <input id="h-pct" type="number" min="0" max="100" value="${c.pct ?? 100}" style="max-width:90px" aria-label="Percent"></div>
+    <select id="h-np" aria-label="Non-existent subdomains (np)"><option value="">np: inherit</option>${['none','quarantine','reject'].map(v => `<option value="${v}"${c.np===v?' selected':''}>np=${v}</option>`).join('')}</select>
+    <label class="small"><input id="h-t" type="checkbox"${(c.t || (c.pct ?? 100) < 100) ? ' checked' : ''}> Testing (t=y)</label></div>
     <label>Report addresses (rua, comma-separated; blank = PhishLens mailbox)<input id="h-rua" type="text" value="${escapeHtml((c.rua||[]).join(', '))}"></label>`,
   spf: c => `<label>Senders, one per line (e.g. include:_spf.google.com, ip4:203.0.113.5)<textarea id="h-sources" rows="4" style="width:100%">${escapeHtml((c.sources||[]).join('\n'))}</textarea></label>
     <div class="scanbox small"><select id="h-all" aria-label="Unlisted senders">${['-all','~all'].map(v => `<option${(c.all||'-all')===v?' selected':''}>${v}</option>`).join('')}</select></div>`,
@@ -611,7 +654,7 @@ const HOSTED_FIELDS = {
 };
 function hostedConfig(kind) {
   const lines = id => document.getElementById(id).value.split(/[\n,]/).map(x => x.trim()).filter(Boolean);
-  if (kind === 'dmarc') return {p: document.getElementById('h-p').value, pct: +document.getElementById('h-pct').value, rua: lines('h-rua')};
+  if (kind === 'dmarc') return {p: document.getElementById('h-p').value, np: document.getElementById('h-np').value || null, t: document.getElementById('h-t').checked, rua: lines('h-rua')};
   if (kind === 'spf') return {sources: lines('h-sources'), all: document.getElementById('h-all').value};
   return {mode: document.getElementById('h-mode').value, mx: lines('h-mx')};
 }
@@ -639,7 +682,7 @@ async function loadHosted() {
     <div class="meta">Publish once in your DNS:</div>
     ${r.customer_records.map(c => `<div class="meta fix"><code>${escapeHtml(c.name)}  ${c.type}  ${escapeHtml(c.value)}</code>
       <button class="copy-btn" data-copy="${escapeHtml(c.value)}">Copy</button>
-      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>Apply in Cloudflare</button>` : ''}
+      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>Apply in ${escapeHtml(dashData.dnsLabel)}</button>` : ''}
       <br><small>${escapeHtml(c.note)}</small></div>`).join('')}
     <div class="meta" data-hstatus></div></div>`).join('');
   const list = document.getElementById('hosted-list');
@@ -744,6 +787,7 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     await loadEnterprise();
     loadDmarc().catch(() => {});
     loadForensic().catch(() => {});
+    loadTls().catch(() => {});
     await loadCloudflare().catch(() => {});
     loadHosted().catch(() => {});
     loadSso().catch(() => {});

@@ -3,11 +3,13 @@ import hashlib
 import hmac
 import json
 
+import time
+
 import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import mailer, models, webhooks
+from app import mailer, models, tokens, webhooks
 from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
@@ -96,11 +98,38 @@ def test_mfa_full_flow(client, db):
     r = client.post("/api/auth/mfa/challenge",
                     json={"mfa_token": mfa_token, "code": "000000"})
     assert r.status_code == 401
-    # right code completes login
-    r = client.post("/api/auth/mfa/challenge",
-                    json={"mfa_token": mfa_token, "code": pyotp.TOTP(secret).now()})
+    # the code already used to enable MFA can't be replayed
+    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": code})
+    assert r.status_code == 401
+    # the next code completes login (one step of clock drift is accepted)
+    nxt = pyotp.TOTP(secret).at(time.time() + 30)
+    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": nxt})
     assert r.status_code == 200
     assert "access_token" in r.json()
+    # ...and only once
+    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": nxt})
+    assert r.status_code == 401
+    # the seed is encrypted at rest
+    user = db.query(models.User).filter_by(email="mfa@example.com").one()
+    db.refresh(user)
+    assert user.totp_secret != secret
+
+
+def test_password_reset_and_sign_out_everywhere_revoke_sessions(client, db):
+    data = _signup(client, "rev@example.com")
+    h = _bearer(data["access_token"])
+    assert client.get("/api/auth/me", headers=h).status_code == 200
+    r = client.post("/api/auth/sessions/revoke", headers=h)
+    assert r.status_code == 200
+    assert client.get("/api/auth/me", headers=h).status_code == 401
+    h2 = _bearer(r.json()["access_token"])
+    assert client.get("/api/auth/me", headers=h2).status_code == 200
+    user = db.query(models.User).filter_by(email="rev@example.com").one()
+    raw = tokens.create(db, "password_reset", ttl_hours=2, user_id=user.id)
+    client.cookies.clear()
+    assert client.post("/api/auth/password/reset",
+                       json={"token": raw, "new_password": "another-horse-456"}).status_code == 200
+    assert client.get("/api/auth/me", headers=h2).status_code == 401
 
 
 def test_mfa_disable(client):

@@ -37,8 +37,9 @@ class Tenant(Base):
     sso_client_secret = Column(Text, nullable=True)
     sso_email_domain = Column(String(253), nullable=True, unique=True)
     sso_enforced = Column(Boolean, nullable=False, default=False)
-    # Customer's own DNS provider token for one-click fixes (encrypted).
-    cloudflare_token = Column(Text, nullable=True)
+    # Customer's own DNS provider for one-click fixes; the token is encrypted.
+    dns_provider = Column(String(20), nullable=True)  # cloudflare | digitalocean | desec
+    dns_token = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
@@ -56,8 +57,12 @@ class User(Base):
     role = Column(String(20), nullable=False, default="owner")  # owner | member
     is_active = Column(Boolean, nullable=False, default=True)
     is_verified = Column(Boolean, nullable=False, default=False)
-    totp_secret = Column(String(64), nullable=True)
+    totp_secret = Column(String(200), nullable=True)  # Fernet-encrypted (app/crypto.py)
     mfa_enabled = Column(Boolean, nullable=False, default=False)
+    # Last TOTP time-step accepted: a code can't be used twice.
+    totp_last_step = Column(Integer, nullable=True)
+    # Bumped to sign out every session (password reset, "sign out everywhere").
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     tenant = relationship("Tenant", back_populates="users")
@@ -213,3 +218,42 @@ class HostedRecord(Base):
     policy_id = Column(String(32), nullable=True)  # MTA-STS id, changes with the policy
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class TlsReport(Base):
+    """One SMTP TLS report (TLS-RPT, RFC 8460): how sending servers fared
+    when they tried to deliver to this domain over TLS."""
+    __tablename__ = "tls_reports"
+    __table_args__ = (UniqueConstraint("tenant_id", "org_name", "report_id",
+                                       name="uq_tls_report_tenant_org_id"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False, index=True)
+    org_name = Column(String(200), nullable=False)
+    report_id = Column(String(200), nullable=False)
+    date_begin = Column(DateTime, nullable=True, index=True)
+    date_end = Column(DateTime, nullable=True)
+    policies = Column(JSON, nullable=False)
+    success_count = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class JobLease(Base):
+    """A short lease so only one worker/instance runs a scheduled job."""
+    __tablename__ = "job_leases"
+
+    name = Column(String(50), primary_key=True)
+    holder = Column(String(64), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+
+
+class RateCounter(Base):
+    """Fixed-window request counters, used when RATE_LIMIT_STORAGE=database so
+    limits hold across several workers or instances."""
+    __tablename__ = "rate_counters"
+
+    key = Column(String(200), primary_key=True)
+    window_start = Column(DateTime, nullable=False)
+    count = Column(Integer, nullable=False, default=0)

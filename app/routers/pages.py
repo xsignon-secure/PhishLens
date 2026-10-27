@@ -33,6 +33,11 @@ def help_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "help.html", {"request": request, "user": _user_or_none(request, db)})
 
 
+@router.get("/tools", response_class=HTMLResponse)
+def tools_page(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(request, "tools.html", {"request": request, "user": _user_or_none(request, db)})
+
+
 @router.get("/tools/headers", response_class=HTMLResponse)
 def headers_tool(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "headers.html", {"request": request, "user": _user_or_none(request, db)})

@@ -87,7 +87,7 @@ def signup(payload: schemas.SignupIn, request: Request, response: Response,
         _send_verify_email(db, user)
     audit.log_request(db, request, "auth.signup", user,
                       {"via_invite": bool(payload.invite_token)})
-    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
     _set_session_cookies(response, token)
     return schemas.TokenOut(access_token=token, user=_user_out(user))
 
@@ -109,7 +109,7 @@ def login(payload: schemas.LoginIn, request: Request, response: Response,
         audit.log_request(db, request, "auth.mfa_challenged", user)
         return schemas.MfaRequiredOut(mfa_token=security.create_mfa_token(user_id=user.id))
     audit.log_request(db, request, "auth.login", user)
-    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
     _set_session_cookies(response, token)
     return schemas.TokenOut(access_token=token, user=_user_out(user))
 
@@ -126,11 +126,12 @@ def mfa_challenge(payload: schemas.MfaChallengeIn, request: Request,
         models.User.id == data.get("sub"), models.User.is_active.is_(True)).first()
     if not user or not user.mfa_enabled or not user.totp_secret:
         raise HTTPException(status_code=401, detail="MFA not configured")
-    if not pyotp.TOTP(user.totp_secret).verify(payload.code.strip(), valid_window=1):
+    if not security.verify_totp(user, payload.code):
         audit.log_request(db, request, "auth.mfa_failed", user)
-        raise HTTPException(status_code=401, detail="Invalid code")
+        raise HTTPException(status_code=401, detail="Invalid or already used code")
+    db.commit()
     audit.log_request(db, request, "auth.login", user, {"mfa": True})
-    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
     _set_session_cookies(response, token)
     return schemas.TokenOut(access_token=token, user=_user_out(user))
 
@@ -143,7 +144,7 @@ def mfa_setup(request: Request, db: Session = Depends(get_db),
         # off with no password check. Disabling requires the password.
         raise HTTPException(status_code=409, detail="MFA is already enabled; disable it first")
     secret = pyotp.random_base32()
-    user.totp_secret = secret
+    security.set_totp_secret(user, secret)
     user.mfa_enabled = False
     db.commit()
     audit.log_request(db, request, "auth.mfa_setup_started", user)
@@ -157,7 +158,7 @@ def mfa_verify(payload: schemas.MfaVerifyIn, request: Request,
                db: Session = Depends(get_db),
                user: models.User = Depends(get_current_user)):
     auth_limit(request, "mfa_verify", user.id, limit=10)
-    if not user.totp_secret or not pyotp.TOTP(user.totp_secret).verify(payload.code.strip(), valid_window=1):
+    if not security.verify_totp(user, payload.code):
         raise HTTPException(status_code=400, detail="Invalid code")
     user.mfa_enabled = True
     db.commit()
@@ -174,7 +175,7 @@ def mfa_disable(payload: schemas.MfaDisableIn, request: Request,
         # 400, not 401: the session is fine, and the dashboard treats 401 as "log in again".
         raise HTTPException(status_code=400, detail="Invalid password")
     user.mfa_enabled = False
-    user.totp_secret = None
+    security.set_totp_secret(user, None)
     db.commit()
     audit.log_request(db, request, "auth.mfa_disabled", user)
     return {"ok": True}
@@ -211,7 +212,8 @@ def password_reset(payload: schemas.PasswordResetIn, request: Request,
         raise HTTPException(status_code=400, detail="Invalid token")
     user.password_hash = new_hash
     user.mfa_enabled = False  # reset kills MFA; user re-enrolls
-    user.totp_secret = None
+    security.set_totp_secret(user, None)
+    user.token_version = (user.token_version or 0) + 1  # sign out every existing session
     db.commit()
     audit.log_request(db, request, "auth.password_reset", user)
     return {"ok": True}
@@ -256,6 +258,19 @@ def logout(request: Request, response: Response,
     response.delete_cookie("access_token", httponly=True, secure=secure, samesite="lax")
     response.delete_cookie("csrf_token", secure=secure, samesite="lax")
     return {"ok": True}
+
+
+@router.post("/sessions/revoke")
+def revoke_sessions(request: Request, response: Response, db: Session = Depends(get_db),
+                    user: models.User = Depends(get_current_user)):
+    """Sign out everywhere: every existing session token stops working. This
+    browser gets a fresh session."""
+    user.token_version = (user.token_version or 0) + 1
+    db.commit()
+    audit.log_request(db, request, "auth.sessions_revoked", user)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
+    _set_session_cookies(response, token)
+    return {"ok": True, "access_token": token}
 
 
 @router.get("/me", response_model=schemas.UserOut)

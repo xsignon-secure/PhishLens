@@ -198,7 +198,9 @@ def test_clean_config_validation():
     with pytest.raises(hosted.HostedError):
         hosted.clean_config("mta_sts", {"mode": "enforce", "mx": ["bad host!"]}, "x.com")
     cfg = hosted.clean_config("dmarc", {"p": "reject", "pct": 50, "rua": ["mailto:R@X.com"]}, "x.com")
-    assert hosted.dmarc_value(cfg) == "v=DMARC1; p=reject; pct=50; rua=mailto:r@x.com"
+    assert hosted.dmarc_value(cfg) == "v=DMARC1; p=reject; t=y; rua=mailto:r@x.com"
+    cfg = hosted.clean_config("dmarc", {"p": "reject", "np": "reject", "rua": ["r@x.com"]}, "x.com")
+    assert hosted.dmarc_value(cfg) == "v=DMARC1; p=reject; np=reject; rua=mailto:r@x.com"
 
 
 def test_spf_flattening_and_chaining():
@@ -321,7 +323,7 @@ def test_apply_fix_through_customer_cloudflare(client, db, hosted_on):
     h = _auth(client, "o@x.com")
     client.post("/api/scans", json={"domain": "x.com"}, headers=h)
     assert client.put("/api/team/cloudflare", json={"token": "t" * 40}, headers=h).status_code == 200
-    assert _tenant(db, "o@x.com").cloudflare_token != "t" * 40  # encrypted at rest
+    assert _tenant(db, "o@x.com").dns_token != "t" * 40  # encrypted at rest
     body = {"name": "_dmarc.x.com", "type": "TXT", "value": "v=DMARC1; p=none"}
     r = client.post("/api/dns/apply", json=body, headers=h)
     assert r.json()["result"] == "created"

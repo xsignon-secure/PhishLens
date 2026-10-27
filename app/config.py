@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     SOURCE_URL: str = "https://github.com/xsignon-secure/PhishLens"
     # Rescan monitors from inside the app every N hours (0 = off; use cron instead).
     RESCAN_INTERVAL_HOURS: float = 0
+    # Fetch DMARC / TLS-RPT reports from the report mailbox every N minutes (0 = off).
+    REPORT_FETCH_MINUTES: float = 0
+    # "memory" (one worker) or "database" (shared by several workers/instances).
+    RATE_LIMIT_STORAGE: str = "memory"
+    # RPKI check for mail server routes; asks RIPEstat (an external API), so opt-in.
+    RPKI_CHECK: bool = False
+    # Optional GeoIP country database (.mmdb) for DMARC report senders; needs
+    # `pip install maxminddb`. Free: DB-IP Lite Country or MaxMind GeoLite2 Country.
+    GEOIP_DB: str = ""
     # Hosted DMARC / SPF / MTA-STS records live in a zone PhishLens controls
     # (e.g. "hosted.phishlens.example") on Cloudflare DNS. Leave empty to
     # disable hosting.
