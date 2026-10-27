@@ -1,13 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Free email security tools — PhishLens{% endblock %}
+{% block title %}{{ _("Free email security tools") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="tool">
-  <span class="eyebrow">Free tools · no sign-up</span>
-  <h1>Check one record, build a record, or watch it propagate</h1>
-  <p class="sub">Quick checks for a single part of your email security, record generators that write the exact DNS value, and a propagation checker. Want everything at once? <a href="/">Run a full scan</a>.</p>
+  <span class="eyebrow">{{ _("Free tools · no sign-up") }}</span>
+  <h1>{{ _("Check a link, check a record, build a record") }}</h1>
+  <p class="sub">{{ _("A phishing link checker, quick checks for a single part of your email security, record generators that write the exact DNS value, and a propagation checker.") }} {{ _("Want everything at once?") }} <a href="/">{{ _("Run a full scan") }}</a>.</p>
 
   <div class="panel">
-    <h2><span class="dot"></span>Record checker</h2>
+    <h2><span class="dot"></span>{{ _("Is this link phishing?") }}</h2>
+    <p class="muted small">{{ _("Paste a link from a suspicious email. PhishLens never opens it: it checks domain blocklists, how old the domain is, and what the link itself looks like.") }}</p>
+    <form id="url-form" class="scanbox small">
+      <input id="url-input" type="text" placeholder="https://paypal.com.account-verify.example/login" autocomplete="off" spellcheck="false" aria-label="Link to check">
+      <button class="btn" type="submit">{{ _("Check link") }}</button>
+    </form>
+    <div id="url-result" aria-live="polite"></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="dot"></span>{{ _("Record checker") }}</h2>
     <form id="chk-form" class="scanbox small">
       <input id="chk-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false" aria-label="Domain">
       <select id="chk-type" aria-label="Check">
@@ -23,7 +33,7 @@
   </div>
 
   <div class="panel">
-    <h2><span class="dot"></span>Record generator</h2>
+    <h2><span class="dot"></span>{{ _("Record generator") }}</h2>
     <div class="scanbox small">
       <select id="gen-kind" aria-label="Record">
         <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta-sts">MTA-STS</option>
@@ -36,8 +46,8 @@
   </div>
 
   <div class="panel">
-    <h2><span class="dot"></span>DNS propagation</h2>
-    <p class="muted small">Asks the domain's own nameservers and six public resolvers. If they disagree, the change is still spreading (wait for the old record's TTL).</p>
+    <h2><span class="dot"></span>{{ _("DNS propagation") }}</h2>
+    <p class="muted small">{{ _("Asks the domain's own nameservers and six public resolvers. If they disagree, the change is still spreading (wait for the old record's TTL).") }}</p>
     <form id="prop-form" class="scanbox small">
       <input id="prop-name" type="text" placeholder="_dmarc.example.com" autocomplete="off" spellcheck="false" aria-label="Record name">
       <select id="prop-type" aria-label="Type">
@@ -62,6 +72,24 @@ async function post(path, body) {
   if (!r.ok) throw new Error(d.detail || 'Request failed');
   return d;
 }
+const URL_STATUS = {'dangerous': 'fail', 'likely phishing': 'fail', 'suspicious': 'warn', 'no known threat': 'pass'};
+document.getElementById('url-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('url-result');
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+  box.innerHTML = '<p class="loading">Checking…</p>';
+  try {
+    const r = await post('/api/tools/url', {url});
+    const st = URL_STATUS[r.verdict] || 'warn';
+    box.innerHTML = `<div class="check ${st}" style="margin-top:12px;padding:14px">
+      <p>${statusBadge(st)} <strong>${escapeHtml(r.verdict[0].toUpperCase() + r.verdict.slice(1))}</strong> <span class="pts">risk ${r.risk}/100</span></p>
+      <p class="details">${escapeHtml(r.domain)}</p>
+      ${r.feeds.map(f => `<p class="${f.listed ? 'issue' : 'muted small'}">${f.listed ? '• Listed on ' : 'Not listed on '}${escapeHtml(f.source)}${f.lists && f.lists.length ? ' (' + f.lists.map(escapeHtml).join(', ') + ')' : ''}${f.detail ? ': ' + escapeHtml(f.detail) : ''}</p>`).join('')}
+      ${r.signals.map(s => `<p class="${s.points > 0 ? 'issue' : 'muted small'}">• ${escapeHtml(s.text)}</p>`).join('')}
+      <p class="muted small">${escapeHtml(r.note)}</p></div>`;
+  } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
 document.getElementById('chk-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const box = document.getElementById('chk-result');

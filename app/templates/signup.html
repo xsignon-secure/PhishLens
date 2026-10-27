@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Sign up — PhishLens{% endblock %}
+{% block title %}{{ _("Sign up") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="auth">
-  <h1>Create your free account</h1>
-  <p class="sub" id="signup-sub">Monitor up to 3 domains free. No credit card.</p>
+  <h1>{{ _("Create your free account") }}</h1>
+  <p class="sub" id="signup-sub">{{ _("Free and open source. Monitor your domains, no credit card.") }}</p>
   <form id="signup-form">
-    <label>Work email<input name="email" type="email" required></label>
-    <label>Company / team name<input name="company" type="text" required maxlength="200"></label>
-    <label>Password (8+ characters)<input name="password" type="password" required minlength="8"></label>
-    <button class="btn big" type="submit">Create account</button>
+    <label>{{ _("Work email") }}<input name="email" type="email" required></label>
+    <label>{{ _("Company / team name") }}<input name="company" type="text" required maxlength="200"></label>
+    <label>{{ _("Password (8+ characters)") }}<input name="password" type="password" required minlength="8"></label>
+    <button class="btn big" type="submit">{{ _("Create account") }}</button>
     <p id="signup-err" class="error"></p>
   </form>
-  <p>Have an account? <a href="/login">Log in</a></p>
+  <p>{{ _("Have an account?") }} <a href="/login">{{ _("Log in") }}</a></p>
 </section>
 {% endblock %}
 {% block scripts %}

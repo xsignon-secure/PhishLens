@@ -1,50 +1,50 @@
 {% extends "base.html" %}
-{% block title %}PhishLens — Check your domain's email security{% endblock %}
+{% block title %}PhishLens — {{ _("Check your domain's email security") }}{% endblock %}
 {% block content %}
 <section class="hero">
-  <span class="eyebrow">Free domain check</span>
-  <h1>Is your domain <span class="grad-text">phish-proof?</span></h1>
-  <p class="sub">Type your domain below. We'll check its email security posture and show you exactly what to fix — record by record.</p>
+  <span class="eyebrow">{{ _("Free domain check") }}</span>
+  <h1>{{ _("Is your domain <span class=\"grad-text\">phish-proof?</span>") }}</h1>
+  <p class="sub">{{ _("Type your domain below. We'll check its email security posture and show you exactly what to fix — record by record.") }}</p>
   <form id="scan-form" class="scanbox" autocomplete="off">
     <input id="scan-domain" type="text" placeholder="example.com" spellcheck="false" aria-label="Domain to scan">
-    <button type="submit" class="btn big">Scan my domain</button>
+    <button type="submit" class="btn big">{{ _("Scan my domain") }}</button>
   </form>
-  <p class="hint"><b>Free.</b> No signup needed. Nothing to install.</p>
+  <p class="hint">{{ _("<b>Free.</b> No signup needed. Nothing to install.") }}</p>
 
   <div id="scan-progress" class="scan-progress hidden" aria-live="polite">
-    <div class="phase"><span class="spinner"></span><span id="phase-text">Starting…</span></div>
+    <div class="phase"><span class="spinner"></span><span id="phase-text">{{ _("Starting…") }}</span></div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
   <div id="scan-result"></div>
 </section>
 
-<section class="features" aria-label="How it works">
+<section class="features" aria-label="{{ _("How it works") }}">
   <div class="card">
     <div class="icon">①</div>
-    <h3>Enter your domain</h3>
-    <p>One field, one click. We read only public records — nothing is installed and no email is ever sent.</p>
+    <h3>{{ _("Enter your domain") }}</h3>
+    <p>{{ _("One field, one click. We read only public records — nothing is installed and no email is ever sent.") }}</p>
   </div>
   <div class="card">
     <div class="icon">②</div>
-    <h3>Get a clear grade</h3>
-    <p>Your domain gets a simple 0–100 score and a letter grade anyone on the team can understand.</p>
+    <h3>{{ _("Get a clear grade") }}</h3>
+    <p>{{ _("Your domain gets a simple 0–100 score and a letter grade anyone on the team can understand.") }}</p>
   </div>
   <div class="card">
     <div class="icon">③</div>
-    <h3>Fix it, record by record</h3>
-    <p>Every issue ships with the exact DNS record to publish. Copy, paste, done — then rescan to watch the grade climb.</p>
+    <h3>{{ _("Fix it, record by record") }}</h3>
+    <p>{{ _("Every issue ships with the exact DNS record to publish. Copy, paste, done — then rescan to watch the grade climb.") }}</p>
   </div>
 </section>
 
 <section class="cta">
-  <h2>Want drift alerts and history?</h2>
-  <p>Monitor your domains and get notified when a score drops or a record changes.</p>
-  <a class="btn big" href="/signup">Create a free account</a>
+  <h2>{{ _("Want drift alerts and history?") }}</h2>
+  <p>{{ _("Monitor your domains and get notified when a score drops or a record changes.") }}</p>
+  <a class="btn big" href="/signup">{{ _("Create a free account") }}</a>
 </section>
 
 <p class="muted small" style="text-align:center;margin-top:28px">
-  Got a suspicious email? <a href="/tools/headers">Check its headers →</a> · Curious what a scan actually looks at? <a href="/help">Read the Help guide →</a>
+  {{ _("Got a suspicious email?") }} <a href="/tools/headers">{{ _("Check its headers →") }}</a> · <a href="/tools">{{ _("Check a link →") }}</a> · {{ _("Curious what a scan actually looks at?") }} <a href="/help">{{ _("Read the Help guide →") }}</a>
 </p>
 {% endblock %}
 {% block scripts %}

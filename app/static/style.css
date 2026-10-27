@@ -108,6 +108,8 @@ footer {
 }
 footer a { color: var(--ink-dim); margin: 0 8px; }
 footer a:hover { color: #fff; }
+footer select { background: transparent; color: var(--ink-dim); border: 1px solid var(--line-soft);
+  border-radius: 8px; padding: 4px 8px; font: inherit; }
 .eyebrow {
   display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .14em;
   text-transform: uppercase; color: var(--accent-2);

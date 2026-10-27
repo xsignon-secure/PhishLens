@@ -112,10 +112,10 @@
 
   <div class="panel" id="cloudflare-panel">
       <h2><span class="dot"></span>DNS provider (one-click fixes)</h2>
-      <p class="muted small">Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page.</p>
+      <p class="muted small">Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.</p>
       <div id="cf-status" class="muted small"></div>
       <form id="cf-form" class="scanbox small owner-only hidden">
-        <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option></select>
+        <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option><option value="godaddy">GoDaddy</option><option value="route53">Amazon Route 53</option></select>
         <input id="cf-token" type="password" placeholder="API token" autocomplete="off">
         <button class="btn" type="submit">Connect</button>
       </form>
@@ -141,12 +141,21 @@
   <div class="dash-grid">
     <div class="panel" id="sso-panel">
       <h2><span class="dot"></span>Single sign-on</h2>
-      <p class="muted small">Sign in through Okta, Microsoft Entra ID, Google Workspace or any OpenID Connect provider. New people from your email domain are added as members on first sign-in.</p>
+      <p class="muted small">Sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. New people from your email domain are added as members on first sign-in.</p>
       <div id="sso-status" class="muted small"></div>
       <form id="sso-form" class="owner-only hidden">
-        <label>Issuer URL<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
-        <label>Client ID<input id="sso-client-id" type="text"></label>
-        <label>Client secret<input id="sso-secret" type="password" autocomplete="new-password" placeholder="leave blank to keep"></label>
+        <label>Protocol<select id="sso-protocol"><option value="oidc">OpenID Connect</option><option value="saml">SAML 2.0</option></select></label>
+        <div id="sso-oidc">
+          <label>Issuer URL<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
+          <label>Client ID<input id="sso-client-id" type="text"></label>
+          <label>Client secret<input id="sso-secret" type="password" autocomplete="new-password" placeholder="leave blank to keep"></label>
+        </div>
+        <div id="sso-saml" class="hidden">
+          <label>IdP metadata XML (paste it, or fill in the three fields below)<textarea id="saml-metadata" rows="3" style="width:100%" placeholder="&lt;EntityDescriptor ...&gt;"></textarea></label>
+          <label>IdP entity ID<input id="saml-entity" type="text"></label>
+          <label>IdP sign-in URL<input id="saml-url" type="url" placeholder="https://idp.example.com/saml/sso"></label>
+          <label>IdP signing certificate (PEM)<textarea id="saml-cert" rows="2" style="width:100%" placeholder="leave blank to keep"></textarea></label>
+        </div>
         <label>Email domain<input id="sso-domain" type="text" placeholder="acme.com"></label>
         <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> Require SSO for members (owners can still use a password)</label>
         <button class="btn" type="submit">Save</button>
@@ -725,16 +734,40 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
 async function loadSso() {
   const c = await api('/api/team/sso');
   document.getElementById('sso-status').innerHTML = (c.configured
-    ? `✓ SSO on for @${escapeHtml(c.email_domain)}${c.enforced ? ' (required for members)' : ''}.`
-    : 'Not set up.') + `<br>Redirect URI to register with your provider: <code>${escapeHtml(c.redirect_uri)}</code>`;
+    ? `✓ ${c.protocol === 'saml' ? 'SAML' : 'OpenID Connect'} SSO on for @${escapeHtml(c.email_domain)}${c.enforced ? ' (required for members)' : ''}.`
+    : 'Not set up.') + `<br>OpenID Connect redirect URI: <code>${escapeHtml(c.redirect_uri)}</code>` +
+    `<br>SAML: entity ID / metadata <code>${escapeHtml(c.sp_entity_id)}</code>, ACS URL <code>${escapeHtml(c.acs_url)}</code>`;
+  document.getElementById('sso-protocol').value = c.protocol || 'oidc';
+  showSsoProtocol();
+  document.getElementById('saml-entity').value = c.saml_entity_id || '';
+  document.getElementById('saml-url').value = c.saml_sso_url || '';
   document.getElementById('sso-issuer').value = c.issuer || '';
   document.getElementById('sso-client-id').value = c.client_id || '';
   document.getElementById('sso-domain').value = c.email_domain || (dashData.me ? dashData.me.email.split('@')[1] : '');
   document.getElementById('sso-enforced').checked = !!c.enforced;
 }
+function showSsoProtocol() {
+  const saml = document.getElementById('sso-protocol').value === 'saml';
+  document.getElementById('sso-saml').classList.toggle('hidden', !saml);
+  document.getElementById('sso-oidc').classList.toggle('hidden', saml);
+}
+document.getElementById('sso-protocol').addEventListener('change', showSsoProtocol);
 document.getElementById('sso-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
+    if (document.getElementById('sso-protocol').value === 'saml') {
+      await api('/api/team/saml', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+        metadata_xml: document.getElementById('saml-metadata').value.trim() || null,
+        entity_id: document.getElementById('saml-entity').value.trim() || null,
+        sso_url: document.getElementById('saml-url').value.trim() || null,
+        certificate: document.getElementById('saml-cert').value.trim() || null,
+        email_domain: document.getElementById('sso-domain').value.trim(),
+        enforced: document.getElementById('sso-enforced').checked})});
+      document.getElementById('saml-metadata').value = document.getElementById('saml-cert').value = '';
+      toast('✓ SSO saved. Test it from the login page in a private window before requiring it.');
+      loadSso();
+      return;
+    }
     await api('/api/team/sso', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
       issuer: document.getElementById('sso-issuer').value.trim(), client_id: document.getElementById('sso-client-id').value.trim(),
       client_secret: document.getElementById('sso-secret').value || null, email_domain: document.getElementById('sso-domain').value.trim(),

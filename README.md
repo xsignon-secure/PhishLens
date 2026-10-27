@@ -17,19 +17,28 @@ servers, and validates BIMI certificates (VMC/CMC) and SVG Tiny PS logos.
 DMARC checks follow the 2026 DMARC update (RFC 9989–9991: `t=`, `np=`, `psd=`;
 `pct`, `rf`, `ri` flagged as obsolete).
 
-No AI. No external APIs. No tracking. Pure DNS + HTTPS lookups, so the marginal
-cost per scan is ~zero.
+No AI. No tracking. Scans are pure DNS + HTTPS lookups, so the marginal cost
+per scan is ~zero. (The link checker also asks RDAP for a domain's age; Google
+Safe Browsing, URLhaus, OpenPhish and VirusTotal lookups are opt-in.)
 
 Everything is included for everyone: monitoring with drift alerts, DMARC
 aggregate and forensic report analysis, SMTP TLS (TLS-RPT) report analysis,
 report import from IMAP, Microsoft 365 or Gmail, lookalike-domain alerts, an
 email header analyzer, PDF reports, Slack/Teams/Discord/SIEM alerts, a
 Prometheus `/api/metrics` endpoint for Grafana, API keys, MFA, teams, SSO
-(OIDC), white-label reports, hosted DMARC/SPF/MTA-STS and one-click DNS fixes
-on Cloudflare, DigitalOcean or deSEC.
+(OIDC or SAML 2.0), white-label reports, hosted DMARC/SPF/MTA-STS and one-click DNS fixes
+on Cloudflare, DigitalOcean, deSEC, GoDaddy or Amazon Route 53.
 
-Free tools, no account needed: `/tools` has single-record checkers, record
-generators (DMARC, SPF, MTA-STS, TLS-RPT, BIMI) and a DNS propagation checker.
+Free tools, no account needed: `/tools` has a phishing link checker,
+single-record checkers, record generators (DMARC, SPF, MTA-STS, TLS-RPT, BIMI)
+and a DNS propagation checker. The public pages are available in English,
+Spanish, French, German, Portuguese and Hindi.
+
+| Scan report | Dashboard |
+|---|---|
+| ![Scan report with prioritized fixes](docs/screenshots/scan-report.png) | ![Dashboard with monitored domains](docs/screenshots/dashboard.png) |
+| **Phishing link checker** | **Translated pages** |
+| ![Phishing link checker](docs/screenshots/free-tools.png) | ![Landing page in Spanish](docs/screenshots/landing-es.png) |
 
 ## Run it with Docker (one command)
 
@@ -101,7 +110,7 @@ app/
 - **Hosted DMARC / SPF / MTA-STS** with SPF flattening: `docs/HOSTED-RECORDS.md`.
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
-- **SSO** (OpenID Connect, optional enforcement): `docs/SSO.md`.
+- **SSO** (OpenID Connect or SAML 2.0, optional enforcement): `docs/SSO.md`.
 - **White-label (MSPs)**: brand name, colour, logo and footer on shared
   reports, PDFs and alert emails; client tags on monitors; extra alert
   recipients such as a PSA's email-to-ticket inbox.
@@ -177,6 +186,8 @@ Schema changes go through Alembic — see `docs/ENTERPRISE.md` for the workflow
   TLS-RPT reports by itself.
 - **Optional**: `RPKI_CHECK=true` (asks RIPEstat), `GEOIP_DB=/path/GeoLite2-Country.mmdb`
   (adds country to DMARC senders; `pip install maxminddb`).
+- **Link checker feeds** (optional): `SAFE_BROWSING_API_KEY`, `URLHAUS_AUTH_KEY`,
+  `OPENPHISH_FEED=true`; `URL_CHECK_RDAP=false` turns off the domain-age lookup.
 - **Single VPS (Oracle Cloud free tier)**: systemd + uvicorn, SQLite is fine
   to start; Caddy for TLS.
 - Full checklist: `docs/DEPLOY.md`.

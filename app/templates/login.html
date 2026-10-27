@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Log in — PhishLens{% endblock %}
+{% block title %}{{ _("Log in") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="auth">
-  <h1>Log in</h1>
+  <h1>{{ _("Log in") }}</h1>
   <form id="login-form">
-    <label>Email<input name="email" type="email" required></label>
-    <label>Password<input name="password" type="password" required></label>
-    <button class="btn big" type="submit">Log in</button>
-    <button class="btn ghost" type="button" id="sso-btn" style="margin-top:10px">Sign in with SSO</button>
+    <label>{{ _("Email") }}<input name="email" type="email" required></label>
+    <label>{{ _("Password") }}<input name="password" type="password" required></label>
+    <button class="btn big" type="submit">{{ _("Log in") }}</button>
+    <button class="btn ghost" type="button" id="sso-btn" style="margin-top:10px">{{ _("Sign in with SSO") }}</button>
     <p id="login-err" class="error"></p>
   </form>
   <form id="mfa-form" class="hidden">
-    <p class="sub">Enter the 6-digit code from your authenticator app.</p>
-    <label>Authenticator code<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
-    <button class="btn big" type="submit">Verify</button>
+    <p class="sub">{{ _("Enter the 6-digit code from your authenticator app.") }}</p>
+    <label>{{ _("Authenticator code") }}<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
+    <button class="btn big" type="submit">{{ _("Verify") }}</button>
   </form>
-  <p>No account? <a href="/signup">Sign up free</a> · <a href="/forgot-password">Forgot password?</a></p>
+  <p>{{ _("No account?") }} <a href="/signup">{{ _("Sign up free") }}</a> · <a href="/forgot-password">{{ _("Forgot password?") }}</a></p>
 </section>
 {% endblock %}
 {% block scripts %}
