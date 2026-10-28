@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     # Default rua= for hosted DMARC records: the mailbox read by
     # scripts/fetch_dmarc_reports.py.
     HOSTED_DMARC_RUA: str = ""
+    # Domain Connect one-click publishing (docs/DOMAIN-CONNECT.md). Off unless
+    # all three are set and the templates are registered with DNS hosts.
+    DOMAIN_CONNECT_PROVIDER_ID: str = ""
+    DOMAIN_CONNECT_PROVIDER_NAME: str = "PhishLens"
+    DOMAIN_CONNECT_PRIVATE_KEY: str = ""  # PEM; "\n" escapes are fine
+    DOMAIN_CONNECT_KEY_DOMAIN: str = ""   # where the public key TXT records live
+    DOMAIN_CONNECT_KEY_ID: str = "_dck1"
+    # TLS-RPT report mailbox for hosted TLS-RPT (defaults to HOSTED_DMARC_RUA).
+    HOSTED_TLSRPT_RUA: str = ""
     # Hostname customers CNAME mta-sts.<their domain> to (defaults to APP_URL's host).
     MTA_STS_TARGET: str = ""
     # Optional: let PhishLens add mta-sts.<domain> as a Render custom domain

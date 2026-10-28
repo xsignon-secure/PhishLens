@@ -108,6 +108,29 @@ def domain_summary(domain: str, days: int = 30, enrich: bool = True, db: Session
     return ip_enrich.enrich_summary(summary) if enrich else summary
 
 
+@router.get("/dkim/{domain}")
+def dkim_selector_health(domain: str, days: int = 180, db: Session = Depends(get_db),
+                         user: models.User = Depends(get_current_user)):
+    """DKIM key health from aggregate reports: each selector that signs for
+    the domain, its service, volume, pass rate, last use and key length."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from ..scanner import dns_checks
+
+    days = max(1, min(days, 730))
+    domain = normalize_domain(domain)
+    reports = (db.query(models.DmarcReport)
+               .filter(models.DmarcReport.tenant_id == user.tenant_id,
+                       models.DmarcReport.domain == domain,
+                       models.DmarcReport.date_begin >= datetime.utcnow() - timedelta(days=days))
+               .all())
+    rows = dmarc_reports.dkim_selectors(reports, domain)[:25]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        keys = list(pool.map(lambda r: dns_checks.dkim_key_info(r["selector"], r["domain"]), rows))
+    selectors = [dmarc_reports.dkim_health(r, k) for r, k in zip(rows, keys)]
+    return {"domain": domain, "days": days, "selectors": selectors}
+
+
 @router.delete("/reports/{report_id}")
 def delete_report(report_id: str, request: Request, db: Session = Depends(get_db),
                   user: models.User = Depends(get_current_user)):

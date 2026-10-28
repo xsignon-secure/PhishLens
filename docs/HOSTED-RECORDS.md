@@ -1,4 +1,4 @@
-# Hosted DMARC, SPF and MTA-STS
+# Hosted DMARC, SPF, MTA-STS, TLS-RPT and BIMI
 
 Customers delegate their records to PhishLens once; after that every policy
 change is a click in the dashboard. PhishLens writes the real records into a DNS
@@ -16,6 +16,8 @@ zone you control on Cloudflare.
    - `HOSTED_DMARC_RUA=dmarc@reports.hosted.phishlens.example` (the mailbox
      `scripts/fetch_dmarc_reports.py` reads; if it's inside `HOSTED_ZONE`,
      PhishLens also publishes the RFC 9990 external-reporting authorisation record for you)
+   - Optional: `HOSTED_TLSRPT_RUA`, the mailbox hosted TLS-RPT records send
+     reports to (defaults to `HOSTED_DMARC_RUA`; the report fetcher files both)
    - `MTA_STS_TARGET` = the hostname customers CNAME `mta-sts.<domain>` to
      (defaults to the app's own host)
    - Optional: `RENDER_API_KEY` + `RENDER_SERVICE_ID`, so PhishLens adds each
@@ -35,7 +37,21 @@ Cloudflare in one click). For example.com:
 | DMARC | `_dmarc.example.com CNAME example.com.<tag>._dmarc.<HOSTED_ZONE>` |
 | SPF | `example.com TXT "v=spf1 include:example.com.<tag>._spf.<HOSTED_ZONE> -all"` |
 | MTA-STS | `_mta-sts.example.com CNAME example.com.<tag>._mta-sts.<HOSTED_ZONE>` and `mta-sts.example.com CNAME <MTA_STS_TARGET>` |
+| TLS-RPT | `_smtp._tls.example.com CNAME example.com.<tag>._smtp._tls.<HOSTED_ZONE>` |
+| BIMI | `default._bimi.example.com CNAME example.com.<tag>._bimi.<HOSTED_ZONE>` |
 
 `<tag>` is unique per account, so two accounts can't overwrite each other's
 records. MTA-STS policies are served only to the account the domain's
 `_mta-sts` CNAME actually points at.
+
+## Hosted TLS-RPT and BIMI
+
+- **TLS-RPT**: the record is `v=TLSRPTv1; rua=...` with the team's report
+  addresses (email or https), or the server's report mailbox.
+- **BIMI**: the owner uploads an SVG logo. PhishLens checks it against SVG Tiny
+  PS (the same check as the free logo checker on `/tools`) and only stores
+  logos that pass. It serves the logo at `<APP_URL>/bimi/<id>/<version>.svg`
+  (so `APP_URL` must be https) and publishes
+  `v=BIMI1; l=<that URL>; a=<certificate URL, optional>`. A new logo gets a
+  new URL, so inboxes fetch it again. Gmail and Apple Mail also need a VMC or
+  CMC certificate from a certificate authority; PhishLens doesn't issue one.

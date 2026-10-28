@@ -124,14 +124,14 @@
       <button id="cf-del" class="btn tiny ghost owner-only hidden">{{ _("Disconnect") }}</button>
   </div>
   <div class="panel" id="hosted-panel">
-    <h2><span class="dot"></span>{{ _("Hosted DMARC, SPF &amp; MTA-STS") }}</h2>
+    <h2><span class="dot"></span>{{ _("Hosted DMARC, SPF, MTA-STS, TLS-RPT &amp; BIMI") }}</h2>
     <p class="muted small">{{ _("Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.") }}</p>
     <div id="hosted-off" class="muted small hidden">{{ _("Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).") }}</div>
     <form id="hosted-form" class="owner-only hidden">
       <div class="scanbox small">
         <select id="hosted-domain" aria-label="Domain"></select>
         <select id="hosted-kind" aria-label="Record">
-          <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta_sts">MTA-STS</option>
+          <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta_sts">MTA-STS</option><option value="tls_rpt">TLS-RPT</option><option value="bimi">BIMI</option>
         </select>
       </div>
       <div id="hosted-fields"></div>
@@ -297,7 +297,7 @@ async function loadDashboard() {
     try {
       const s = await api('/api/scans/' + b.dataset.view);
       const el = document.getElementById('dash-report');
-      el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected});
+      el.innerHTML = renderReport(s, false, await reportOpts(s));
       bindReportInteractions(el);
       el.scrollIntoView({behavior: 'smooth'});
     } catch (err) { if (err.message !== 'auth') toast((_t('Could not load report —') + ' ') + err.message); }
@@ -348,7 +348,7 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   try {
     const s = await api('/api/scans', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain})});
-    el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected});
+    el.innerHTML = renderReport(s, false, await reportOpts(s));
     bindReportInteractions(el);
     el.scrollIntoView({behavior: 'smooth'});
     if (wasFirst) setTimeout(() => toast(_t('🎉 First scan complete! Work the action plan above.')), 1600);
@@ -519,6 +519,14 @@ document.getElementById('checklist-dismiss').addEventListener('click', () => {
   toast(_t('Checklist dismissed — you can retake the tour anytime.'));
 });
 
+function maybeDomainConnectReturn() {
+  // The DNS host sends the browser back here after a Domain Connect approval.
+  const p = new URLSearchParams(location.search);
+  if (!p.has('dc')) return;
+  toast(p.get('error') ? _t('The DNS change was not made ({0}).', {0: p.get('error')}) : _t('✓ Your DNS host is publishing the record. Rescan in a few minutes.'));
+  history.replaceState(null, '', location.pathname);
+}
+
 function maybeWelcome() {
   const p = new URLSearchParams(location.search);
   let tourDone = false;
@@ -569,7 +577,23 @@ async function loadDmarc(selected) {
       <div class="meta">${_t('{0} messages from {1} IP(s) · DKIM aligned {2} · SPF aligned {3}', {0: r.messages.toLocaleString(), 1: r.ip_count, 2: r.dkim_aligned.toLocaleString(), 3: r.spf_aligned.toLocaleString()})}</div>
       ${r.hint ? `<div class="meta">${escapeHtml(r.hint)}</div>` : ''}
       ${(r.sources || []).length ? `<div class="meta muted">${r.sources.map(x => escapeHtml(x.ip + (x.ptr ? ' (' + x.ptr + ')' : '') + (x.country ? ' ' + x.country : ''))).join(' · ')}</div>` : ''}
-      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}`;
+      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}
+    <div id="dkim-health"></div>`;
+  loadDkimHealth(current).catch(() => {});
+}
+const KEY_SEV = {fail: 'high', warn: 'medium', pass: 'ok'};
+async function loadDkimHealth(domain) {
+  const d = await api('/api/dmarc/dkim/' + encodeURIComponent(domain) + '?days=180');
+  const box = document.getElementById('dkim-health');
+  if (!box || !d.selectors.length) return;
+  box.innerHTML = '<h3 class="muted small" style="margin:14px 0 4px">' + _t('DKIM keys seen in reports (last 180 days)') + '</h3>' +
+    `<div class="observations" style="margin-top:4px"><div class="table-wrap"><table><thead><tr><th>${_t('Selector')}</th><th>${_t('Service')}</th><th>${_t('Messages')}</th><th>${_t('Pass')}</th><th>${_t('Key')}</th><th>${_t('Last seen')}</th></tr></thead><tbody>` +
+    d.selectors.map(x => `<tr><td><strong>${escapeHtml(x.selector)}</strong><div class="muted small">${escapeHtml(x.domain)}</div></td>
+      <td>${escapeHtml(x.service || '—')}</td><td>${x.messages.toLocaleString()}</td><td>${x.pass_rate ?? '—'}%</td>
+      <td><span class="sev ${KEY_SEV[x.status]}">${x.bits ? x.bits + '-bit' : escapeHtml(x.key_type || '?')}</span></td>
+      <td style="white-space:nowrap">${escapeHtml(x.last_seen.slice(0, 10))}</td></tr>` +
+      (x.flags.length ? `<tr><td colspan="6" class="small">${x.flags.map(f => escapeHtml(f.message)).join('<br>')}</td></tr>` : '')).join('') +
+    '</tbody></table></div></div>';
 }
 document.getElementById('dmarc-domain').addEventListener('change', e => loadDmarc(e.target.value));
 document.getElementById('dmarc-file').addEventListener('change', async (e) => {
@@ -669,7 +693,34 @@ async function loadCloudflare() {
   document.getElementById('cf-status').textContent = c.connected ? _t('✓ {0} connected.', {0: c.label}) : _t('Not connected.');
   document.getElementById('cf-del').style.display = c.connected ? '' : 'none';
 }
+const dcCache = {};
+async function domainConnectFor(domain) {
+  // Without a connected DNS token, owners can still publish in one click when
+  // the domain's DNS host supports Domain Connect.
+  if (dashData.cfConnected || !dashData.me || dashData.me.role !== 'owner') return null;
+  if (!(domain in dcCache)) {
+    try { const r = await api('/api/dns/domain-connect?domain=' + encodeURIComponent(domain)); dcCache[domain] = r.supported ? r : null; }
+    catch (err) { dcCache[domain] = null; }
+  }
+  return dcCache[domain];
+}
+async function reportOpts(s) {
+  const dc = await domainConnectFor(s.domain);
+  window.DNS_LABEL = dc ? dc.provider : dashData.dnsLabel;
+  return {pdfUrl: '/api/scans/' + s.id + '/pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected || !!dc};
+}
+async function domainConnectApply(name, type, value, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/dns/domain-connect/apply-url', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, type, value})});
+    window.open(r.url, '_blank', 'noopener');
+    toast(_t('Approve the change at {0}, then rescan.', {0: r.provider}));
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not apply:') + ' ') + err.message); }
+  if (btn) btn.disabled = false;
+}
 window.applyDnsFix = async (name, type, value, btn) => {
+  if (!dashData.cfConnected) return domainConnectApply(name, type, value, btn);
   if (!confirm(_t('Publish this record in {0}?\n\n{1}  {2}  {3}', {0: dashData.dnsLabel, 1: name, 2: type, 3: value}))) return;
   if (btn) btn.disabled = true;
   try {
@@ -705,17 +756,42 @@ const HOSTED_FIELDS = {
     <div class="scanbox small"><select id="h-all" aria-label="Unlisted senders">${['-all','~all'].map(v => `<option${(c.all||'-all')===v?' selected':''}>${v}</option>`).join('')}</select></div>`,
   mta_sts: c => `<div class="scanbox small"><select id="h-mode" aria-label="Mode">${['testing','enforce','none'].map(v => `<option${(c.mode||'testing')===v?' selected':''}>${v}</option>`).join('')}</select></div>
     <label>${_t('MX hosts, one per line (wildcards like *.mail.protection.outlook.com are fine)')}<textarea id="h-mx" rows="3" style="width:100%">${escapeHtml((c.mx||[]).join('\n'))}</textarea></label>`,
+  tls_rpt: c => `<label>${_t('Report addresses (email or https://, comma-separated; blank = PhishLens mailbox)')}<input id="h-tls-rua" type="text" value="${escapeHtml((c.rua||[]).map(a => a.replace(/^mailto:/, '')).join(', '))}"></label>`,
+  bimi: c => `<label>${_t('Logo (SVG Tiny PS, up to 32 KB)')}<input id="h-svg-file" type="file" accept=".svg,image/svg+xml"></label>
+    <textarea id="h-svg" class="hidden">${escapeHtml(c.svg || '')}</textarea>
+    <label>${_t('Certificate URL (VMC or CMC .pem, optional)')}<input id="h-cert" type="url" placeholder="https://" value="${escapeHtml(c.certificate_url || '')}"></label>
+    <div id="h-bimi-check"></div>`,
 };
+async function showBimiCheck() {
+  const svg = document.getElementById('h-svg').value;
+  const box = document.getElementById('h-bimi-check');
+  if (!svg) { box.innerHTML = ''; return; }
+  try {
+    const r = await api('/api/tools/bimi-svg', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({svg})});
+    box.innerHTML = bimiCheckHtml(r, svg);
+  } catch (err) { if (err.message !== 'auth') box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+}
 function hostedConfig(kind) {
   const lines = id => document.getElementById(id).value.split(/[\n,]/).map(x => x.trim()).filter(Boolean);
   if (kind === 'dmarc') return {p: document.getElementById('h-p').value, np: document.getElementById('h-np').value || null, t: document.getElementById('h-t').checked, rua: lines('h-rua')};
   if (kind === 'spf') return {sources: lines('h-sources'), all: document.getElementById('h-all').value};
+  if (kind === 'tls_rpt') return {rua: lines('h-tls-rua')};
+  if (kind === 'bimi') return {svg: document.getElementById('h-svg').value, certificate_url: document.getElementById('h-cert').value.trim() || null};
   return {mode: document.getElementById('h-mode').value, mx: lines('h-mx')};
 }
 function renderHostedFields() {
   const d = document.getElementById('hosted-domain').value, k = document.getElementById('hosted-kind').value;
   const rec = (dashData.hosted || []).find(r => r.domain === d && r.kind === k);
   document.getElementById('hosted-fields').innerHTML = HOSTED_FIELDS[k](rec ? rec.config : {});
+  if (k === 'bimi') {
+    document.getElementById('h-svg-file').addEventListener('change', async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      document.getElementById('h-svg').value = await f.text();
+      showBimiCheck();
+    });
+    showBimiCheck();
+  }
 }
 async function loadHosted() {
   const h = await api('/api/hosted');
@@ -728,7 +804,9 @@ async function loadHosted() {
     ? domains.map(d => `<option${d === cur ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('')
     : ('<option value="">' + _t('Scan a domain first') + '</option>');
   renderHostedFields();
-  const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS'};
+  const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS', tls_rpt: 'TLS-RPT', bimi: 'BIMI'};
+  await Promise.all([...new Set(h.records.map(r => r.domain))].map(domainConnectFor));
+  const applyLabel = d => dashData.cfConnected ? dashData.dnsLabel : (dcCache[d] || {}).provider;
   document.getElementById('hosted-list').innerHTML = h.records.map(r => `<div class="dm-row" data-hosted="${escapeHtml(r.domain)}|${r.kind}">
     <div class="top"><strong>${escapeHtml(r.domain)} · ${labels[r.kind]}</strong>
       <button class="btn tiny" data-hcheck>${_t('Check DNS')}</button>
@@ -736,7 +814,7 @@ async function loadHosted() {
     <div class="meta">${_t('Publish once in your DNS:')}</div>
     ${r.customer_records.map(c => `<div class="meta fix"><code>${escapeHtml(c.name)}  ${c.type}  ${escapeHtml(c.value)}</code>
       <button class="copy-btn" data-copy="${escapeHtml(c.value)}">${_t('Copy')}</button>
-      ${dashData.cfConnected ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>${_t('Apply in {0}', {0: escapeHtml(dashData.dnsLabel)})}</button>` : ''}
+      ${applyLabel(r.domain) ? `<button class="copy-btn" data-happly='${escapeHtml(JSON.stringify(c))}'>${_t('Apply in {0}', {0: escapeHtml(applyLabel(r.domain))})}</button>` : ''}
       <br><small>${escapeHtml(c.note)}</small></div>`).join('')}
     <div class="meta" data-hstatus></div></div>`).join('');
   const list = document.getElementById('hosted-list');
@@ -871,6 +949,7 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     loadSso().catch(() => {});
     loadBranding().catch(() => {});
     maybeWelcome();
+    maybeDomainConnectReturn();
   } catch (e) {
     if (e.message !== 'auth') toast((_t('Could not load dashboard —') + ' ') + e.message);
   }

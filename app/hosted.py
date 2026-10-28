@@ -1,10 +1,12 @@
-"""Hosted DMARC, SPF and MTA-STS.
+"""Hosted DMARC, SPF, MTA-STS, TLS-RPT and BIMI.
 
 The customer delegates once:
     _dmarc.example.com     CNAME  example.com.<tag>._dmarc.<HOSTED_ZONE>
     example.com            TXT    "v=spf1 include:example.com.<tag>._spf.<HOSTED_ZONE> -all"
     _mta-sts.example.com   CNAME  example.com.<tag>._mta-sts.<HOSTED_ZONE>
     mta-sts.example.com    CNAME  <MTA_STS_TARGET>
+    _smtp._tls.example.com CNAME  example.com.<tag>._smtp._tls.<HOSTED_ZONE>
+    default._bimi.example.com CNAME example.com.<tag>._bimi.<HOSTED_ZONE>
 and from then on every policy change (p=none -> reject, a new email
 provider, MTA-STS testing -> enforce) is a click in PhishLens instead of a
 DNS ticket. Hosted SPF is flattened to IP addresses, which keeps the domain
@@ -23,10 +25,11 @@ from datetime import datetime
 import dns.resolver
 import httpx
 
-from . import dns_providers, models
+from . import bimi, dns_providers, models
 from .config import settings
 
-KINDS = ("dmarc", "spf", "mta_sts")
+KINDS = ("dmarc", "spf", "mta_sts", "tls_rpt", "bimi")
+_EMAIL = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}")
 SPF_CHUNK = 420           # characters per hosted SPF record (well under the 512-byte UDP answer)
 SPF_LOOKUP_BUDGET = 40    # DNS queries spent flattening one domain
 _SPF_TERM = re.compile(r"^(?:[+~?-]?)(include:[a-z0-9._-]+|ip4:[0-9./]+|ip6:[0-9a-f:./]+|a|mx|"
@@ -57,7 +60,8 @@ def _tag(rec: models.HostedRecord) -> str:
 
 
 def hosted_name(rec: models.HostedRecord) -> str:
-    label = {"dmarc": "_dmarc", "spf": "_spf", "mta_sts": "_mta-sts"}[rec.kind]
+    label = {"dmarc": "_dmarc", "spf": "_spf", "mta_sts": "_mta-sts",
+             "tls_rpt": "_smtp._tls", "bimi": "_bimi"}[rec.kind]
     return f"{rec.domain}.{_tag(rec)}.{label}.{settings.HOSTED_ZONE}"
 
 
@@ -84,7 +88,7 @@ def clean_config(kind: str, cfg: dict, domain: str) -> dict:
         if not rua and settings.HOSTED_DMARC_RUA:
             rua = [settings.HOSTED_DMARC_RUA.lower().removeprefix("mailto:")]
         for a in rua:
-            if not re.fullmatch(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", a):
+            if not _EMAIL.fullmatch(a):
                 raise HostedError(f"Invalid report address: {a}")
         align = {k: cfg.get(k, "r") for k in ("adkim", "aspf")}
         if any(v not in ("r", "s") for v in align.values()):
@@ -121,6 +125,40 @@ def clean_config(kind: str, cfg: dict, domain: str) -> dict:
         except (TypeError, ValueError):
             raise HostedError("max_age must be a number")
         return {"mode": mode, "mx": mx[:10], "max_age": max(86400, min(max_age, 31557600))}
+    if kind == "tls_rpt":
+        rua = []
+        for a in (cfg.get("rua") or []):
+            a = a.strip()
+            if not a:
+                continue
+            if a.lower().startswith("https://"):
+                if not re.fullmatch(r"https://[a-z0-9.-]+(:\d+)?(/[\w./%~+-]*)?", a, re.I):
+                    raise HostedError(f"Invalid report URL: {a}")
+                rua.append(a)
+                continue
+            a = a.lower().removeprefix("mailto:")
+            if not _EMAIL.fullmatch(a):
+                raise HostedError(f"Invalid report address: {a}")
+            rua.append("mailto:" + a)
+        default = settings.HOSTED_TLSRPT_RUA or settings.HOSTED_DMARC_RUA
+        if not rua and default:
+            rua = ["mailto:" + default.lower().removeprefix("mailto:")]
+        if not rua:
+            raise HostedError("Add a report address (an email address or https:// URL)")
+        return {"rua": rua[:3]}
+    if kind == "bimi":
+        svg = (cfg.get("svg") or "").strip()
+        if not svg:
+            raise HostedError("Upload your logo as an SVG file")
+        result = bimi.check_svg(svg)
+        if not result["ok"]:
+            raise HostedError("The logo isn't valid SVG Tiny PS: " + " ".join(result["errors"]))
+        if not settings.APP_URL.startswith("https://"):
+            raise HostedError("Hosted BIMI needs PhishLens served over HTTPS")
+        cert = (cfg.get("certificate_url") or "").strip()
+        if cert and not re.fullmatch(r"https://[a-z0-9.-]+(:\d+)?/[\w./%~+-]*", cert, re.I):
+            raise HostedError("The certificate (VMC/CMC) URL must be an https:// link to a .pem file")
+        return {"svg": svg, "certificate_url": cert or None}
     raise HostedError("Unknown record kind")
 
 
@@ -140,6 +178,19 @@ def dmarc_value(cfg: dict) -> str:
     if cfg.get("aspf") == "s":
         parts.append("aspf=s")
     return "; ".join(parts)
+
+
+def tls_rpt_value(cfg: dict) -> str:
+    return "v=TLSRPTv1; rua=" + ",".join(cfg["rua"])
+
+
+def bimi_logo_url(rec: models.HostedRecord) -> str:
+    # The policy id changes with each new logo, so inboxes refetch it.
+    return f"{settings.APP_URL.rstrip('/')}/bimi/{rec.id}/{rec.policy_id or 'logo'}.svg"
+
+
+def bimi_value(rec: models.HostedRecord) -> str:
+    return f"v=BIMI1; l={bimi_logo_url(rec)}; a={rec.config.get('certificate_url') or ''}"
 
 
 def _resolve(name: str, rtype: str, resolver) -> list:
@@ -244,6 +295,10 @@ def desired_records(rec: models.HostedRecord, resolver=None) -> dict[str, str]:
         return spf_records(rec, flatten_spf(rec.config["sources"], rec.domain, resolver))
     if rec.kind == "mta_sts":
         return {hosted_name(rec): f"v=STSv1; id={rec.policy_id}"}
+    if rec.kind == "tls_rpt":
+        return {hosted_name(rec): tls_rpt_value(rec.config)}
+    if rec.kind == "bimi":
+        return {hosted_name(rec): bimi_value(rec)}
     raise HostedError("Unknown record kind")
 
 
@@ -257,6 +312,10 @@ def customer_records(rec: models.HostedRecord) -> list[dict]:
         return [{"name": d, "type": "TXT",
                  "value": f"v=spf1 include:{hosted_name(rec)} {rec.config['all']}",
                  "note": "Replace your existing v=spf1 record (keep other TXT records)."}]
+    if rec.kind in ("tls_rpt", "bimi"):
+        name = f"_smtp._tls.{d}" if rec.kind == "tls_rpt" else f"default._bimi.{d}"
+        return [{"name": name, "type": "CNAME", "value": hosted_name(rec),
+                 "note": "Delete any existing TXT record at this name first."}]
     return [
         {"name": f"_mta-sts.{d}", "type": "CNAME", "value": hosted_name(rec),
          "note": "Delete any existing TXT record at this name first."},

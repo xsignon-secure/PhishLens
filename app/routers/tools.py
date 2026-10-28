@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import audit, header_analyzer, models, schemas, url_check
+from .. import audit, bimi, header_analyzer, models, schemas, url_check
 from ..database import get_db
 from ..deps import assert_public_target, client_ip, get_current_user, normalize_domain, public_scan_limit, rate_limit
 from ..scanner import dns_checks, lookalike, mail_checks, net, web_checks
@@ -173,6 +173,18 @@ def spf_tree(payload: SpfTreeIn, request: Request):
     tree = dns_checks.spf_tree(record)
     total = dns_checks.spf_tree_total(tree)
     return {"record": record, "tree": tree, "lookups": total, "limit": dns_checks.SPF_LOOKUP_LIMIT}
+
+
+# ------------------------------------------------------------------ BIMI logo checker
+class BimiSvgIn(BaseModel):
+    svg: str = Field(min_length=10, max_length=200_000)
+
+
+@router.post("/bimi-svg")
+def bimi_svg(payload: BimiSvgIn, request: Request):
+    """Public: does this logo meet SVG Tiny PS? Nothing is stored."""
+    rate_limit(request, f"bimi-svg:{client_ip(request)}", 60)
+    return bimi.check_svg(payload.svg)
 
 
 # ------------------------------------------------------------------ phishing URL checker

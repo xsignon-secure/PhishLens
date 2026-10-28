@@ -117,7 +117,15 @@ app/
 
 - **Forensic (RUF) reports**: failure reports (ARF) are read from the same
   mailbox or uploaded as .eml; only headers are kept, never message bodies.
-- **Hosted DMARC / SPF / MTA-STS** with SPF flattening: `docs/HOSTED-RECORDS.md`.
+- **Hosted DMARC / SPF / MTA-STS / TLS-RPT / BIMI** with SPF flattening and
+  BIMI logo hosting: `docs/HOSTED-RECORDS.md`.
+- **DKIM key health**: from aggregate reports, every selector that signs for
+  your domain with its service, volume, pass rate, last use and key length,
+  flagging weak keys and keys unused for 90 days.
+- **BIMI logo checker**: `/tools` validates an SVG against SVG Tiny PS and
+  shows a phone and desktop inbox preview.
+- **Domain Connect**: one-click publishing at hosts that support it, with no
+  API token (`docs/DOMAIN-CONNECT.md`).
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
 - **SSO** (OpenID Connect or SAML 2.0, optional enforcement): `docs/SSO.md`.
