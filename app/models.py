@@ -31,6 +31,9 @@ class Tenant(Base):
     report_footer = Column(String(300), nullable=True)
     # Extra alert recipients, e.g. a PSA's email-to-ticket inbox.
     alert_emails = Column(JSON, nullable=True)
+    # Scheduled PDF reports by email: off | weekly | monthly.
+    report_schedule = Column(String(10), nullable=False, default="off", server_default="off")
+    report_sent_at = Column(DateTime, nullable=True)
     # SSO (OpenID Connect). Secrets are stored encrypted (app/crypto.py).
     sso_issuer = Column(String(300), nullable=True)
     sso_client_id = Column(String(300), nullable=True)

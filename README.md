@@ -142,6 +142,14 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
   to attach to an email. Rendered with reportlab, no system dependencies.
   "Email me this report" sends the PDF to the signed-in user's own address
   (needs SMTP).
+- **Scheduled reports**: a weekly or monthly email to the team's owners (and
+  extra alert addresses) with the latest PDF for each monitored domain. Set it
+  on the dashboard; it goes out with the scheduled rescan (needs SMTP).
+- **DMARC report views**: senders, sending hosts (reverse DNS), countries
+  (with `GEOIP_DB`) and a daily volume chart of passing and failing mail.
+- **Overview** (`/overview`): every monitored domain at a glance for MSPs and
+  larger teams: clients, average and lowest scores, domains added and removed
+  this month, and the most frequent alerts.
 - **Observations**: each report lists the problems as Risk, Severity, Impact
   and Fix, highest severity first, on screen and in the PDF.
 - **Score history**: signed-in scans and monitors show a sparkline of past

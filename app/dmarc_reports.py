@@ -194,6 +194,7 @@ def summarize(reports: list, domain: str, days: int) -> dict:
     senders: dict[str, dict] = {}
     total = passed = 0
     by_day: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    by_ip: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     reporters = set()
     first = last = None
     policy = None
@@ -212,6 +213,9 @@ def summarize(reports: list, domain: str, days: int) -> dict:
             passed += n if ok else 0
             by_day[day][0] += n
             by_day[day][1] += n if ok else 0
+            if rec.get("source_ip"):
+                by_ip[rec["source_ip"]][0] += n
+                by_ip[rec["source_ip"]][1] += n if ok else 0
             name = identify_sender(rec, domain)
             s = senders.setdefault(name, {"sender": name, "messages": 0, "passed": 0,
                                           "dkim_aligned": 0, "spf_aligned": 0,
@@ -264,11 +268,14 @@ def summarize(reports: list, domain: str, days: int) -> dict:
         "last": last.isoformat() + "Z" if last else None,
         "policy": policy, "senders": rows,
         "daily": [{"day": d, "messages": v[0], "passed": v[1]} for d, v in sorted(by_day.items())],
+        "ips": [{"ip": ip, "messages": v[0], "passed": v[1]}
+                for ip, v in sorted(by_ip.items(), key=lambda kv: -kv[1][0])[:TOP_IPS]],
         "verdict": verdict,
     }
 
 
 STALE_DAYS = 90
+TOP_IPS = 200
 
 
 def dkim_selectors(reports: list, domain: str) -> list[dict]:

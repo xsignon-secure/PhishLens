@@ -18,6 +18,7 @@
     <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">{{ _("Help") }}</a>
     {% if user %}
       <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">{{ _("Dashboard") }}</a>
+      <a href="/overview" class="{% if request.url.path == '/overview' %}active{% endif %}">{{ _("Overview") }}</a>
       <a href="#" id="logout">{{ _("Log out") }}</a>
     {% else %}
       <a href="/login">{{ _("Log in") }}</a>

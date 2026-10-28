@@ -72,11 +72,40 @@ def lookup_many(ips: list[str], limit: int = 60) -> dict[str, dict]:
         return {i["ip"]: i for i in pool.map(lookup, ips)}
 
 
+def _org(host: str) -> str:
+    return ".".join(host.split(".")[-2:])
+
+
+def group_ips(ips: list[dict], info: dict[str, dict]) -> tuple[list[dict], list[dict]]:
+    """Mail volume per sending host (reverse DNS organisation) and per
+    country, for the top IPs. IPs without a name or country are grouped as
+    unknown (None)."""
+    hosts: dict = {}
+    countries: dict = {}
+    for row in ips:
+        i = info.get(row["ip"]) or {}
+        for key, table in ((_org(i["ptr"]) if i.get("ptr") else None, hosts), (i.get("country"), countries)):
+            t = table.setdefault(key, {"messages": 0, "passed": 0, "ips": 0})
+            t["messages"] += row["messages"]
+            t["passed"] += row["passed"]
+            t["ips"] += 1
+
+    def rows(table, label):
+        out = [{label: k, **v, "pass_rate": round(100 * v["passed"] / v["messages"], 1) if v["messages"] else None}
+               for k, v in table.items()]
+        return sorted(out, key=lambda r: -r["messages"])
+    return rows(hosts, "host"), rows(countries, "country")
+
+
 def enrich_summary(summary: dict) -> dict:
-    """Add reverse DNS / country to each sender's sample IPs, and a hint for
-    senders the report alone couldn't name."""
+    """Add reverse DNS / country to each sender's sample IPs, a hint for
+    senders the report alone couldn't name, and per-host and per-country
+    volume for the busiest IPs."""
     ips = [ip for row in summary.get("senders", []) for ip in row.get("sample_ips", [])]
-    info = lookup_many(ips)
+    top = summary.get("ips", [])[:60]
+    info = lookup_many(ips + [r["ip"] for r in top], limit=100)
+    summary["by_host"], summary["by_country"] = group_ips(top, info)
+    summary["geoip"] = _geo_reader() is not None
     for row in summary.get("senders", []):
         row["sources"] = [info.get(ip, {"ip": ip, "ptr": None, "country": None}) for ip in row.get("sample_ips", [])]
         if row["sender"].startswith("Unknown"):

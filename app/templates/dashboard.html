@@ -177,6 +177,15 @@
         <button class="btn" type="submit">{{ _("Save") }}</button>
       </form>
       <p id="brand-msg" class="muted small"></p>
+      <h3 style="margin:18px 0 6px;font-size:15px">{{ _("Scheduled reports") }}</h3>
+      <p class="muted small">{{ _("Email the latest PDF report for each monitored domain to the team's owners and the extra alert addresses above.") }}</p>
+      <div class="scanbox small owner-only hidden" id="sched-form">
+        <select id="sched-select" aria-label="Schedule">
+          <option value="off">{{ _("Off") }}</option><option value="weekly">{{ _("Weekly") }}</option><option value="monthly">{{ _("Monthly") }}</option>
+        </select>
+        <button class="btn tiny ghost" id="sched-now" type="button">{{ _("Send one now") }}</button>
+      </div>
+      <p id="sched-msg" class="muted small"></p>
     </div>
   </div>
   <div class="panel owner-only hidden" id="audit-panel">
@@ -566,20 +575,82 @@ async function loadDmarc(selected) {
   sel.classList.toggle('hidden', domains.length < 2);
   const s = await api('/api/dmarc/summary/' + encodeURIComponent(current) + '?days=90');
   const v = s.verdict || {};
+  dashData.dmarc = s;
   box.innerHTML = `
     <div class="mon"><strong>${escapeHtml(s.domain)}</strong>
       <span class="muted">${_t('{0} messages · {1} report(s) · policy p={2}', {0: s.messages.toLocaleString(), 1: s.reports, 2: escapeHtml((s.policy || {}).p || '?')})}</span>
       <span class="grade g${(s.pass_rate ?? 0) >= 98 ? 'A' : (s.pass_rate ?? 0) >= 80 ? 'C' : 'F'}">${s.pass_rate ?? '—'}%</span></div>
     <p>${statusBadge(v.level === 'info' ? 'warn' : v.level)} ${escapeHtml(v.message || '')}</p>
     ${v.record ? `<p><code>${escapeHtml(v.record)}</code></p>` : ''}
-    ${s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
+    <div class="tabs" role="tablist">${DMARC_VIEWS.map(([k, label], i) => `<button class="tab${i ? '' : ' on'}" role="tab" data-dview="${k}">${_t(label)}</button>`).join('')}</div>
+    <div id="dmarc-view"></div>
+    <div id="dkim-health"></div>`;
+  box.querySelectorAll('[data-dview]').forEach(b => b.onclick = () => {
+    box.querySelectorAll('[data-dview]').forEach(x => x.classList.toggle('on', x === b));
+    showDmarcView(b.dataset.dview);
+  });
+  showDmarcView('senders');
+  loadDkimHealth(current).catch(() => {});
+}
+const DMARC_VIEWS = [['senders', N_('Senders')], ['hosts', N_('Sending hosts')], ['countries', N_('Countries')], ['volume', N_('Volume')]];
+function shareBar(n, total) {
+  const pct = total ? Math.max(1, Math.round(100 * n / total)) : 0;
+  return `<span class="share-bar"><span style="width:${pct}%"></span></span>`;
+}
+function flag(cc) {
+  return cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
+}
+function volumeChart(rows) {
+  if (!rows.length) return '<p class="muted">' + _t('No report data yet for this period.') + '</p>';
+  // One slot per calendar day (at least two weeks), so gaps show as gaps.
+  const byDay = Object.fromEntries(rows.map(d => [d.day, d]));
+  const end = new Date(rows[rows.length - 1].day + 'T00:00:00Z');
+  let start = new Date(rows[0].day + 'T00:00:00Z');
+  if ((end - start) / 864e5 < 13) start = new Date(end - 13 * 864e5);
+  const daily = [];
+  for (let t = start; t <= end; t = new Date(+t + 864e5)) {
+    const day = t.toISOString().slice(0, 10);
+    daily.push(byDay[day] || {day, messages: 0, passed: 0});
+  }
+  const w = 640, h = 160, max = Math.max(...daily.map(d => d.messages), 1), bw = w / daily.length;
+  const bars = daily.map((d, i) => {
+    const total = h * d.messages / max, ok = h * d.passed / max, x = (i * bw + 1).toFixed(1), bwi = Math.max(bw - 2, 1).toFixed(1);
+    return `<g><title>${escapeHtml(d.day)}: ${_t('{0} messages, {1} passed', {0: d.messages.toLocaleString(), 1: d.passed.toLocaleString()})}</title>
+      <rect x="${x}" y="${(h - total).toFixed(1)}" width="${bwi}" height="${(total - ok).toFixed(1)}" class="vol-fail"/>
+      <rect x="${x}" y="${(h - ok).toFixed(1)}" width="${bwi}" height="${ok.toFixed(1)}" class="vol-pass"/></g>`;
+  }).join('');
+  return `<svg class="vol-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${_t('Messages per day')}">${bars}</svg>
+    <div class="vol-axis muted small"><span>${escapeHtml(daily[0].day)}</span><span>${_t('max {0}/day', {0: max.toLocaleString()})}</span><span>${escapeHtml(daily[daily.length - 1].day)}</span></div>
+    <p class="muted small"><span class="key vol-pass"></span> ${_t('Passed DMARC')} <span class="key vol-fail"></span> ${_t('Failed DMARC')}</p>`;
+}
+function groupTable(rows, label, total, name) {
+  if (!rows || !rows.length) return '<p class="muted">' + _t('No report data yet for this period.') + '</p>';
+  return `<div class="observations"><div class="table-wrap"><table><thead><tr><th>${label}</th><th>${_t('Messages')}</th><th>${_t('Pass')}</th><th>${_t('IPs')}</th></tr></thead><tbody>`
+    + rows.map(r => `<tr><td>${name(r)}</td><td>${r.messages.toLocaleString()} ${shareBar(r.messages, total)}</td>
+      <td>${r.pass_rate ?? '—'}%</td><td>${r.ips}</td></tr>`).join('') + '</tbody></table></div></div>';
+}
+function showDmarcView(view) {
+  const s = dashData.dmarc, el = document.getElementById('dmarc-view');
+  if (view === 'volume') { el.innerHTML = volumeChart(s.daily || []); return; }
+  const top = (s.ips || []).slice(0, 60).reduce((n, r) => n + r.messages, 0);
+  if (view === 'hosts') {
+    el.innerHTML = '<p class="muted small">' + _t('By reverse DNS of the busiest sending IPs.') + '</p>'
+      + groupTable(s.by_host, _t('Host'), top, r => r.host ? escapeHtml(r.host) : '<span class="muted">' + _t('(no reverse DNS)') + '</span>');
+    return;
+  }
+  if (view === 'countries') {
+    el.innerHTML = s.geoip === false
+      ? '<p class="muted">' + _t('Countries need a GeoIP database on the server (GEOIP_DB, e.g. the free DB-IP Lite).') + '</p>'
+      : '<p class="muted small">' + _t('Where the busiest sending IPs are. Mail from countries you don\'t send from is likely spoofing.') + '</p>'
+        + groupTable(s.by_country, _t('Country'), top, r => r.country ? flag(r.country) + ' ' + escapeHtml(r.country) : '<span class="muted">' + _t('(unknown)') + '</span>');
+    return;
+  }
+  el.innerHTML = s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
       ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
       <div class="meta">${_t('{0} messages from {1} IP(s) · DKIM aligned {2} · SPF aligned {3}', {0: r.messages.toLocaleString(), 1: r.ip_count, 2: r.dkim_aligned.toLocaleString(), 3: r.spf_aligned.toLocaleString()})}</div>
       ${r.hint ? `<div class="meta">${escapeHtml(r.hint)}</div>` : ''}
       ${(r.sources || []).length ? `<div class="meta muted">${r.sources.map(x => escapeHtml(x.ip + (x.ptr ? ' (' + x.ptr + ')' : '') + (x.country ? ' ' + x.country : ''))).join(' · ')}</div>` : ''}
-      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('')}
-    <div id="dkim-health"></div>`;
-  loadDkimHealth(current).catch(() => {});
+      ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('');
 }
 const KEY_SEV = {fail: 'high', warn: 'medium', pass: 'ok'};
 async function loadDkimHealth(domain) {
@@ -853,6 +924,29 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
   loadHosted();
 });
 
+/* ---------------- scheduled reports ---------------- */
+async function loadSchedule() {
+  const c = await api('/api/team/report-schedule');
+  document.getElementById('sched-select').value = c.schedule;
+  document.getElementById('sched-msg').textContent = !c.email_configured
+    ? _t('Email is not set up on this server (SMTP_*), so reports cannot be sent yet.')
+    : c.last_sent ? _t('Last sent {0}.', {0: c.last_sent.slice(0, 10)}) : '';
+}
+document.getElementById('sched-select').addEventListener('change', async (e) => {
+  try {
+    await api('/api/team/report-schedule', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({schedule: e.target.value})});
+    toast(_t('Schedule saved'));
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not save —') + ' ') + err.message); }
+  loadSchedule();
+});
+document.getElementById('sched-now').addEventListener('click', async (e) => {
+  e.target.disabled = true;
+  try { await api('/api/team/report-schedule/send-now', {method: 'POST'}); toast(_t('Report sent')); }
+  catch (err) { if (err.message !== 'auth') toast((_t('Could not send —') + ' ') + err.message); }
+  e.target.disabled = false;
+  loadSchedule();
+});
+
 /* ---------------- SSO ---------------- */
 async function loadSso() {
   const c = await api('/api/team/sso');
@@ -948,6 +1042,7 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     loadHosted().catch(() => {});
     loadSso().catch(() => {});
     loadBranding().catch(() => {});
+    loadSchedule().catch(() => {});
     maybeWelcome();
     maybeDomainConnectReturn();
   } catch (e) {
