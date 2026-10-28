@@ -366,3 +366,14 @@ def test_bimi_svg_and_certificate_checks(fake_dns, monkeypatch):
     r = dns_checks.check_bimi("x.com")
     text = " ".join(r["issues"])
     assert "tiny-ps" in text and "<script>" in text and "VMC or CMC" in text and r["score"] == 2
+
+
+def test_static_assets_are_versioned(client):
+    # A cached app.js from an older deploy breaks the new pages' inline scripts,
+    # so asset URLs carry a content hash that changes when the files change.
+    import re
+    html = client.get("/tools").text
+    js = re.search(r'/static/app\.js\?v=([0-9a-f]{10})"', html)
+    css = re.search(r'/static/style\.css\?v=([0-9a-f]{10})"', html)
+    assert js and css and js.group(1) == css.group(1)
+    assert client.get(f"/static/app.js?v={js.group(1)}").status_code == 200
