@@ -12,6 +12,7 @@
   <div class="panel" id="onboarding-panel">
     <div id="checklist"></div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <a class="btn tiny" href="/setup">{{ _("Guided DMARC setup →") }}</a>
       <button class="btn tiny" id="tour-btn">{{ _("▶ Take the guided tour") }}</button>
       <button class="btn tiny ghost" id="checklist-dismiss" style="margin-left:0">{{ _("Dismiss") }}</button>
     </div>
@@ -25,6 +26,7 @@
         <input id="monitor-client" type="text" placeholder="{{ _("Client (optional)") }}" maxlength="100" style="max-width:170px">
         <button class="btn" type="submit">{{ _("Add") }}</button>
       </form>
+      <p class="muted small"><a href="/setup">{{ _("New to DMARC? Use the guided setup →") }}</a></p>
       <p id="monitor-err" class="error"></p>
       <div id="monitors"></div>
     </div>
@@ -200,6 +202,25 @@ async function api(path, opts = {}) {
   return d;
 }
 
+const ALERT_LEVELS = [
+  ['none', N_('Alerts: none')],
+  ['essential', N_('Alerts: essential (DMARC only)')],
+  ['balanced', N_('Alerts: balanced')],
+  ['comprehensive', N_('Alerts: every DNS change')],
+];
+
+/* The DNS timeline for one monitored domain, newest change first. */
+function renderTimeline(d) {
+  const val = v => v.length ? v.map(x => `<code>${escapeHtml(x)}</code>`).join('<br>') : `<span class="muted">${_t('(none)')}</span>`;
+  return `<div class="panel timeline"><h2><span class="dot"></span>${_t('DNS changes for {0}', {0: escapeHtml(d.domain)})}</h2>
+    ${d.changes.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>${_t('When')}</th><th>${_t('Record')}</th><th>${_t('Before')}</th><th>${_t('After')}</th></tr></thead>
+      <tbody>${d.changes.map(c => `<tr><td>${escapeHtml(new Date(c.at).toLocaleString())}</td>
+        <td><strong>${escapeHtml(c.record)}</strong></td><td>${val(c.old)}</td><td>${val(c.new)}</td></tr>`).join('')}</tbody>
+    </table></div>` : `<p class="muted">${_t('No changes seen yet. Each rescan compares SPF, DMARC, DKIM, MTA-STS, TLS-RPT, BIMI, MX, NS and A records with the previous scan.')}</p>`}
+  </div>`;
+}
+
 /* shared dashboard state */
 const dashData = { monitors: [], alerts: [], scans: [], me: null, members: [] };
 
@@ -224,7 +245,12 @@ async function loadDashboard() {
         ${m.lookalikes ? `<span class="badge warn" title="Registered lookalike domains">${_t('{0} lookalike{1}', {0: m.lookalikes, 1: m.lookalikes > 1 ? 's' : ''})}</span>` : ''}
         ${sparkline(m.history && m.history.points, 64, 22)}
         <span class="grade g${(m.last_score??0) >= 80 ? 'A' : (m.last_score??0) >= 60 ? 'C' : 'F'}">${m.last_score ?? '—'}</span>
-        <span class="row-actions"><button data-rescan="${m.id}" class="btn tiny">${_t('Rescan')}</button>
+        <span class="row-actions">
+        <select data-level="${m.id}" aria-label="${_t('Alert level')}" title="${_t('Alert level')}">
+          ${ALERT_LEVELS.map(([v, label]) => `<option value="${v}"${m.alert_level === v ? ' selected' : ''}>${_t(label)}</option>`).join('')}
+        </select>
+        <button data-changes="${m.id}" class="btn tiny ghost">${_t('DNS changes')}</button>
+        <button data-rescan="${m.id}" class="btn tiny">${_t('Rescan')}</button>
         <button data-del="${m.id}" class="btn tiny ghost">${_t('Remove')}</button></span>
       </div>`).join('')
     : ('<p class="muted">' + _t('No monitored domains yet.') + '</p>');
@@ -238,6 +264,21 @@ async function loadDashboard() {
         <button data-share="${s.id}" class="btn tiny ghost">${s.is_public ? _t('Shared ✓') : _t('Share')}</button></span>
       </div>`).join('')
     : ('<p class="muted">' + _t('No scans yet — run one above.') + '</p>');
+  document.querySelectorAll('[data-level]').forEach(sel => sel.onchange = async () => {
+    try {
+      await api('/api/monitors/' + sel.dataset.level, {method: 'PATCH',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({alert_level: sel.value})});
+      toast(_t('Alert level saved'));
+    } catch (err) { if (err.message !== 'auth') toast((_t('Could not save —') + ' ') + err.message); }
+  });
+  document.querySelectorAll('[data-changes]').forEach(b => b.onclick = async () => {
+    try {
+      const d = await api('/api/monitors/' + b.dataset.changes + '/changes');
+      const el = document.getElementById('dash-report');
+      el.innerHTML = renderTimeline(d);
+      el.scrollIntoView({behavior: 'smooth'});
+    } catch (err) { if (err.message !== 'auth') toast((_t('Could not load —') + ' ') + err.message); }
+  });
   document.querySelectorAll('[data-rescan]').forEach(b => b.onclick = async () => {
     b.disabled = true;
     try {
@@ -256,7 +297,7 @@ async function loadDashboard() {
     try {
       const s = await api('/api/scans/' + b.dataset.view);
       const el = document.getElementById('dash-report');
-      el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
+      el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected});
       bindReportInteractions(el);
       el.scrollIntoView({behavior: 'smooth'});
     } catch (err) { if (err.message !== 'auth') toast((_t('Could not load report —') + ' ') + err.message); }
@@ -307,7 +348,7 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   try {
     const s = await api('/api/scans', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain})});
-    el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', applyFix: dashData.cfConnected});
+    el.innerHTML = renderReport(s, false, {pdfUrl: '/api/scans/' + s.id + '/pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected});
     bindReportInteractions(el);
     el.scrollIntoView({behavior: 'smooth'});
     if (wasFirst) setTimeout(() => toast(_t('🎉 First scan complete! Work the action plan above.')), 1600);

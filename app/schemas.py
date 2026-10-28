@@ -1,4 +1,6 @@
 """Pydantic schemas for the JSON API."""
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -86,13 +88,18 @@ class ScanIn(BaseModel):
     domain: str = Field(min_length=1, max_length=253)
 
 
+AlertLevel = Literal["none", "essential", "balanced", "comprehensive"]
+
+
 class MonitorIn(BaseModel):
     domain: str = Field(min_length=1, max_length=253)
     client: str | None = Field(default=None, max_length=100)
+    alert_level: AlertLevel = "balanced"
 
 
 class MonitorUpdateIn(BaseModel):
     client: str | None = Field(default=None, max_length=100)
+    alert_level: AlertLevel | None = None
 
 
 class BrandingIn(BaseModel):

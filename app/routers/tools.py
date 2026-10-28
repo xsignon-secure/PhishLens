@@ -150,6 +150,31 @@ def propagation(payload: PropagationIn, request: Request):
     return {"name": name, "type": payload.type, "results": results, "consistent": consistent}
 
 
+# ------------------------------------------------------------------ SPF builder
+class SpfTreeIn(BaseModel):
+    record: str = Field(min_length=6, max_length=2000)
+
+
+@router.post("/spf-tree")
+def spf_tree(payload: SpfTreeIn, request: Request):
+    """Public: the include tree and DNS lookup count of an SPF record."""
+    rate_limit(request, f"spf-tree:{client_ip(request)}", 120)
+    record = " ".join(payload.record.split())
+    if not record.lower().startswith("v=spf1"):
+        raise HTTPException(status_code=400, detail="An SPF record starts with v=spf1")
+    for term in record.split()[1:]:
+        target = dns_checks._spf_target(term)
+        if target:  # same rules as the propagation checker: no internal names
+            labels = target.lower().split(".")
+            if len(labels) < 2 or not all(l and len(l) <= 63 and all(c.isalnum() or c in "-_" for c in l)
+                                          for l in labels):
+                raise HTTPException(status_code=400, detail=f"Invalid domain in {term}")
+            normalize_domain(".".join(labels[-2:]))
+    tree = dns_checks.spf_tree(record)
+    total = dns_checks.spf_tree_total(tree)
+    return {"record": record, "tree": tree, "lookups": total, "limit": dns_checks.SPF_LOOKUP_LIMIT}
+
+
 # ------------------------------------------------------------------ phishing URL checker
 class UrlCheckIn(BaseModel):
     url: str = Field(min_length=3, max_length=2000)

@@ -19,8 +19,10 @@ def is_configured() -> bool:
     return bool(settings.SMTP_HOST and settings.SMTP_FROM)
 
 
-def send_email(to: list[str], subject: str, body: str) -> bool:
-    """Send a plain-text email. Returns True if handed to the SMTP server."""
+def send_email(to: list[str], subject: str, body: str,
+               attachments: list[tuple[str, bytes, str]] | None = None) -> bool:
+    """Send a plain-text email, with optional (filename, bytes, mime type)
+    attachments. Returns True if handed to the SMTP server."""
     if not to or not is_configured():
         return False
     msg = EmailMessage()
@@ -28,6 +30,9 @@ def send_email(to: list[str], subject: str, body: str) -> bool:
     msg["From"] = settings.SMTP_FROM
     msg["To"] = ", ".join(to)
     msg.set_content(body)
+    for filename, data, mime in attachments or []:
+        maintype, _, subtype = mime.partition("/")
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
     server = None
     try:
         # SMTP_USE_TLS=true: STARTTLS (port 587); false: implicit TLS (port 465).

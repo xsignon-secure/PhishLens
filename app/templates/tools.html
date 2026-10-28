@@ -106,6 +106,25 @@ document.getElementById('chk-form').addEventListener('submit', async (e) => {
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
 
+const SPF_SERVICES = [
+  ['Microsoft 365', 'include:spf.protection.outlook.com'],
+  ['Google Workspace', 'include:_spf.google.com'],
+  ['Zoho Mail', 'include:zohomail.com'],
+  ['Amazon SES', 'include:amazonses.com'],
+  ['SendGrid', 'include:sendgrid.net'],
+  ['Mailchimp / Mandrill', 'include:servers.mcsv.net'],
+  ['Mailgun', 'include:mailgun.org'],
+  ['Postmark', 'include:spf.mtasv.net'],
+  ['SparkPost', 'include:sparkpostmail.com'],
+  ['Brevo', 'include:spf.brevo.com'],
+  ['Salesforce', 'include:_spf.salesforce.com'],
+  ['Zendesk', 'include:mail.zendesk.com'],
+  ['Freshdesk', 'include:email.freshdesk.com'],
+  ['Constant Contact', 'include:spf.constantcontact.com'],
+  ['Proton Mail', 'include:_spf.protonmail.ch'],
+  ['Fastmail', 'include:spf.messagingengine.com'],
+  ['GoDaddy email', 'include:secureserver.net'],
+];
 const GEN = {
   dmarc: {fields: `<div class="scanbox small"><select id="g-p" aria-label="Policy"><option>none</option><option>quarantine</option><option selected>reject</option></select>
       <select id="g-np" aria-label="Non-existent subdomains"><option value="">${_t('np: inherit')}</option><option>reject</option><option>quarantine</option><option>none</option></select>
@@ -114,7 +133,10 @@ const GEN = {
     build: d => { const v = ['v=DMARC1', 'p=' + val('g-p')]; if (val('g-np')) v.push('np=' + val('g-np'));
       if (document.getElementById('g-t').checked) v.push('t=y'); if (val('g-rua')) v.push('rua=mailto:' + val('g-rua'));
       return [[`_dmarc.${d}`, 'TXT', v.join('; ')]]; }},
-  spf: {fields: `<label>${_t('Senders, one per line (e.g. include:_spf.google.com, include:spf.protection.outlook.com, ip4:203.0.113.5)')}
+  spf: {fields: `<div class="scanbox small"><select id="g-svc" aria-label="${_t('Add a sending service')}">
+        <option value="">${_t('+ Add a sending service…')}</option>
+        ${SPF_SERVICES.map(([name, inc]) => `<option value="${inc}">${escapeHtml(name)}</option>`).join('')}</select></div>
+      <label>${_t('Senders, one per line (e.g. include:_spf.google.com, include:spf.protection.outlook.com, ip4:203.0.113.5)')}
       <textarea id="g-src" rows="3" style="width:100%">include:_spf.google.com</textarea></label>
       <div class="scanbox small"><select id="g-all" aria-label="Everyone else"><option value="-all">${_t('-all (reject others)')}</option><option value="~all">${_t('~all (soft fail)')}</option></select></div>`,
     build: d => [[d, 'TXT', ['v=spf1', ...lines('g-src'), val('g-all')].join(' ')]]},
@@ -135,14 +157,51 @@ function renderGen() {
   const k = document.getElementById('gen-kind').value;
   document.getElementById('gen-fields').innerHTML = GEN[k].fields;
   document.querySelectorAll('#gen-fields input, #gen-fields select, #gen-fields textarea').forEach(el => el.addEventListener('input', buildGen));
+  const svc = document.getElementById('g-svc');
+  if (svc) svc.addEventListener('change', () => {
+    const src = document.getElementById('g-src');
+    if (svc.value && !lines('g-src').includes(svc.value)) src.value = (src.value.trim() + '\n' + svc.value).trim();
+    svc.value = '';
+    buildGen();
+  });
   buildGen();
+}
+
+/* SPF builder: live DNS lookup meter and include tree for the built record. */
+let spfTimer = null, spfSeq = 0;
+function spfTreeHtml(nodes) {
+  return `<ul class="spf-tree">${nodes.map(n => `<li><code>${escapeHtml(n.term)}</code>
+    ${n.lookups ? `<span class="muted small">${_t('{0} lookup', {0: n.lookups})}</span>` : ''}
+    ${n.error ? `<span class="badge warn">${escapeHtml(n.error)}</span>` : ''}
+    ${n.children && n.children.length ? spfTreeHtml(n.children) : ''}</li>`).join('')}</ul>`;
+}
+function checkSpf(record) {
+  const box = document.getElementById('spf-meter');
+  clearTimeout(spfTimer);
+  if (!record) { box.innerHTML = ''; return; }
+  spfTimer = setTimeout(async () => {
+    const seq = ++spfSeq;
+    box.innerHTML = '<p class="loading">' + _t('Counting DNS lookups…') + '</p>';
+    try {
+      const r = await post('/api/tools/spf-tree', {record});
+      if (seq !== spfSeq) return;
+      const pct = Math.min(100, Math.round(100 * r.lookups / r.limit));
+      const cls = r.lookups > r.limit ? 'fail' : r.lookups >= r.limit - 1 ? 'warn' : 'pass';
+      box.innerHTML = `<div class="spf-meter ${cls}"><p><strong>${_t('DNS lookups: {0}/{1}', {0: r.lookups, 1: r.limit})}</strong>
+        ${r.lookups > r.limit ? ' · ' + _t('Over the limit: receivers will treat SPF as broken (permerror). Remove a service or use hosted SPF flattening.') : ''}</p>
+        <div class="bar"><span style="width:${pct}%"></span></div></div>
+        <details class="spf-tree-wrap"><summary>${_t('Include tree')}</summary>${spfTreeHtml(r.tree)}</details>`;
+    } catch (err) { if (seq === spfSeq) box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+  }, 500);
 }
 function buildGen() {
   const k = document.getElementById('gen-kind').value;
   const d = val('gen-domain') || 'example.com';
   document.getElementById('gen-out').innerHTML = GEN[k].build(d).map(([name, type, value]) =>
     `<p class="fix" style="margin-top:10px"><strong>${escapeHtml(name)}</strong> <span class="muted">${type}</span><br>
-     <code style="white-space:pre-wrap">${escapeHtml(value)}</code> <button class="copy-btn" data-copy="${escapeHtml(value)}">${_t('Copy')}</button></p>`).join('');
+     <code style="white-space:pre-wrap">${escapeHtml(value)}</code> <button class="copy-btn" data-copy="${escapeHtml(value)}">${_t('Copy')}</button></p>`).join('')
+    + (k === 'spf' ? '<div id="spf-meter"></div>' : '');
+  if (k === 'spf') checkSpf(GEN.spf.build(d)[0][2]);
 }
 document.getElementById('gen-kind').addEventListener('change', renderGen);
 document.getElementById('gen-domain').addEventListener('input', buildGen);

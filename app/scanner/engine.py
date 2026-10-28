@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .. import deps, models
-from . import guides, recommendations, reputation, scoring
+from . import dns_snapshot, guides, recommendations, reputation, scoring
 
 HISTORY_POINTS = 12
 TREND_WINDOW_DAYS = 30
@@ -28,6 +28,14 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
         except Exception:
             dns_host = None
     score, grade = scoring.score_results(results)
+    # Team scans keep a record snapshot so monitors can report DNS changes.
+    snapshot = None
+    if tenant_id:
+        selector = next((c.get("selector") for c in results if c.get("key") == "dkim"), None)
+        try:
+            snapshot = dns_snapshot.snapshot(domain, selector)
+        except Exception:
+            snapshot = None
     result = {
         "domain": domain,
         "score": score,
@@ -38,6 +46,8 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
         "reputation": rep,
         "dns_host": dns_host,
     }
+    if snapshot is not None:
+        result["dns"] = snapshot
     # Attach BEFORE persisting: SQLAlchemy does not track in-place mutations
     # of JSON columns, so mutating after commit would be silently lost.
     recommendations.attach(result)
@@ -161,21 +171,41 @@ def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool 
         monitor.last_checked_at = datetime.utcnow()
         db.commit()
         return {"scan": scan, "alerts": [], "emailed": False, "webhook": False}
-    if prev_score is not None and scan.score < prev_score and monitor.alert_on_drop:
+    level = monitor.alert_level or "balanced"
+    if not monitor.alert_on_drop:
+        level = "none"
+    if level in ("balanced", "comprehensive") and prev_score is not None and scan.score < prev_score:
         alerts.append(models.Alert(
             tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="score_drop",
             message=f"{monitor.domain}: score dropped {prev_score} -> {scan.score}.",
         ))
     failed = [c["title"] for c in scan.result["checks"]
-              if c["status"] == "fail" and c["title"] not in prev_failed]
-    if failed and monitor.alert_on_drop:
+              if c["status"] == "fail" and c["title"] not in prev_failed
+              and (level != "essential" or c.get("key") == "dmarc")]
+    if failed and level != "none":
         alerts.append(models.Alert(
             tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="check_failed",
             message=f"{monitor.domain}: newly failing checks: {', '.join(failed)}.",
         ))
+    # Record every DNS change for the timeline; alert on them by level.
+    changes = dns_snapshot.diff((prev_scan.result or {}).get("dns") if prev_scan else None,
+                                scan.result.get("dns"))
+    for change in changes:
+        db.add(models.DnsChange(tenant_id=monitor.tenant_id, monitor_id=monitor.id,
+                                domain=monitor.domain, record=change["record"],
+                                old=change["old"], new=change["new"]))
+    alerted = [c for c in changes
+               if level == "comprehensive" or (level == "essential" and c["record"] == "DMARC")]
+    if alerted:
+        alerts.append(models.Alert(
+            tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="dns_changed",
+            message=f"{monitor.domain}: " + " ".join(dns_snapshot.describe(c) + "." for c in alerted),
+        ))
     if check_lookalikes:
         try:
-            alerts.extend(check_monitor_lookalikes(monitor))
+            found = check_monitor_lookalikes(monitor)
+            if level in ("balanced", "comprehensive"):
+                alerts.extend(found)
         except Exception:
             pass  # informational: a DNS hiccup must not fail the rescan
     for alert in alerts:

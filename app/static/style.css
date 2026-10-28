@@ -673,3 +673,60 @@ code {
 .fix-see { padding: 0 16px 14px; margin: 0; font-size: 14px; }
 .plan > .fixcard:first-of-type { margin-top: 4px; }
 .fix-actions .btn.tiny { margin-left: 0; }
+
+/* ---------- observations table (scan report) ---------- */
+.observations { margin: 18px 0; }
+.observations .table-wrap { overflow-x: auto; }
+.observations table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.observations th, .observations td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.observations th { color: var(--ink-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.sev { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.sev.high { background: var(--red-bg); color: var(--red); }
+.sev.medium { background: var(--amber-bg); color: var(--amber); }
+.sev.low { background: rgba(148, 178, 255, .12); color: var(--ink-dim); }
+.timeline .table-wrap { overflow-x: auto; }
+.timeline table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.timeline th, .timeline td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.timeline code { word-break: break-all; }
+.mon .row-actions select { padding: 4px 8px; font-size: 12.5px; }
+.spf-meter { margin-top: 10px; }
+.spf-meter .bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; max-width: 460px; }
+.spf-meter .bar span { display: block; height: 100%; background: var(--green); }
+.spf-meter.warn .bar span { background: var(--amber); }
+.spf-meter.fail .bar span { background: var(--red); }
+.spf-meter.fail p { color: var(--red); }
+.spf-tree { list-style: none; padding-left: 16px; margin: 6px 0; font-size: 13px; border-left: 1px solid var(--line); }
+.spf-tree li { margin: 4px 0; }
+.spf-tree-wrap summary { cursor: pointer; color: var(--ink-dim); font-size: 13px; margin-top: 6px; }
+
+/* ---------- guided setup wizard ---------- */
+.wiz-steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 18px 0; flex-wrap: wrap; }
+.wiz-steps li { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--ink-faint); font-size: 13.5px; }
+.wiz-steps li span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--line); font-size: 12px; font-weight: 700; }
+.wiz-steps li.current { color: var(--ink); border-color: rgba(79, 140, 255, .6); }
+.wiz-steps li.current span { background: rgba(79, 140, 255, .8); color: #fff; }
+.wiz-steps li.done { color: var(--green); }
+.wiz-steps li.done span { background: var(--green-bg); color: var(--green); }
+.wiz-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+.wizard .wiz-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .02); font-size: 13.5px; }
+.wiz-card input { position: absolute; opacity: 0; pointer-events: none; }
+.wiz-card span { color: var(--ink-dim); }
+.wiz-card.on { border-color: rgba(79, 140, 255, .7); background: rgba(79, 140, 255, .08); }
+.wiz-card.quarantine.on { border-color: var(--amber); background: var(--amber-bg); }
+.wiz-card.reject.on { border-color: var(--green); background: var(--green-bg); }
+.wiz-card:focus-within { outline: 2px solid rgba(79, 140, 255, .6); outline-offset: 2px; }
+.wiz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.wiz-grid label, .wizard label:not(.wiz-card) { display: block; font-size: 13.5px; color: var(--ink-dim); margin: 8px 0; }
+.wiz-grid select { width: 100%; margin-top: 4px; }
+.wizard input[type=email] { width: 100%; margin-top: 4px; }
+.wizard input[type=checkbox] { width: auto; display: inline-block; margin: 0 6px 0 0; vertical-align: middle; }
+.wiz-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.wiz-rec { margin-top: 10px; }
+.wiz-rec code { word-break: break-all; }
+/* Monitor rows: domain and score on one line, the actions wrap below. */
+.mon { flex-wrap: wrap; }
+.mon strong { word-break: normal; overflow-wrap: anywhere; }
+.mon .row-actions { flex-wrap: wrap; gap: 6px; flex-shrink: 1; }

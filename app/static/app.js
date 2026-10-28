@@ -365,6 +365,57 @@ function bindFixCards(container) {
   }));
 }
 
+/* What an attacker or a receiving server can do when a check isn't passing:
+   the "Impact" column of the observations table. */
+const CHECK_IMPACT = {
+  spf: N_('Receivers cannot tell which servers may send your mail, so forged mail is easier to deliver.'),
+  dmarc: N_('Mail that fails authentication can still reach inboxes: attackers can send as your domain.'),
+  dkim: N_('Your mail is not signed, so receivers cannot prove it came from you or was not changed.'),
+  'mta-sts': N_('Mail sent to you can be downgraded to unencrypted SMTP by an attacker in the middle.'),
+  'tls-rpt': N_('You will not hear about failed or downgraded TLS deliveries to your mail servers.'),
+  bimi: N_('Your logo is not shown next to your mail in supporting inboxes.'),
+  caa: N_('Any certificate authority can issue certificates for your domain.'),
+  mx: N_('Mail for this domain may not be delivered.'),
+  'smtp-tls': N_('Mail to your servers may travel unencrypted.'),
+  dnssec: N_('DNS answers for your domain can be spoofed, for example with cache poisoning.'),
+  dnsbl: N_('Mail from your domain or servers is likely to be rejected or marked as spam.'),
+  'tls-cert': N_('Visitors may see certificate warnings, or the site may stop working when it expires.'),
+  'sec-headers': N_('Your website is easier to attack with clickjacking and content injection.'),
+};
+const LOW_SEVERITY = ['bimi', 'caa', 'ipv6', 'sec-headers', 'rpki', 'ptr', 'dane', 'tls-rpt'];
+
+function severityFor(c) {
+  if (c.status === 'fail') return 'high';
+  return LOW_SEVERITY.includes(c.key) ? 'low' : 'medium';
+}
+
+function observationsTable(checks) {
+  const rank = {high: 0, medium: 1, low: 2};
+  const rows = checks.filter(c => c.status === 'fail' || c.status === 'warn')
+    .map(c => ({c, sev: severityFor(c)}))
+    .sort((a, b) => rank[a.sev] - rank[b.sev]);
+  if (!rows.length) return '';
+  const label = {high: _t('High'), medium: _t('Medium'), low: _t('Low')};
+  return `<div class="observations"><h3>${_t('Observations')}</h3>
+    <div class="table-wrap"><table>
+    <thead><tr><th>${_t('Risk')}</th><th>${_t('Severity')}</th><th>${_t('Impact')}</th><th>${_t('Fix')}</th></tr></thead>
+    <tbody>${rows.map(({c, sev}) => `<tr>
+      <td><strong>${escapeHtml(c.title)}</strong>${(c.issues || [])[0] ? `<br><span class="muted small">${escapeHtml(c.issues[0])}</span>` : ''}</td>
+      <td><span class="sev ${sev}">${label[sev]}</span></td>
+      <td>${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : '<span class="muted">—</span>'}</td>
+      <td>${escapeHtml((c.fixes || [])[0] || '')}</td></tr>`).join('')}</tbody>
+    </table></div></div>`;
+}
+
+function dnssecParts(checks) {
+  const c = checks.find(x => x.key === 'dnssec');
+  if (!c || c.signed_at_nameservers === undefined) return '';
+  const yes = `<span class="badge pass">${_t('Enabled')}</span>`;
+  const no = `<span class="badge warn">${_t('Disabled')}</span>`;
+  return `<p class="details">${_t('Signed at nameservers')}: ${c.signed_at_nameservers ? yes : no}
+    · ${_t('DS record at registrar')}: ${c.ds_at_registrar ? yes : no}</p>`;
+}
+
 function renderReport(scan, isPublic, opts = {}) {
   const r = scan.result || scan;
   const checks = r.checks || [];
@@ -407,6 +458,7 @@ function renderReport(scan, isPublic, opts = {}) {
         <span class="pts">${c.score}/${c.max_score}</span>
         <span class="chev">▾</span></summary>
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
+      ${c.key === 'dnssec' ? dnssecParts(checks) : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
       ${c.guide && planned[c.title] ? `<p class="fix-see"><a href="#fix-${escapeHtml(c.key)}">${_t('How to fix: see step {0} above ↑', {0: planned[c.title]})}</a></p>`
         : c.guide ? `<div class="fix-in-check">${fixCard(c.guide, c, c.max_score - c.score, r.domain, pk, opts, 0)}</div>`
@@ -425,11 +477,13 @@ function renderReport(scan, isPublic, opts = {}) {
           <span class="grade ${gradeClass(r.score)}">${_t('Grade {0}', {0: escapeHtml(r.grade)})}</span>
           <span class="muted small">${_t('{0} failing · {1} warnings', {0: issues, 1: warnings})}</span>
           ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${_t('⤓ Download PDF')}</a>` : ''}
+          ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${_t('✉ Email me this report')}</button>` : ''}
         </div>
         ${trendLine(scan.history)}
         ${reputationBadge(r.reputation)}
       </div>
     </div>
+    ${observationsTable(checks)}
     ${planHtml}
     ${recHtml}
     <h3 class="findings-title">${_t('Findings')}</h3>
@@ -451,6 +505,16 @@ function bindReportInteractions(container) {
       if (apply) {
         e.preventDefault();
         if (window.applyDnsFix) window.applyDnsFix(apply.dataset.applyName, 'TXT', apply.dataset.applyValue, apply);
+        return;
+      }
+      const mail = e.target.closest('[data-email-report]');
+      if (mail && window.api) {
+        e.preventDefault();
+        mail.disabled = true;
+        window.api(mail.dataset.emailReport, {method: 'POST'})
+          .then(d => toast(_t('Report sent to {0}', {0: d.to})))
+          .catch(err => { if (err.message !== 'auth') toast((_t('Could not send —') + ' ') + err.message); })
+          .finally(() => { mail.disabled = false; });
         return;
       }
       const see = e.target.closest('.fix-see a');

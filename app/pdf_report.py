@@ -216,6 +216,26 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
                               ("LEFTPADDING", (0, 0), (0, 0), 0)]))
     story += [head, Spacer(1, 6)]
 
+    # ---- observations: what is at risk, how badly, and the fix
+    from .scanner import observations
+    obs = observations.build(checks)
+    if obs:
+        story.append(Paragraph("Observations", S["h2"]))
+        sev_colors = {"High": "#dc2626", "Medium": "#d97706", "Low": "#64748b"}
+        rows = [[_p("Risk", "muted"), _p("Severity", "muted"), _p("Impact", "muted"), _p("Fix", "muted")]]
+        for o in obs:
+            risk = [_p(o["risk"])] + ([_p(o["issue"], "muted")] if o["issue"] else [])
+            rows.append([risk,
+                         Paragraph(f'<font color="{sev_colors[o["severity"]]}"><b>{o["severity"]}</b></font>',
+                                   S["body"]),
+                         _p(o["impact"]), _p(o["fix"])])
+        table = Table(rows, colWidths=[38 * mm, 18 * mm, None, 58 * mm], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0")),
+        ]))
+        story += [table, Spacer(1, 6)]
+
     # ---- action plan
     story.append(Paragraph("Fix these first", S["h2"]))
     guided = [c for c in checks if c.get("guide")]
