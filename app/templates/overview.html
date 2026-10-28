@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Overview") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="dash">
+  <span class="eyebrow">{{ _("Overview") }}</span>
+  <h1>{{ _("All your domains at a glance") }}</h1>
+  <div id="ov-kpis" class="kpi-row" aria-live="polite"></div>
+  <div class="dash-grid">
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Lowest scores") }}</h2>
+      <div id="ov-lowest"></div>
+    </div>
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Most frequent alerts (30 days)") }}</h2>
+      <div id="ov-alerts"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2><span class="dot"></span>{{ _("Clients") }}</h2>
+    <p class="muted small">{{ _("Domains are grouped by the client label you set on each monitor on the dashboard.") }}</p>
+    <div id="ov-clients"></div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+async function api(path) {
+  const r = await fetch(path, {headers: {'X-CSRF-Token': getCookie('csrf_token')}});
+  if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  return d;
+}
+const ALERT_KINDS = {
+  score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
+  lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring'),
+};
+const gradeChip = m => m.grade ? `<span class="grade g${m.grade[0]}">${escapeHtml(m.grade)}</span>` : '';
+const domainLine = m => `<div class="mon"><strong>${escapeHtml(m.domain)}</strong>
+  ${m.client ? `<span class="muted small">${escapeHtml(m.client)}</span>` : ''}
+  <span class="muted">${m.score ?? '—'}/100</span> ${gradeChip(m)}</div>`;
+function kpi(color, num, label, sub, glyph) {
+  return `<div class="kpi kpi-${color}"><div><div class="kpi-num">${num}</div><div class="kpi-label">${label}</div>
+    ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div><span class="kpi-glyph" aria-hidden="true">${glyph}</span></div>`;
+}
+(async () => {
+  try {
+    const o = await api('/api/overview');
+    const t = o.totals;
+    document.getElementById('ov-kpis').innerHTML =
+      kpi('blue', t.domains, _t('Domains'), _t('{0} active · {1} paused', {0: t.active, 1: t.paused}), '◈') +
+      kpi('violet', t.clients, _t('Clients'), _t('{0} added, {1} removed this month', {0: t.added_this_month, 1: t.removed_this_month}), '👥') +
+      kpi(t.avg_score == null ? 'blue' : t.avg_score >= 80 ? 'green' : t.avg_score >= 60 ? 'amber' : 'red', t.avg_score ?? '—', _t('Average score'), '', '★') +
+      kpi(t.alerts_30d ? 'orange' : 'green', t.alerts_30d, _t('Alerts (30 days)'), _t('{0} DNS changes', {0: t.dns_changes_30d}), '🔔');
+    document.getElementById('ov-lowest').innerHTML = o.lowest.length ? o.lowest.map(domainLine).join('')
+      : '<p class="muted">' + _t('No monitored domains yet.') + ' <a href="/setup">' + _t('Guided DMARC setup →') + '</a></p>';
+    document.getElementById('ov-alerts').innerHTML = o.alert_kinds.length
+      ? o.alert_kinds.map(a => `<div class="mon"><strong>${escapeHtml(_t(ALERT_KINDS[a.kind] || a.kind))}</strong><span class="muted">${a.count}</span></div>`).join('')
+        + '<h3 class="muted small" style="margin:14px 0 4px">' + _t('Domains with the most alerts') + '</h3>'
+        + o.noisiest.map(m => domainLine(m).replace('</div>', ` <span class="muted small">${_t('{0} alerts', {0: m.alerts_30d})}</span></div>`)).join('')
+      : '<p class="muted">' + _t('No alerts in the last 30 days.') + '</p>';
+    document.getElementById('ov-clients').innerHTML = o.clients.length
+      ? `<div class="observations"><div class="table-wrap"><table><thead><tr><th>${_t('Client')}</th><th>${_t('Domains')}</th><th>${_t('Average score')}</th><th>${_t('Below 70')}</th><th>${_t('Alerts (30 days)')}</th><th>${_t('Lowest')}</th></tr></thead><tbody>`
+        + o.clients.map(c => `<tr><td><strong>${c.client ? escapeHtml(c.client) : '<span class="muted">' + _t('(no client)') + '</span>'}</strong></td>
+          <td>${c.domains}</td><td>${c.avg_score ?? '—'}</td><td>${c.below_70}</td><td>${c.alerts_30d}</td>
+          <td>${c.lowest ? escapeHtml(c.lowest.domain) + ' ' + gradeChip(c.lowest) : '—'}</td></tr>`).join('')
+        + '</tbody></table></div></div>'
+      : '<p class="muted">' + _t('No monitored domains yet.') + '</p>';
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not load —') + ' ') + err.message); }
+})();
+</script>
+{% endblock %}

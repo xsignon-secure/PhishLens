@@ -3,14 +3,16 @@ import hashlib
 import secrets
 import urllib.parse
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .. import audit, branding, mailer, models, schemas, tokens, webhooks
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user, require_owner
+from ..deps import get_current_user, rate_limit, require_owner
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 
@@ -185,6 +187,46 @@ def export_data(request: Request, db: Session = Depends(get_db),
 
 
 # ------------------------------------------------------------------ white-label + alert recipients
+class ReportScheduleIn(BaseModel):
+    schedule: Literal["off", "weekly", "monthly"]
+
+
+def _schedule_out(t: models.Tenant) -> dict:
+    return {"schedule": t.report_schedule or "off",
+            "last_sent": t.report_sent_at.isoformat() + "Z" if t.report_sent_at else None,
+            "email_configured": mailer.is_configured()}
+
+
+@router.get("/report-schedule")
+def get_report_schedule(user: models.User = Depends(get_current_user)):
+    return _schedule_out(user.tenant)
+
+
+@router.put("/report-schedule")
+def set_report_schedule(payload: ReportScheduleIn, request: Request, db: Session = Depends(get_db),
+                        user: models.User = Depends(require_owner)):
+    user.tenant.report_schedule = payload.schedule
+    db.commit()
+    audit.log_request(db, request, "reports.schedule", user, {"schedule": payload.schedule})
+    return _schedule_out(user.tenant)
+
+
+@router.post("/report-schedule/send-now")
+def send_report_now(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+    """Send the scheduled report right away (to check what it looks like)."""
+    from .. import scheduled_reports
+    if not mailer.is_configured():
+        raise HTTPException(status_code=503, detail="Email is not set up on this server")
+    rate_limit(request, f"report-now:{user.tenant_id}", 5)
+    if not db.query(models.Monitor).filter(models.Monitor.tenant_id == user.tenant_id,
+                                           models.Monitor.is_active.is_(True)).first():
+        raise HTTPException(status_code=400, detail="Monitor a domain first")
+    if not scheduled_reports.send(db, user.tenant):
+        raise HTTPException(status_code=502, detail="The email could not be sent")
+    audit.log_request(db, request, "reports.send_now", user)
+    return _schedule_out(user.tenant)
+
+
 @router.get("/branding")
 def get_branding(user: models.User = Depends(get_current_user)):
     t = user.tenant

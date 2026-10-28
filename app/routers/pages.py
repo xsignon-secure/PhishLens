@@ -87,6 +87,14 @@ def setup_wizard(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "setup.html", {"request": request, "user": user})
 
 
+@router.get("/overview", response_class=HTMLResponse)
+def overview_page(request: Request, db: Session = Depends(get_db)):
+    user = _user_or_none(request, db)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "overview.html", {"request": request, "user": user})
+
+
 @router.get("/verify", response_class=HTMLResponse)
 def verify_page(request: Request):
     return templates.TemplateResponse(request, "verify.html", {"request": request})

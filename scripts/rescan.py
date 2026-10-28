@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import models  # noqa: E402
+from app import models, scheduled_reports  # noqa: E402
 from app.database import SessionLocal, init_db  # noqa: E402
 from app.scanner import engine  # noqa: E402
 
@@ -79,8 +79,15 @@ def run(force: bool = False, min_age_hours: float = 20, domain: str | None = Non
                 print(f"[{datetime.utcnow().isoformat()}] {monitor.domain} FAILED: {detail}",
                       flush=True)
         refreshed = refresh_hosted_spf(db)
+        reports = 0
+        if not domain and not tenant:  # a targeted rescan isn't the scheduled run
+            try:
+                reports = scheduled_reports.send_due(db)
+            except Exception as exc:
+                db.rollback()
+                print(f"[{datetime.utcnow().isoformat()}] scheduled reports FAILED: {exc}", flush=True)
         return {"done": done, "skipped": skipped, "failed": failed, "alerts": alerted,
-                "hosted_spf_refreshed": refreshed}
+                "hosted_spf_refreshed": refreshed, "reports_emailed": reports}
     finally:
         db.close()
 

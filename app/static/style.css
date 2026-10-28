@@ -742,3 +742,15 @@ code {
 .bimi-desktop .bimi-row img { width: 28px; height: 28px; }
 .bimi-desktop .bimi-row strong { min-width: 110px; }
 .bimi-phone .muted, .bimi-desktop .muted { color: #555; }
+
+/* ---------- DMARC report views ---------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
+.tab { background: transparent; color: var(--ink-dim); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.share-bar { display: inline-block; vertical-align: middle; width: 70px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin-left: 6px; }
+.share-bar span { display: block; height: 100%; background: var(--accent-2); }
+.vol-chart { width: 100%; height: 160px; display: block; }
+.vol-pass { fill: var(--green); background: var(--green); }
+.vol-fail { fill: var(--red); background: var(--red); }
+.vol-axis { display: flex; justify-content: space-between; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-left: 8px; }
