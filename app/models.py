@@ -105,6 +105,8 @@ class Monitor(Base):
     lookalikes = Column(JSON, nullable=True)
     lookalikes_checked_at = Column(DateTime, nullable=True)
     client = Column(String(100), nullable=True)  # MSP: which customer this domain belongs to
+    # What raises an alert on rescans: none | essential | balanced | comprehensive
+    alert_level = Column(String(20), nullable=False, default="balanced", server_default="balanced")
 
     tenant = relationship("Tenant", back_populates="monitors")
 
@@ -118,6 +120,21 @@ class Alert(Base):
     kind = Column(String(40), nullable=False)  # score_drop | check_failed | cert_expiring
     message = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class DnsChange(Base):
+    """One email-security DNS record that changed between two monitor scans.
+    Kept whatever the alert level, so the timeline is complete."""
+    __tablename__ = "dns_changes"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    monitor_id = Column(String(32), ForeignKey("monitors.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False)
+    record = Column(String(20), nullable=False)  # SPF | DMARC | DKIM | MX | NS | A ...
+    old = Column(JSON, nullable=False)
+    new = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 class ApiKey(Base):

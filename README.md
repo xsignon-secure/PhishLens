@@ -103,6 +103,15 @@ app/
 - **Email header analyzer**: `/tools/headers` (public, nothing stored) reads
   SPF/DKIM/DMARC verdicts and flags Reply-To redirection, fake display-name
   addresses and punycode senders.
+- **Guided setup**: `/setup` walks through domain, DMARC policy, publishing
+  (hosted CNAME, TXT, or one click with a connected DNS provider) and alerts.
+- **Alert levels and DNS timeline**: each monitor alerts at None, Essential
+  (DMARC only), Balanced (failing checks, score drops, lookalikes) or
+  Comprehensive (also any change to SPF, DMARC, DKIM, BIMI, MTA-STS, TLS-RPT,
+  MX, NS or A records). Every change is kept in the monitor's "DNS changes"
+  timeline (`GET /api/monitors/{id}/changes`) whatever the level.
+- **SPF builder**: on `/tools`, a service picker adds the right include and a
+  live meter shows DNS lookups against the limit of 10, with the include tree.
 - **Chat alerts**: a Slack, Microsoft Teams or Discord webhook URL gets a
   readable message instead of the signed JSON event.
 
@@ -123,6 +132,10 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
 - **PDF export**: every report has a "Download PDF" button (dashboard, shared
   link, and the landing-page scan). Branded, one page for most domains, ready
   to attach to an email. Rendered with reportlab, no system dependencies.
+  "Email me this report" sends the PDF to the signed-in user's own address
+  (needs SMTP).
+- **Observations**: each report lists the problems as Risk, Severity, Impact
+  and Fix, highest severity first, on screen and in the PDF.
 - **Score history**: signed-in scans and monitors show a sparkline of past
   scores and "your score went from X to Y since <date>" (compared with the
   newest scan at least 30 days old, else the oldest one).

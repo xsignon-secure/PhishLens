@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Guided setup") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="tool wizard">
+  <span class="eyebrow">{{ _("Guided setup") }}</span>
+  <h1>{{ _("Set up DMARC for your domain") }}</h1>
+  <p class="sub">{{ _("Four short steps: pick the domain, choose your DMARC policy, publish the record, and decide what we alert you about.") }}</p>
+  <ol class="wiz-steps" id="wiz-steps"></ol>
+  <div class="panel" id="wiz-body" aria-live="polite"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({'X-CSRF-Token': getCookie('csrf_token')}, opts.headers || {});
+  const r = await fetch(path, opts);
+  if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  return d;
+}
+const json = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+
+const STEPS = [N_('Domain'), N_('DMARC policy'), N_('Publish'), N_('Alerts')];
+const POLICIES = [
+  ['none', N_('Monitor only'), N_('Mail that fails DMARC is still delivered. You get reports and see who sends as your domain. Start here.')],
+  ['quarantine', N_('Quarantine'), N_('Mail that fails DMARC goes to the spam folder. Use this once reports show all your real senders pass.')],
+  ['reject', N_('Reject'), N_('Mail that fails DMARC is refused. Full protection against spoofing of your domain.')],
+];
+const LEVELS = [
+  ['none', N_('None'), N_('No alerts. Changes are still recorded in the DNS timeline.')],
+  ['essential', N_('Essential'), N_('Only DMARC: alerts when DMARC starts failing or the DMARC record changes.')],
+  ['balanced', N_('Balanced'), N_('Alerts when any check starts failing, the score drops, or a lookalike domain is registered.')],
+  ['comprehensive', N_('Comprehensive'), N_('Everything in Balanced, plus any change to SPF, DMARC, DKIM, BIMI, MTA-STS, TLS-RPT, MX, NS or A records.')],
+];
+
+const W = {step: 0, domain: '', monitorId: null, cfg: {p: 'none', t: false, sp: '', np: '', adkim: 'r', aspf: 'r', rua: ''},
+           hosted: null, dns: null, method: 'txt', level: 'balanced', published: false};
+const body = () => document.getElementById('wiz-body');
+
+function renderSteps() {
+  document.getElementById('wiz-steps').innerHTML = STEPS.map((s, i) =>
+    `<li class="${i < W.step ? 'done' : i === W.step ? 'current' : ''}"><span>${i < W.step ? '✓' : i + 1}</span> ${_t(s)}</li>`).join('');
+}
+
+function dmarcRecord() {
+  const c = W.cfg, v = ['v=DMARC1', 'p=' + c.p];
+  if (c.sp) v.push('sp=' + c.sp);
+  if (c.np) v.push('np=' + c.np);
+  if (c.t) v.push('t=y');
+  if (c.adkim === 's') v.push('adkim=s');
+  if (c.aspf === 's') v.push('aspf=s');
+  if (c.rua) v.push('rua=mailto:' + c.rua);
+  return v.join('; ');
+}
+
+function cards(name, items, current) {
+  return `<div class="wiz-cards">${items.map(([v, title, text]) => `<label class="wiz-card ${v}${v === current ? ' on' : ''}">
+    <input type="radio" name="${name}" value="${v}"${v === current ? ' checked' : ''}>
+    <strong>${_t(title)}</strong><span>${_t(text)}</span></label>`).join('')}</div>`;
+}
+
+function show() {
+  renderSteps();
+  [stepDomain, stepPolicy, stepPublish, stepAlerts, stepDone][W.step]();
+}
+
+function stepDomain() {
+  body().innerHTML = `<h2>${_t('Which domain?')}</h2>
+    <form id="wiz-domain" class="scanbox small"><input id="wd" type="text" placeholder="example.com" value="${escapeHtml(W.domain)}" autocomplete="off" spellcheck="false">
+    <button class="btn" type="submit">${_t('Next')}</button></form>
+    <p class="muted small">${_t('We scan it now and keep monitoring it, so you can see your progress.')}</p><p id="werr" class="error"></p>`;
+  document.getElementById('wiz-domain').onsubmit = async (e) => {
+    e.preventDefault();
+    const domain = document.getElementById('wd').value.trim();
+    if (!domain) return;
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = _t('Scanning…');
+    try {
+      let m;
+      try { m = await api('/api/monitors', json({domain})); }
+      catch (err) {
+        if (err.message !== 'Domain already monitored') throw err;
+        m = (await api('/api/monitors')).find(x => x.domain === domain.toLowerCase());
+        if (!m) throw err;
+      }
+      W.domain = m.domain; W.monitorId = m.id; W.step = 1;
+      show();
+    } catch (err) {
+      if (err.message !== 'auth') document.getElementById('werr').textContent = err.message;
+      btn.disabled = false; btn.textContent = _t('Next');
+    }
+  };
+}
+
+function stepPolicy() {
+  const c = W.cfg;
+  const opt = (v, label, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`;
+  const pols = ['none', 'quarantine', 'reject'];
+  body().innerHTML = `<h2>${_t('Choose your DMARC policy')}</h2>
+    ${cards('p', POLICIES, c.p)}
+    <div class="wiz-grid">
+      <label>${_t('Subdomains (sp)')}<select id="w-sp">${opt('', _t('Same as main policy'), c.sp)}${pols.map(p => opt(p, p, c.sp)).join('')}</select></label>
+      <label>${_t('Non-existent subdomains (np)')}<select id="w-np">${opt('', _t('Same as subdomains'), c.np)}${pols.map(p => opt(p, p, c.np)).join('')}</select></label>
+      <label>${_t('DKIM alignment')}<select id="w-adkim">${opt('r', _t('Relaxed (recommended)'), c.adkim)}${opt('s', _t('Strict'), c.adkim)}</select></label>
+      <label>${_t('SPF alignment')}<select id="w-aspf">${opt('r', _t('Relaxed (recommended)'), c.aspf)}${opt('s', _t('Strict'), c.aspf)}</select></label>
+    </div>
+    <label class="small"><input id="w-t" type="checkbox"${c.t ? ' checked' : ''}> ${_t('Testing mode (t=y): receivers apply one step softer while you check reports')}</label>
+    <label>${_t('Send reports to (rua)')}<input id="w-rua" type="email" value="${escapeHtml(c.rua)}" placeholder="dmarc@${escapeHtml(W.domain)}"></label>
+    <p class="muted small">${_t('Without a report address you cannot see who sends mail as your domain.')}</p>
+    <p class="fix"><strong>_dmarc.${escapeHtml(W.domain)}</strong> <span class="muted">TXT</span><br><code id="w-rec"></code></p>
+    <div class="wiz-nav"><button class="btn ghost" id="w-back">${_t('Back')}</button><button class="btn" id="w-next">${_t('Next')}</button></div>`;
+  const sync = () => {
+    c.p = (document.querySelector('input[name=p]:checked') || {}).value || 'none';
+    c.sp = document.getElementById('w-sp').value; c.np = document.getElementById('w-np').value;
+    c.adkim = document.getElementById('w-adkim').value; c.aspf = document.getElementById('w-aspf').value;
+    c.t = document.getElementById('w-t').checked; c.rua = document.getElementById('w-rua').value.trim();
+    document.querySelectorAll('.wiz-card').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
+    document.getElementById('w-rec').textContent = dmarcRecord();
+  };
+  body().querySelectorAll('input, select').forEach(el => el.addEventListener('input', sync));
+  body().querySelectorAll('input[type=radio]').forEach(el => el.addEventListener('change', sync));
+  sync();
+  document.getElementById('w-back').onclick = () => { W.step = 0; show(); };
+  document.getElementById('w-next').onclick = () => { W.step = 2; show(); };
+}
+
+async function stepPublish() {
+  body().innerHTML = '<p class="loading">' + _t('Loading…') + '</p>';
+  try {
+    if (!W.hosted) W.hosted = await api('/api/hosted');
+    if (!W.dns) W.dns = await api('/api/team/dns');
+  } catch (err) { if (err.message === 'auth') return; W.hosted = W.hosted || {configured: false}; W.dns = W.dns || {connected: false}; }
+  if (!W.cfg.rua && W.hosted.default_rua) W.cfg.rua = W.hosted.default_rua.replace(/^mailto:/, '');
+  const methods = [];
+  if (W.hosted.configured) methods.push(['hosted', N_('Hosted DMARC (CNAME)'), N_('Add one CNAME once. Later policy changes are made here, with no more DNS edits. Recommended.')]);
+  methods.push(['txt', N_('TXT record'), N_('The classic way: you publish the record yourself and edit it in your DNS for every change.')]);
+  if (!W.hosted.configured) W.method = 'txt';
+  body().innerHTML = `<h2>${_t('Publish your DMARC record')}</h2>
+    ${cards('method', methods, W.method)}
+    <div id="w-pub"></div>
+    <p id="werr" class="error"></p>
+    <div class="wiz-nav"><button class="btn ghost" id="w-back">${_t('Back')}</button><button class="btn" id="w-next">${_t('Next')}</button></div>`;
+  const render = () => {
+    W.method = (document.querySelector('input[name=method]:checked') || {}).value || 'txt';
+    document.querySelectorAll('.wiz-card').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
+    const box = document.getElementById('w-pub');
+    if (W.method === 'txt') {
+      box.innerHTML = recordRows([{name: '_dmarc.' + W.domain, type: 'TXT', value: dmarcRecord(),
+        note: _t('Replace any existing TXT record at this name.')}]);
+    } else {
+      box.innerHTML = `<button class="btn" id="w-host">${_t('Create hosted record')}</button>`;
+      document.getElementById('w-host').onclick = createHosted;
+    }
+  };
+  body().querySelectorAll('input[name=method]').forEach(el => el.addEventListener('change', render));
+  render();
+  document.getElementById('w-back').onclick = () => { W.step = 1; show(); };
+  document.getElementById('w-next').onclick = () => { W.step = 3; show(); };
+}
+
+function recordRows(recs) {
+  const apply = W.dns && W.dns.connected;
+  return recs.map(r => `<div class="fix wiz-rec"><strong>${escapeHtml(r.name)}</strong> <span class="muted">${escapeHtml(r.type)}</span><br>
+    <code>${escapeHtml(r.value)}</code> <button class="copy-btn" data-copy="${escapeHtml(r.value)}">${_t('Copy')}</button>
+    ${apply ? `<button class="btn tiny" data-apply-name="${escapeHtml(r.name)}" data-apply-type="${escapeHtml(r.type)}" data-apply-value="${escapeHtml(r.value)}">${_t('Publish with {0}', {0: escapeHtml(W.dns.provider || 'DNS')})}</button>` : ''}
+    ${r.note ? `<br><span class="muted small">${escapeHtml(r.note)}</span>` : ''}</div>`).join('')
+    + (apply ? '' : `<p class="muted small">${_t('Add this in your DNS host. To publish with one click, connect your DNS provider on the dashboard.')}</p>`);
+}
+
+async function createHosted() {
+  const btn = document.getElementById('w-host');
+  btn.disabled = true;
+  const c = W.cfg;
+  try {
+    const rec = await api('/api/hosted/' + encodeURIComponent(W.domain) + '/dmarc', {method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({config: {p: c.p, sp: c.sp || null, np: c.np || null, t: c.t, adkim: c.adkim, aspf: c.aspf,
+                                     rua: c.rua ? [c.rua] : []}})});
+    document.getElementById('w-pub').innerHTML = `<p>${statusBadge('pass')} ${_t('Hosted record created. Now add this once in your DNS:')}</p>`
+      + recordRows(rec.customer_records);
+  } catch (err) {
+    if (err.message !== 'auth') document.getElementById('werr').textContent = err.message;
+    btn.disabled = false;
+  }
+}
+
+function stepAlerts() {
+  body().innerHTML = `<h2>${_t('What should we alert you about?')}</h2>
+    ${cards('level', LEVELS, W.level)}
+    <p id="werr" class="error"></p>
+    <div class="wiz-nav"><button class="btn ghost" id="w-back">${_t('Back')}</button><button class="btn" id="w-next">${_t('Finish setup')}</button></div>`;
+  body().querySelectorAll('input[name=level]').forEach(el => el.addEventListener('change', () => {
+    W.level = el.value;
+    document.querySelectorAll('.wiz-card').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
+  }));
+  document.getElementById('w-back').onclick = () => { W.step = 2; show(); };
+  document.getElementById('w-next').onclick = async () => {
+    try {
+      await api('/api/monitors/' + W.monitorId, {method: 'PATCH', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({alert_level: W.level})});
+      W.step = 4; show();
+    } catch (err) { if (err.message !== 'auth') document.getElementById('werr').textContent = err.message; }
+  };
+}
+
+function stepDone() {
+  body().innerHTML = `<h2>${statusBadge('pass')} ${_t('You\'re all set')}</h2>
+    <p>${_t('Receivers send DMARC reports daily, so expect the first data within 24 to 72 hours of publishing the record.')}</p>
+    <div class="scanbox small"><button class="btn" id="w-check">${_t('Check my DMARC record now')}</button></div>
+    <div id="w-checked"></div>
+    <p>${_t('Next, make sure SPF and DKIM are right too:')} <a href="/tools">${_t('SPF and DKIM checkers')}</a> · <a href="/dashboard">${_t('Go to the dashboard')}</a></p>`;
+  document.getElementById('w-check').onclick = async () => {
+    const box = document.getElementById('w-checked');
+    box.innerHTML = '<p class="loading">' + _t('Checking…') + '</p>';
+    try {
+      const c = await api('/api/tools/check', json({domain: W.domain, check: 'dmarc'}));
+      box.innerHTML = `<p>${statusBadge(c.status)} ${escapeHtml(c.details || '')}</p>` +
+        (c.status === 'fail' ? `<p class="muted small">${_t('DNS changes can take a while to show. Try again in a few minutes.')}</p>` : '');
+    } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+  };
+}
+
+document.getElementById('wiz-body').addEventListener('click', async (e) => {
+  const copy = e.target.closest('[data-copy]');
+  if (copy) { e.preventDefault(); copyText(copy.getAttribute('data-copy'), copy); return; }
+  const apply = e.target.closest('[data-apply-name]');
+  if (apply) {
+    e.preventDefault();
+    apply.disabled = true;
+    try {
+      await api('/api/dns/apply', json({name: apply.dataset.applyName, type: apply.dataset.applyType, value: apply.dataset.applyValue}));
+      apply.textContent = _t('Published ✓');
+      W.published = true;
+    } catch (err) {
+      apply.disabled = false;
+      if (err.message !== 'auth') toast((_t('Could not publish —') + ' ') + err.message);
+    }
+  }
+});
+
+const pre = new URLSearchParams(location.search).get('domain');
+if (pre) W.domain = pre;
+show();
+</script>
+{% endblock %}

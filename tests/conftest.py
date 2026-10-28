@@ -31,3 +31,9 @@ def _reset_module_state():
     yield
     dns_checks._txt = _ORIGINAL_TXT  # several tests assign it directly
     deps._hits.clear()
+
+
+@pytest.fixture(autouse=True)
+def _no_dns_snapshots(monkeypatch):
+    # Team scans snapshot DNS records for change monitoring; not in tests.
+    monkeypatch.setattr("app.scanner.dns_snapshot.snapshot", lambda domain, selector=None: None)

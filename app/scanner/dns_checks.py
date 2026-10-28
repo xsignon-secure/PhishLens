@@ -97,6 +97,37 @@ def _spf_count_lookups(record: str, depth: int = 0, seen: set | None = None) -> 
     return count
 
 
+def spf_tree(record: str, depth: int = 0, seen: set | None = None) -> list[dict]:
+    """The include tree of an SPF record, for the SPF builder: one node per
+    term with the DNS lookups it costs, nested includes as children. Counts
+    the same way as _spf_count_lookups."""
+    seen = seen if seen is not None else set()
+    nodes = []
+    for term in _spf_terms(record):
+        t = term.lower().lstrip("+-~?")
+        mech = t.split(":")[0].split("/")[0].split("=")[0]
+        node = {"term": term, "lookups": 1 if mech in SPF_LOOKUP_MECHANISMS else 0, "children": []}
+        target = _spf_target(term) if mech in ("include", "redirect") else None
+        if target and depth < 10 and target.lower() not in seen:
+            seen.add(target.lower())
+            try:
+                child = _spf_record(target)
+            except DnsLookupError:
+                child = None
+                node["error"] = "lookup failed"
+            if child:
+                node["record"] = child
+                node["children"] = spf_tree(child, depth + 1, seen)
+            elif "error" not in node:
+                node["error"] = "no single SPF record"
+        nodes.append(node)
+    return nodes
+
+
+def spf_tree_total(nodes: list[dict]) -> int:
+    return sum(n["lookups"] + spf_tree_total(n["children"]) for n in nodes)
+
+
 def check_spf(domain: str) -> dict:
     max_score = 15
     records = [t for t in _txt(domain) if t.lower() == "v=spf1" or t.lower().startswith("v=spf1 ")]
@@ -377,7 +408,7 @@ def check_dkim(domain: str) -> dict:
         details += " " + " ".join(notes)
     return {
         "key": "dkim", "title": "DKIM", "status": status, "score": score, "max_score": max_score,
-        "details": details, "issues": issues, "fixes": fixes,
+        "details": details, "issues": issues, "fixes": fixes, "selector": sel, "bits": bits,
     }
 
 
@@ -815,18 +846,32 @@ def check_dnssec(domain: str) -> dict:
         zone_name = zone.to_text(omit_final_dot=True)
     except Exception:
         zone_name = domain
-    ds_found = False
+    ds_found = signed = False
     if "." in zone_name:  # never credit a TLD's own DS
         try:
             _resolver.resolve(zone_name, "DS", lifetime=3)
             ds_found = True
         except Exception:
             ds_found = False
+        # DNSKEY at the zone apex: the DNS host signs the zone. Both halves are
+        # needed: signing at the nameservers and the DS record at the registrar.
+        try:
+            _resolver.resolve(zone_name, "DNSKEY", lifetime=3)
+            signed = True
+        except Exception:
+            signed = False
+    parts = {"signed_at_nameservers": signed or ds_found, "ds_at_registrar": ds_found}
     if ds_found:
         return {"key": "dnssec", "title": "DNSSEC", "status": "pass", "score": max_score,
                 "max_score": max_score, "details": "DS record found: zone is DNSSEC-signed.",
-                "issues": [], "fixes": []}
+                "issues": [], "fixes": [], **parts}
+    if signed:
+        return {"key": "dnssec", "title": "DNSSEC", "status": "warn", "score": 2, "max_score": max_score,
+                "details": "The zone is signed at the nameservers, but the registrar has no DS record, "
+                           "so resolvers don't validate it.",
+                "issues": ["DNSSEC is enabled at the DNS host but not at the registrar (no DS record)."],
+                "fixes": ["Copy the DS record from your DNS host and add it at your registrar."], **parts}
     return {"key": "dnssec", "title": "DNSSEC", "status": "warn", "score": 0, "max_score": max_score,
             "details": "No DS record found: DNS responses for this domain can be spoofed.",
             "issues": ["Zone is not DNSSEC-signed."],
-            "fixes": ["Enable DNSSEC at your registrar/DNS provider and publish DS records."]}
+            "fixes": ["Enable DNSSEC at your registrar/DNS provider and publish DS records."], **parts}
