@@ -754,3 +754,11 @@ code {
 .vol-fail { fill: var(--red); background: var(--red); }
 .vol-axis { display: flex; justify-content: space-between; }
 .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-left: 8px; }
+
+/* SIEM and PSA settings */
+.integration-form h3 { margin: 0 0 8px; font-size: 15px; }
+.integration-form textarea { width: 100%; background: rgba(255, 255, 255, .04); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px; margin-top: 6px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.int-kinds { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 10px 0 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.int-kinds legend { padding: 0 4px; color: var(--muted); }
+.int-kinds label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }

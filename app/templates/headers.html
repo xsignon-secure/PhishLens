@@ -11,6 +11,13 @@
     <b>Outlook (desktop):</b> File → <i>Properties</i> → <i>Internet headers</i>.<br>
     <b>Apple Mail:</b> View → Message → <i>All Headers</i>.") }}</p>
   </details>
+  {% if user %}
+  <div id="mt-panel" class="panel hidden">
+    <h2><span class="dot"></span>{{ _("Send a test email") }}</h2>
+    <p class="muted small">{{ _("Check your own mail setup: send a message from the address or service you want to test (your mailbox, a newsletter tool, a ticketing system) to a one-off address. We show how it arrived: SPF, DKIM, DMARC alignment and the delivery path.") }}</p>
+    <div id="mt-body"><button id="mt-new" class="btn" type="button">{{ _("Get a test address") }}</button></div>
+  </div>
+  {% endif %}
   <form id="hdr-form" class="panel">
     <textarea id="hdr-text" placeholder="Received: from mail.example.com ...&#10;Authentication-Results: mx.google.com; spf=pass ...&#10;From: ..." spellcheck="false" aria-label="Email headers"></textarea>
     <button class="btn" type="submit" style="margin-top:12px">{{ _("Analyze headers") }}</button>
@@ -20,20 +27,10 @@
 {% endblock %}
 {% block scripts %}
 <script>
-document.getElementById('hdr-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const box = document.getElementById('hdr-result');
-  const headers = document.getElementById('hdr-text').value;
-  if (!headers.trim()) return;
-  box.innerHTML = ('<p class="loading">' + _t('Analyzing…') + '</p>');
-  try {
-    const r = await fetch('/api/tools/headers', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({headers})});
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+function renderHeaders(d) {
     const a = d.authentication;
     const v = x => x ? escapeHtml(x) : ('<span class="muted">' + _t('not found') + '</span>');
-    box.innerHTML = `<div class="panel">
+    return `<div class="panel">
       <div class="verdict ${d.level}">${escapeHtml(d.verdict)}</div>
       ${d.findings.map(f => `<p>${statusBadge(f.level === 'info' ? 'pass' : f.level)} ${escapeHtml(f.text)}</p>`).join('')}
       <h2><span class="dot"></span>${_t('Identity')}</h2>
@@ -55,7 +52,67 @@ document.getElementById('hdr-form').addEventListener('submit', async (e) => {
         `<li>${escapeHtml(h.from || '?')} → ${escapeHtml(h.by || '?')}${h.ip ? ' <span class="muted">[' + escapeHtml(h.ip) + ']</span>' : ''}${h.delay_seconds != null ? ' <span class="muted">+' + h.delay_seconds + 's</span>' : ''}</li>`).join('')}</ol>` : ''}
       <p class="muted small" style="margin-top:16px">${_t('Worried your own domain can be spoofed like this?')} <a href="/">${_t('Scan it free →')}</a></p>
     </div>`;
+}
+document.getElementById('hdr-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const box = document.getElementById('hdr-result');
+  const headers = document.getElementById('hdr-text').value;
+  if (!headers.trim()) return;
+  box.innerHTML = ('<p class="loading">' + _t('Analyzing…') + '</p>');
+  try {
+    const r = await fetch('/api/tools/headers', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({headers})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+    box.innerHTML = renderHeaders(d);
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
+{% if user %}
+(() => {
+  const csrf = () => (document.cookie.match(/(?:^|; )csrf_token=([^;]*)/) || [])[1] || '';
+  async function call(path, method = 'GET') {
+    const r = await fetch(path, {method, headers: {'X-CSRF-Token': decodeURIComponent(csrf())}});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+    return d;
+  }
+  const body = document.getElementById('mt-body');
+  let timer = null, tries = 0;
+  function show(t) {
+    if (t.status === 'received') {
+      clearInterval(timer);
+      body.innerHTML = `<p class="muted small">${_t('Received {0}', {0: new Date(t.received_at).toLocaleString()})}</p>`
+        + (t.result.error ? '<p class="error">' + escapeHtml(t.result.error) + '</p>' : renderHeaders(t.result))
+        + `<button id="mt-new" class="btn ghost" type="button">${_t('Test again')}</button>`;
+      document.getElementById('mt-new').onclick = start;
+      return;
+    }
+    if (t.status === 'expired') { clearInterval(timer); body.innerHTML = `<p class="muted">${_t('This test address expired.')}</p><button id="mt-new" class="btn" type="button">${_t('Get a test address')}</button>`; document.getElementById('mt-new').onclick = start; return; }
+    body.innerHTML = `<p>${_t('Send any message to:')}</p>
+      <p><code class="copy" id="mt-addr">${escapeHtml(t.address)}</code> <button class="btn tiny ghost" type="button" id="mt-copy">${_t('Copy')}</button></p>
+      <p class="loading muted small">${_t('Waiting for your message… this page checks every 15 seconds for 10 minutes.')}</p>
+      <button class="btn ghost" type="button" id="mt-check">${_t('Check now')}</button>`;
+    document.getElementById('mt-copy').onclick = () => navigator.clipboard.writeText(t.address).then(() => toast(_t('Copied')));
+    document.getElementById('mt-check').onclick = () => poll(t.token);
+  }
+  async function poll(token) {
+    try { show(await call(`/api/mailtest/${token}/check`, 'POST')); }
+    catch (err) { toast(err.message); }
+  }
+  async function start() {
+    try {
+      const t = await call('/api/mailtest', 'POST');
+      show(t);
+      clearInterval(timer); tries = 0;
+      timer = setInterval(() => { if (++tries > 40) clearInterval(timer); else poll(t.token); }, 15000);
+    } catch (err) { toast(err.message); }
+  }
+  call('/api/mailtest/status').then(s => {
+    if (!s.configured) return;
+    document.getElementById('mt-panel').classList.remove('hidden');
+    document.getElementById('mt-new').onclick = start;
+  }).catch(() => {});
+})();
+{% endif %}
 </script>
 {% endblock %}

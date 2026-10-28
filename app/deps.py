@@ -100,8 +100,12 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.User:
-    # 1) API key (automation / SIEM integrations) — explicit header auth
+    # 1) API key (automation / SIEM integrations / MCP clients): X-API-Key,
+    # or "Authorization: Bearer plk_..." which is what MCP clients send.
     api_key = request.headers.get("x-api-key")
+    if not api_key and credentials and credentials.scheme.lower() == "bearer" \
+            and credentials.credentials.startswith("plk_"):
+        api_key = credentials.credentials
     if api_key:
         digest = hashlib.sha256(api_key.encode()).hexdigest()
         key = (

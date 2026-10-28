@@ -226,4 +226,8 @@ def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool 
             webhook_ok = webhooks.notify_alerts(db, monitor, scan, alerts)
         except Exception:
             webhook_ok = False
-    return {"scan": scan, "alerts": alerts, "emailed": emailed, "webhook": webhook_ok}
+        from .. import integrations
+        exported = integrations.notify_alerts(db, monitor, scan, alerts)  # catches its own errors
+    else:
+        exported = {"siem": None, "psa": None}
+    return {"scan": scan, "alerts": alerts, "emailed": emailed, "webhook": webhook_ok, **exported}
