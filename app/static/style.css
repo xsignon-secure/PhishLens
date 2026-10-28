@@ -4,6 +4,7 @@
    intentionally absent from these styles/copy; they live in /help.
    ============================================================ */
 :root {
+  color-scheme: dark; /* dark native controls and dropdown lists */
   --bg0: #05080f;
   --bg1: #0a1122;
   --surface: rgba(255, 255, 255, .045);
@@ -143,6 +144,13 @@ footer select { background: transparent; color: var(--ink-dim); border: 1px soli
   background: transparent; border: 0; color: #fff; outline: none; min-width: 0;
 }
 .scanbox input::placeholder { color: var(--ink-faint); }
+/* Selects default to the browser's white box, unreadable on this dark theme. */
+select {
+  background: var(--bg1); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 14px; cursor: pointer;
+}
+select:focus { outline: none; border-color: rgba(79, 140, 255, .6); }
+select option { background: var(--bg1); color: var(--ink); }
 .hint { color: var(--ink-faint); font-size: 13.5px; margin-top: 14px; }
 .hint b { color: var(--ink-dim); font-weight: 600; }
 
