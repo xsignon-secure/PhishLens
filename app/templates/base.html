@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}PhishLens{% endblock %}</title>
 <meta name="description" content="{{ _("PhishLens checks your domain's email security posture and shows you exactly what to fix.") }}">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v={{ asset_v }}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
 </head>
 <body>
@@ -35,7 +35,7 @@
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>window.I18N = {{ i18n_catalog()|tojson }};</script>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v={{ asset_v }}"></script>
 <script>
 document.getElementById('lang-pick').addEventListener('change', (e) => {
   document.cookie = 'lang=' + e.target.value + '; path=/; max-age=31536000; SameSite=Lax';

@@ -1,6 +1,7 @@
 """Server-rendered pages: landing, auth, dashboard, reports."""
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+import hashlib
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
@@ -16,6 +17,21 @@ router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
 templates.env.globals.update(contact_email=settings.CONTACT_EMAIL, source_url=settings.SOURCE_URL)
 i18n.install(templates.env)
+
+
+def _asset_version() -> str:
+    """Short hash of the CSS and JS, added as ?v= so browsers fetch new copies
+    after a deploy instead of running a cached app.js against new pages."""
+    static = Path(__file__).resolve().parent.parent / "static"
+    h = hashlib.sha256()
+    for name in ("app.js", "style.css"):
+        f = static / name
+        if f.exists():
+            h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+templates.env.globals["asset_v"] = _asset_version()
 
 
 def _user_or_none(request: Request, db: Session):
