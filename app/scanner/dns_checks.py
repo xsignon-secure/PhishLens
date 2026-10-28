@@ -412,6 +412,22 @@ def check_dkim(domain: str) -> dict:
     }
 
 
+def dkim_key_info(selector: str, domain: str) -> dict:
+    """The published key behind one selector: {found, type, bits, revoked}."""
+    try:
+        txts = _txt(f"{selector}._domainkey.{domain}")
+    except Exception:
+        return {"found": None, "type": None, "bits": None, "revoked": False}
+    for t in txts:
+        if "v=dkim1" in t.lower().replace(" ", "") or "p=" in t:
+            tags = _parse_tag_list(t)
+            p = "".join(tags.get("p", "").split())
+            key_type = tags.get("k", "rsa").lower()
+            return {"found": True, "type": key_type, "revoked": not p,
+                    "bits": _dkim_key_bits(p) if p and key_type == "rsa" else None}
+    return {"found": False, "type": None, "bits": None, "revoked": False}
+
+
 # ------------------------------------------------------------------ MTA-STS / TLS-RPT / BIMI
 def _parse_sts_policy(body: str) -> tuple[dict[str, str], list[str]]:
     """RFC 8461 §3.2 policy file: one "key: value" per line; mx may repeat."""

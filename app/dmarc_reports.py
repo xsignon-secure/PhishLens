@@ -268,6 +268,67 @@ def summarize(reports: list, domain: str, days: int) -> dict:
     }
 
 
+STALE_DAYS = 90
+
+
+def dkim_selectors(reports: list, domain: str) -> list[dict]:
+    """Every DKIM selector seen signing mail for `domain` (or a subdomain),
+    with the service that uses it, volume, pass rate and when it was last
+    seen. Selectors used by other domains (a provider's own signature) are
+    left out: they aren't yours to rotate."""
+    org = _org_domain(domain)
+    rows: dict[tuple[str, str], dict] = {}
+    for rep in reports:
+        seen = rep.date_end or rep.date_begin or rep.created_at
+        for rec in rep.records or []:
+            n = rec.get("count", 0)
+            for sig in rec.get("dkim_auth") or []:
+                d, sel = sig.get("domain") or "", (sig.get("selector") or "").strip()
+                if not sel or _org_domain(d) != org:
+                    continue
+                r = rows.setdefault((d, sel), {"domain": d, "selector": sel, "messages": 0, "passed": 0,
+                                               "senders": defaultdict(int), "first_seen": seen, "last_seen": seen})
+                r["messages"] += n
+                r["passed"] += n if sig.get("result") == "pass" else 0
+                r["senders"][identify_sender(rec, domain)] += n
+                r["first_seen"] = min(r["first_seen"], seen)
+                r["last_seen"] = max(r["last_seen"], seen)
+    out = []
+    for r in rows.values():
+        senders = sorted(r["senders"].items(), key=lambda kv: -kv[1])
+        out.append({
+            "domain": r["domain"], "selector": r["selector"], "messages": r["messages"],
+            "pass_rate": round(100 * r["passed"] / r["messages"], 1) if r["messages"] else None,
+            "service": senders[0][0] if senders else None,
+            "first_seen": r["first_seen"].isoformat() + "Z", "last_seen": r["last_seen"].isoformat() + "Z",
+            "days_since_seen": (datetime.utcnow() - r["last_seen"]).days,
+        })
+    return sorted(out, key=lambda x: -x["messages"])
+
+
+def dkim_health(row: dict, key: dict | None) -> dict:
+    """Flags for one selector row, given its published key (dkim_key_info)."""
+    flags = []
+    key = key or {}
+    bits = key.get("bits")
+    if key.get("found") is False or key.get("revoked"):
+        flags.append({"level": "warn" if row["days_since_seen"] > STALE_DAYS else "fail",
+                      "message": "No published key: mail signed with this selector fails DKIM."
+                      if key.get("found") is False else "Key revoked (empty p=)."})
+    elif bits and bits < 1024:
+        flags.append({"level": "fail", "message": f"{bits}-bit key is too weak. Rotate to 2048-bit now."})
+    elif bits and bits < 2048:
+        flags.append({"level": "warn", "message": f"{bits}-bit key. Rotate to 2048-bit."})
+    if row["days_since_seen"] > STALE_DAYS and key.get("found") and not key.get("revoked"):
+        flags.append({"level": "warn", "message": f"Not used for {row['days_since_seen']} days. If the service "
+                      "is gone, revoke the key (publish p= empty) or delete the record."})
+    if row["pass_rate"] is not None and row["pass_rate"] < 90 and row["messages"] >= 10:
+        flags.append({"level": "warn", "message": f"Only {row['pass_rate']}% of signatures verify: the key "
+                      "in DNS may not match the one the service signs with."})
+    level = "fail" if any(f["level"] == "fail" for f in flags) else "warn" if flags else "pass"
+    return {**row, "key_type": key.get("type"), "bits": bits, "status": level, "flags": flags}
+
+
 def _verdict(policy, pass_rate, span_days, rows, domain) -> dict:
     p = (policy or {}).get("p", "none")
     if pass_rate is None:

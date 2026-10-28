@@ -88,7 +88,7 @@ function stepDomain() {
         m = (await api('/api/monitors')).find(x => x.domain === domain.toLowerCase());
         if (!m) throw err;
       }
-      W.domain = m.domain; W.monitorId = m.id; W.step = 1;
+      W.domain = m.domain; W.monitorId = m.id; W.step = 1; W.dc = undefined;
       show();
     } catch (err) {
       if (err.message !== 'auth') document.getElementById('werr').textContent = err.message;
@@ -134,6 +134,11 @@ async function stepPublish() {
   try {
     if (!W.hosted) W.hosted = await api('/api/hosted');
     if (!W.dns) W.dns = await api('/api/team/dns');
+    // No API token connected: the DNS host may still support Domain Connect.
+    if (!W.dns.connected && W.dc === undefined) {
+      const dc = await api('/api/dns/domain-connect?domain=' + encodeURIComponent(W.domain)).catch(() => ({}));
+      W.dc = dc.supported ? dc : null;
+    }
   } catch (err) { if (err.message === 'auth') return; W.hosted = W.hosted || {configured: false}; W.dns = W.dns || {connected: false}; }
   if (!W.cfg.rua && W.hosted.default_rua) W.cfg.rua = W.hosted.default_rua.replace(/^mailto:/, '');
   const methods = [];
@@ -164,10 +169,11 @@ async function stepPublish() {
 }
 
 function recordRows(recs) {
-  const apply = W.dns && W.dns.connected;
+  const apply = (W.dns && W.dns.connected) || W.dc;
+  const label = W.dns && W.dns.connected ? (W.dns.label || W.dns.provider) : W.dc && W.dc.provider;
   return recs.map(r => `<div class="fix wiz-rec"><strong>${escapeHtml(r.name)}</strong> <span class="muted">${escapeHtml(r.type)}</span><br>
     <code>${escapeHtml(r.value)}</code> <button class="copy-btn" data-copy="${escapeHtml(r.value)}">${_t('Copy')}</button>
-    ${apply ? `<button class="btn tiny" data-apply-name="${escapeHtml(r.name)}" data-apply-type="${escapeHtml(r.type)}" data-apply-value="${escapeHtml(r.value)}">${_t('Publish with {0}', {0: escapeHtml(W.dns.provider || 'DNS')})}</button>` : ''}
+    ${apply ? `<button class="btn tiny" data-apply-name="${escapeHtml(r.name)}" data-apply-type="${escapeHtml(r.type)}" data-apply-value="${escapeHtml(r.value)}">${_t('Publish with {0}', {0: escapeHtml(label || 'DNS')})}</button>` : ''}
     ${r.note ? `<br><span class="muted small">${escapeHtml(r.note)}</span>` : ''}</div>`).join('')
     + (apply ? '' : `<p class="muted small">${_t('Add this in your DNS host. To publish with one click, connect your DNS provider on the dashboard.')}</p>`);
 }
@@ -232,8 +238,17 @@ document.getElementById('wiz-body').addEventListener('click', async (e) => {
   if (apply) {
     e.preventDefault();
     apply.disabled = true;
+    const rec = {name: apply.dataset.applyName, type: apply.dataset.applyType, value: apply.dataset.applyValue};
     try {
-      await api('/api/dns/apply', json({name: apply.dataset.applyName, type: apply.dataset.applyType, value: apply.dataset.applyValue}));
+      if (!(W.dns && W.dns.connected) && W.dc) {
+        // Domain Connect: the DNS host asks the user to approve the change.
+        const r = await api('/api/dns/domain-connect/apply-url', json(rec));
+        window.open(r.url, '_blank', 'noopener');
+        apply.disabled = false;
+        toast(_t('Approve the change at {0}, then rescan.', {0: r.provider}));
+        return;
+      }
+      await api('/api/dns/apply', json(rec));
       apply.textContent = _t('Published ✓');
       W.published = true;
     } catch (err) {

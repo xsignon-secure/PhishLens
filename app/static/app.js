@@ -389,6 +389,20 @@ function severityFor(c) {
   return LOW_SEVERITY.includes(c.key) ? 'low' : 'medium';
 }
 
+/* BIMI logo check result plus an inbox preview. The logo is shown through an
+   <img> data: URL, where SVG never runs scripts. */
+function bimiCheckHtml(r, svg, sender) {
+  const src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+  const name = escapeHtml(sender || r.title || _t('Your brand'));
+  const list = (items, cls) => items.map(x => `<li class="${cls}">${escapeHtml(x)}</li>`).join('');
+  return `<p>${statusBadge(r.ok ? 'pass' : 'fail')} ${r.ok ? _t('This logo meets SVG Tiny PS.') : _t('Inboxes will not show this logo yet:')}</p>
+    <ul class="bimi-issues">${list(r.errors, 'error')}${list(r.warnings, 'muted')}</ul>
+    <div class="bimi-preview">
+      <div class="bimi-phone"><div class="bimi-row"><img src="${src}" alt=""><div><strong>${name}</strong><div class="muted small">${_t('Your order has shipped')}</div></div></div></div>
+      <div class="bimi-desktop"><div class="bimi-row"><img src="${src}" alt=""><strong>${name}</strong><span class="muted small">${_t('Your order has shipped')}</span></div></div>
+    </div>`;
+}
+
 function observationsTable(checks) {
   const rank = {high: 0, medium: 1, low: 2};
   const rows = checks.filter(c => c.status === 'fail' || c.status === 'warn')

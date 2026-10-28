@@ -46,6 +46,16 @@
   </div>
 
   <div class="panel">
+    <h2><span class="dot"></span>{{ _("BIMI logo checker") }}</h2>
+    <p class="muted small">{{ _("Checks your logo against SVG Tiny PS, the format inboxes require, and shows how it will look. The file stays in your browser except for the check, and nothing is stored.") }}</p>
+    <div class="scanbox small">
+      <input id="bimi-file" type="file" accept=".svg,image/svg+xml" aria-label="SVG logo">
+      <input id="bimi-name" type="text" placeholder="{{ _("Sender name") }}" aria-label="Sender name">
+    </div>
+    <div id="bimi-result" aria-live="polite"></div>
+  </div>
+
+  <div class="panel">
     <h2><span class="dot"></span>{{ _("DNS propagation") }}</h2>
     <p class="muted small">{{ _("Asks the domain's own nameservers and six public resolvers. If they disagree, the change is still spreading (wait for the old record's TTL).") }}</p>
     <form id="prop-form" class="scanbox small">
@@ -72,6 +82,22 @@ async function post(path, body) {
   if (!r.ok) throw new Error(d.detail || _t('Request failed'));
   return d;
 }
+let bimiSvg = '';
+async function checkBimi() {
+  const box = document.getElementById('bimi-result');
+  if (!bimiSvg) return;
+  try {
+    const r = await post('/api/tools/bimi-svg', {svg: bimiSvg});
+    box.innerHTML = bimiCheckHtml(r, bimiSvg, document.getElementById('bimi-name').value.trim());
+  } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+}
+document.getElementById('bimi-file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  bimiSvg = await f.text();
+  checkBimi();
+});
+document.getElementById('bimi-name').addEventListener('input', checkBimi);
 const URL_STATUS = {'dangerous': 'fail', 'likely phishing': 'fail', 'suspicious': 'warn', 'no known threat': 'pass'};
 document.getElementById('url-form').addEventListener('submit', async (e) => {
   e.preventDefault();

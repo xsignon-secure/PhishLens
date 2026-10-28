@@ -680,10 +680,11 @@ code {
 .observations table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .observations th, .observations td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 .observations th { color: var(--ink-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-.sev { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.sev { display: inline-block; white-space: nowrap; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .sev.high { background: var(--red-bg); color: var(--red); }
 .sev.medium { background: var(--amber-bg); color: var(--amber); }
 .sev.low { background: rgba(148, 178, 255, .12); color: var(--ink-dim); }
+.sev.ok { background: var(--green-bg); color: var(--green); }
 .timeline .table-wrap { overflow-x: auto; }
 .timeline table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .timeline th, .timeline td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
@@ -730,3 +731,14 @@ code {
 .mon { flex-wrap: wrap; }
 .mon strong { word-break: normal; overflow-wrap: anywhere; }
 .mon .row-actions { flex-wrap: wrap; gap: 6px; flex-shrink: 1; }
+
+/* ---------- BIMI logo preview ---------- */
+.bimi-issues { margin: 6px 0 12px; padding-left: 20px; font-size: 13.5px; }
+.bimi-preview { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.bimi-phone { width: 260px; border: 1px solid var(--line); border-radius: 22px; padding: 18px 12px; background: #fff; color: #111; }
+.bimi-desktop { flex: 1; min-width: 260px; max-width: 460px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; color: #111; }
+.bimi-row { display: flex; gap: 10px; align-items: center; }
+.bimi-row img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; background: #eee; }
+.bimi-desktop .bimi-row img { width: 28px; height: 28px; }
+.bimi-desktop .bimi-row strong { min-width: 110px; }
+.bimi-phone .muted, .bimi-desktop .muted { color: #555; }
