@@ -15,6 +15,6 @@ cryptography>=42.0
 idna>=3.20
 pytest>=8.0
 reportlab>=4.0
-psycopg[binary]>=3.1
+psycopg[binary]>=3.3.6
 pillow>=13.0.0
 signxml>=4.0
