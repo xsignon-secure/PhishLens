@@ -275,13 +275,13 @@ async function api(path, opts = {}, retried = false) {
 }
 
 /* A small modal; resolves with the typed value, or null when cancelled. */
-function askModal(title, text, {input = true, okLabel = _t('Continue'), html = ''} = {}) {
+function askModal(title, text, {input = true, okLabel = _t('Continue'), html = '', error = ''} = {}) {
   return new Promise(resolve => {
     const root = document.createElement('div');
     root.innerHTML = `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true">
       <h2>${escapeHtml(title)}</h2><p>${escapeHtml(text)}</p>${html}
       ${input ? '<input id="ask-input" inputmode="numeric" autocomplete="one-time-code">' : ''}
-      <p class="error" id="ask-err"></p>
+      <p class="error" id="ask-err">${escapeHtml(error)}</p>
       <div class="actions"><button class="btn" id="ask-ok">${escapeHtml(okLabel)}</button>
       <button class="btn ghost" id="ask-cancel">${_t('Cancel')}</button></div></div></div>`;
     document.body.appendChild(root);
@@ -318,15 +318,18 @@ async function showMfaSetup(required) {
   if (mfaSetupOpen) return;
   mfaSetupOpen = true;
   try {
+    // One key per setup: a wrong code asks again for the same key, which is
+    // the one the phone already scanned.
+    const r = await fetch('/api/auth/mfa/setup', {method: 'POST', headers: {'X-CSRF-Token': getCookie('csrf_token')}});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.detail || _t('Request failed')); return; }
+    let error = '';
     for (;;) {
-      const r = await fetch('/api/auth/mfa/setup', {method: 'POST', headers: {'X-CSRF-Token': getCookie('csrf_token')}});
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { toast(d.detail || _t('Request failed')); return; }
       const code = await askModal(_t('Set up your authenticator app'),
         required ? _t('Owners and admins need an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…). Scan the code, then enter the 6 digits it shows.')
                  : _t('Scan the code with your authenticator app, then enter the 6 digits it shows.'),
         {html: `<div class="qr">${d.qr_svg}</div><p class="muted small">${_t('Or type this key:')} <code>${escapeHtml(d.secret)}</code></p>`,
-         okLabel: _t('Turn on')});
+         okLabel: _t('Turn on'), error});
       if (code === null) { if (required) { location.href = '/login'; } return; }
       try {
         const on = await api('/api/auth/mfa/enable', {method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -334,7 +337,7 @@ async function showMfaSetup(required) {
         await showRecoveryCodes(on.recovery_codes);
         if (required) location.reload(); else loadEnterprise();
         return;
-      } catch (err) { toast(err.message); }
+      } catch (err) { error = err.message; }
     }
   } finally { mfaSetupOpen = false; }
 }

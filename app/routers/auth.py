@@ -170,13 +170,17 @@ def mfa_login(payload: MfaIn, request: Request, response: Response, db: Session 
 # ------------------------------------------------------------------ authenticator app
 @router.post("/mfa/setup")
 def mfa_setup(request: Request, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    """A new secret to scan. Not active until a code from it is confirmed."""
+    """The secret to scan. Not active until a code from it is confirmed. A
+    pending secret is kept, so reloading the page or a mistyped code doesn't
+    swap the key the phone already scanned."""
     import pyotp
     if user.mfa_enabled:
         raise HTTPException(status_code=400, detail="An authenticator app is already set up")
-    secret = pyotp.random_base32()
-    security.set_totp_secret(user, secret)
-    db.commit()
+    secret = security.totp_secret(user)
+    if not secret:
+        secret = pyotp.random_base32()
+        security.set_totp_secret(user, secret)
+        db.commit()
     from ..config import settings
     uri = pyotp.TOTP(secret).provisioning_uri(name=user.email, issuer_name=settings.APP_NAME)
     return {"secret": secret, "otpauth_uri": uri, "qr_svg": _qr_svg(uri)}

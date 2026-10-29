@@ -345,6 +345,19 @@ def test_admins_must_set_up_an_authenticator(client, db):
     assert client.post("/api/auth/mfa/disable", json={"code": on["recovery_codes"][0]}, headers=h).status_code == 400
 
 
+def test_authenticator_setup_keeps_its_key_until_confirmed(client, db):
+    make_user(db, mfa=False)
+    client.post("/api/auth/login", json={"email": "owner@x.com", "password": TEST_PASSWORD})
+    h = {"X-CSRF-Token": client.cookies.get("csrf_token")}
+    first = client.post("/api/auth/mfa/setup", headers=h).json()
+    # A reload or a mistyped code must not swap the key the phone scanned.
+    assert client.post("/api/auth/mfa/enable", json={"code": "000000"}, headers=h).status_code == 400
+    again = client.post("/api/auth/mfa/setup", headers=h).json()
+    assert again["secret"] == first["secret"]
+    code = pyotp.TOTP(first["secret"]).now()
+    assert client.post("/api/auth/mfa/enable", json={"code": code}, headers=h).status_code == 200
+
+
 def test_sensitive_changes_need_a_fresh_code(client, db):
     owner = make_user(db)
     login_as(client, owner, mfa=False)  # signed in a while ago, no recent code
