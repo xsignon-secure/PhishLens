@@ -11,6 +11,15 @@ function _t(s, vars) {
 // Marks a string for the translation catalog where it's looked up later with _t(variable).
 const N_ = s => s;
 
+// An API error as text: FastAPI sends a string, or a list of field problems
+// for input it rejects outright.
+function errorText(d, fallback) {
+  const e = d && d.detail;
+  if (typeof e === 'string' && e) return e;
+  if (Array.isArray(e) && e.length) return e.map(x => (x && x.msg) || '').filter(Boolean).join('; ') || fallback;
+  return fallback;
+}
+
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'

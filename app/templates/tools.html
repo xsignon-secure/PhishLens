@@ -79,7 +79,7 @@ document.querySelector('section.tool').addEventListener('click', (e) => {
 async function post(path, body) {
   const r = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
   return d;
 }
 let bimiSvg = '';

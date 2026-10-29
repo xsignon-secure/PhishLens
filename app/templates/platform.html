@@ -43,7 +43,7 @@ async function papi(path, opts = {}) {
   const r = await fetch(path, opts);
   const d = await r.json().catch(() => ({}));
   if (r.status === 401 && !path.endsWith('/login')) { showLogin(); throw new Error(_t('Request failed')); }
-  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
   return d;
 }
 function showLogin() {

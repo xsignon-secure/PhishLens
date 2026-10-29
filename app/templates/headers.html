@@ -63,7 +63,7 @@ document.getElementById('hdr-form').addEventListener('submit', async (e) => {
     const r = await fetch('/api/tools/headers', {method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({headers})});
     const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+    if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
     box.innerHTML = renderHeaders(d);
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
@@ -73,7 +73,7 @@ document.getElementById('hdr-form').addEventListener('submit', async (e) => {
   async function call(path, method = 'GET') {
     const r = await fetch(path, {method, headers: {'X-CSRF-Token': decodeURIComponent(csrf())}});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+    if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
     return d;
   }
   const body = document.getElementById('mt-body');
