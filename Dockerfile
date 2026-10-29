@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
 WORKDIR /srv/phishlens
+# gpg encrypts DMARC failure reports to a team's PGP key (app/pgp.py).
+RUN apt-get update && apt-get install -y --no-install-recommends gnupg && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

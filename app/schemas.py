@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     tenant_name: str
     is_verified: bool = False
     mfa_enabled: bool = False
+    mfa_setup_required: bool = False
 
 
 class TokenOut(BaseModel):

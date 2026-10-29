@@ -43,6 +43,13 @@ class Tenant(Base):
     sso_client_secret = Column(Text, nullable=True)
     sso_email_domain = Column(String(253), nullable=True, unique=True)
     sso_enforced = Column(Boolean, nullable=False, default=False)
+    # Everyone signing in with a password must use an authenticator app.
+    mfa_required = Column(Boolean, nullable=False, default=False)
+    # SCIM provisioning (docs/SCIM.md): sha256 of the bearer token.
+    scim_token_hash = Column(String(64), nullable=True, unique=True)
+    # PGP public key: failure (RUF) report details are stored encrypted to it.
+    ruf_pgp_key = Column(Text, nullable=True)
+    ruf_pgp_fingerprint = Column(String(64), nullable=True)
     sso_protocol = Column(String(10), nullable=True)  # oidc | saml (None = oidc for older rows)
     saml_entity_id = Column(String(500), nullable=True)
     saml_sso_url = Column(String(1000), nullable=True)
@@ -223,6 +230,9 @@ class ForensicReport(Base):
     header_from = Column(String(320), nullable=True)
     subject = Column(String(300), nullable=True)
     auth_results = Column(Text, nullable=True)
+    # With a team PGP key, the fields above that identify people (From,
+    # MAIL FROM, subject, Authentication-Results) live only in here.
+    encrypted = Column(Text, nullable=True)
     fingerprint = Column(String(64), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 

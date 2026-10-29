@@ -21,7 +21,7 @@ Target: $0/month. Pick one path, then work the checklist top to bottom.
 ## Path B — Single VPS (Oracle Cloud free tier)
 
 1. Provision VM, point DNS A-record at it.
-2. Install Python 3.12, clone repo, `pip install -r requirements.txt`.
+2. Install Python 3.12, clone repo, `pip install -r requirements.txt`; `apt install gnupg` if you want PGP-encrypted failure reports.
 3. systemd unit running `uvicorn app.main:app --host 127.0.0.1 --port 8000`.
 4. Caddy as reverse proxy with automatic TLS:
    `yourdomain.com { reverse_proxy 127.0.0.1:8000 }`
