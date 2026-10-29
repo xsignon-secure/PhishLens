@@ -741,5 +741,7 @@
  "Owner's name": "मालिक का नाम",
  "Authenticator code": "ऑथेंटिकेटर कोड",
  "On. {0} recovery codes left.": "चालू। {0} रिकवरी कोड बचे हैं।",
- "Confirm it's you": "पुष्टि करें कि यह आप हैं"
+ "Confirm it's you": "पुष्टि करें कि यह आप हैं",
+ "DNS &amp; hosting": "DNS और होस्टिंग",
+ "Integrations": "इंटीग्रेशन"
 }
