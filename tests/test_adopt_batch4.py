@@ -155,6 +155,7 @@ def test_syslog_delivery(transport):
     kind = socket.SOCK_DGRAM if transport == "udp" else socket.SOCK_STREAM
     srv = socket.socket(socket.AF_INET, kind)
     srv.bind(("127.0.0.1", 0))
+    srv.settimeout(5)  # never leave a thread blocked if delivery goes elsewhere
     port, got = srv.getsockname()[1], []
     if transport == "tcp":
         srv.listen(1)
@@ -169,9 +170,10 @@ def test_syslog_delivery(transport):
                 while chunk := conn.recv(4096):
                     data += chunk
                 got.append(data)
-    th = threading.Thread(target=serve)
+    th = threading.Thread(target=serve, daemon=True)
     th.start()
-    cfg = integrations.clean_siem({"kind": "syslog", "host": "localhost", "port": port, "transport": transport})
+    # 127.0.0.1, not localhost: CI runners resolve localhost to ::1 first.
+    cfg = integrations.clean_siem({"kind": "syslog", "host": "127.0.0.1", "port": port, "transport": transport})
     assert integrations.send_siem(cfg, [_event()]) is True
     th.join(5)
     srv.close()
