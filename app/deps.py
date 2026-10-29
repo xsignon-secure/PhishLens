@@ -147,7 +147,24 @@ def get_current_user(
     if payload.get("tv", 0) != (user.token_version or 0):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session was signed out")
     request.state.auth_method = "cookie" if request.cookies.get("access_token") else "bearer"
+    request.state.token_payload = payload
+    if needs_mfa_setup(user, payload) and request.url.path not in MFA_SETUP_PATHS:
+        raise HTTPException(status_code=403, detail="Your team requires two-factor authentication: "
+                                                    "set up an authenticator app to continue")
     return user
+
+
+# Reachable while a required authenticator isn't set up yet (the dashboard
+# page shows the setup screen).
+MFA_SETUP_PATHS = {"/dashboard", "/api/auth/me", "/api/auth/mfa/setup", "/api/auth/mfa/verify", "/api/auth/logout"}
+
+
+def needs_mfa_setup(user: models.User, token_payload: dict | None = None) -> bool:
+    """The team requires 2FA and this password login has none. Single
+    sign-on logins are exempt: the identity provider enforces its own MFA."""
+    if (token_payload or {}).get("amr") == "sso":
+        return False
+    return bool(user.tenant and user.tenant.mfa_required and not user.mfa_enabled)
 
 
 def require_owner(user: models.User = Depends(get_current_user)) -> models.User:

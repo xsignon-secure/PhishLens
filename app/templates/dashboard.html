@@ -60,6 +60,14 @@
       <p id="dmarc-msg" class="muted small"></p>
       <div id="dmarc-summary"></div>
       <div id="ruf-list"></div>
+      <details class="owner-only hidden" id="pgp-box" style="margin-top:12px">
+        <summary class="small">{{ _("Encrypt failure reports with your PGP key") }}</summary>
+        <p class="muted small">{{ _("Failure reports can show who your mail was spoofed to and the message subject. With a PGP public key, PhishLens keeps those details only encrypted to it; you download and decrypt them yourself.") }}</p>
+        <p id="pgp-status" class="muted small"></p>
+        <textarea id="pgp-key" rows="4" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" spellcheck="false" aria-label="PGP public key"></textarea>
+        <button class="btn tiny" type="button" id="pgp-save">{{ _("Save key") }}</button>
+        <button class="btn tiny ghost" type="button" id="pgp-del">{{ _("Remove") }}</button>
+      </details>
       <div id="tls-summary"></div>
     </div>
     <div class="panel" id="lookalike-panel">
@@ -108,6 +116,8 @@
     <div class="panel">
       <h2><span class="dot"></span>{{ _("Security") }}</h2>
       <div id="mfa-box"><p class="muted">{{ _("Loading…") }}</p></div>
+      <label class="owner-only hidden" style="font-weight:500"><input id="mfa-required" type="checkbox" style="width:auto"> {{ _("Require two-factor authentication for everyone on the team") }}</label>
+      <p id="mfa-team" class="muted small"></p>
       <p><a href="/forgot-password">{{ _("Reset password") }}</a> · <button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">{{ _("Export my data") }}</button></p>
     </div>
   </div>
@@ -163,6 +173,14 @@
         <button class="btn" type="submit">{{ _("Save") }}</button>
         <button id="sso-del" class="btn ghost" type="button">{{ _("Remove") }}</button>
       </form>
+      <div class="owner-only hidden" id="scim-box">
+        <h3 style="margin:18px 0 6px;font-size:15px">{{ _("User provisioning (SCIM)") }}</h3>
+        <p class="muted small">{{ _("Let Okta, Microsoft Entra ID, OneLogin or JumpCloud add and remove team members automatically. People removed in your directory are signed out and blocked here.") }}</p>
+        <p id="scim-status" class="muted small"></p>
+        <button class="btn tiny" type="button" id="scim-new">{{ _("Create SCIM token") }}</button>
+        <button class="btn tiny ghost" type="button" id="scim-del">{{ _("Turn off") }}</button>
+        <div id="scim-token"></div>
+      </div>
     </div>
     <div class="panel" id="brand-panel">
       <h2><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
@@ -405,7 +423,14 @@ async function loadEnterprise() {
   dashData.members = members;
   document.getElementById('members').innerHTML = members.map(m =>
     `<div class="mon"><strong>${escapeHtml(m.email)}</strong>
-     <span class="muted">${escapeHtml(m.role)}${m.is_verified ? '' : (' ' + _t('· unverified'))}</span></div>`).join('');
+     <span class="muted">${escapeHtml(m.role)}${m.is_verified ? '' : (' ' + _t('· unverified'))}${m.mfa_enabled ? (' ' + _t('· 2FA on')) : ''}</span></div>`).join('');
+  const sec = await api('/api/team/security');
+  document.getElementById('mfa-required').checked = sec.mfa_required;
+  const without = members.filter(m => !m.mfa_enabled).length;
+  document.getElementById('mfa-team').textContent = sec.mfa_required
+    ? (without ? _t('Required. {0} member(s) will be asked to set it up at their next sign-in.', {0: without}) : _t('Required, and everyone has it on.'))
+    : (isOwner ? _t('{0} of {1} members have it on.', {0: members.length - without, 1: members.length}) : '');
+  if (isOwner) { loadScim().catch(() => {}); loadPgp().catch(() => {}); }
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length
@@ -762,8 +787,8 @@ async function loadForensic() {
   const rows = await api('/api/dmarc/forensic');
   document.getElementById('ruf-list').innerHTML = rows.length
     ? ('<h3 class="muted small" style="margin:14px 0 4px">' + _t('Recent failure reports') + '</h3>') + rows.slice(0, 10).map(r => `<div class="dm-row"><div class="top">
-        <strong>${escapeHtml(r.header_from || r.domain)}</strong>${statusBadge('fail')}</div>
-        <div class="meta">${_t('{0} · from {1} · {2} failure{3}{4}', {0: escapeHtml(r.subject || _t('(no subject)')), 1: escapeHtml(r.source_ip || '?'), 2: escapeHtml(r.auth_failure || 'dmarc'), 3: r.arrival_date ? ' · ' + escapeHtml(r.arrival_date.slice(0, 16).replace('T', ' ')) : '', 4: r.reporter ? (' ' + _t('· reported by') + ' ') + escapeHtml(r.reporter) : ''})}</div></div>`).join('')
+        <strong>${escapeHtml(r.header_from || r.domain)}</strong>${r.encrypted ? ` <a class="small" href="/api/dmarc/forensic/${encodeURIComponent(r.id)}.asc">🔒 ${_t('Encrypted details (.asc)')}</a>` : ''}${statusBadge('fail')}</div>
+        <div class="meta">${_t('{0} · from {1} · {2} failure{3}{4}', {0: escapeHtml(r.subject || (r.encrypted ? _t('(encrypted)') : _t('(no subject)'))), 1: escapeHtml(r.source_ip || '?'), 2: escapeHtml(r.auth_failure || 'dmarc'), 3: r.arrival_date ? ' · ' + escapeHtml(r.arrival_date.slice(0, 16).replace('T', ' ')) : '', 4: r.reporter ? (' ' + _t('· reported by') + ' ') + escapeHtml(r.reporter) : ''})}</div></div>`).join('')
     : '';
 }
 document.getElementById('ruf-file').addEventListener('change', async (e) => {
@@ -946,6 +971,86 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
   } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
   loadHosted();
 });
+
+/* ---------------- team 2FA, SCIM, PGP ---------------- */
+document.getElementById('mfa-required').addEventListener('change', async (e) => {
+  try {
+    await api('/api/team/security', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mfa_required: e.target.checked})});
+    toast(_t('Saved'));
+  } catch (err) { e.target.checked = !e.target.checked; if (err.message !== 'auth') toast(err.message); }
+  loadEnterprise();
+});
+async function loadScim() {
+  const c = await api('/api/team/scim');
+  document.getElementById('scim-status').innerHTML = (c.enabled ? _t('✓ On.') : _t('Off.'))
+    + ` ${_t('SCIM base URL:')} <code>${escapeHtml(c.base_url)}</code>`;
+  document.getElementById('scim-del').style.display = c.enabled ? '' : 'none';
+  document.getElementById('scim-new').textContent = c.enabled ? _t('Replace SCIM token') : _t('Create SCIM token');
+}
+document.getElementById('scim-new').onclick = async () => {
+  if (document.getElementById('scim-del').style.display !== 'none'
+      && !confirm(_t('Replace the token? Your directory stops syncing until you paste the new one.'))) return;
+  try {
+    const d = await api('/api/team/scim/token', {method: 'POST'});
+    document.getElementById('scim-token').innerHTML = `<p class="small">${_t('Copy this token into your identity provider now. It is shown only once.')}</p>
+      <p><code class="copy">${escapeHtml(d.token)}</code> <button class="btn tiny ghost" type="button" id="scim-copy">${_t('Copy')}</button></p>`;
+    document.getElementById('scim-copy').onclick = (ev) => copyText(d.token, ev.target);
+    loadScim();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('scim-del').onclick = async () => {
+  if (!confirm(_t('Turn off SCIM? Your directory can no longer change team members.'))) return;
+  try { await api('/api/team/scim/token', {method: 'DELETE'}); document.getElementById('scim-token').innerHTML = ''; loadScim(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+async function loadPgp() {
+  const c = await api('/api/team/ruf-pgp');
+  document.getElementById('pgp-key').value = c.key || '';
+  document.getElementById('pgp-del').style.display = c.fingerprint ? '' : 'none';
+  document.getElementById('pgp-status').textContent = !c.available
+    ? _t('GnuPG is not installed on this server, so reports cannot be encrypted.')
+    : c.fingerprint ? _t('✓ New failure reports are encrypted to key {0}.', {0: c.fingerprint.replace(/(.{4})/g, '$1 ').trim()}) : '';
+  if (c.fingerprint) document.getElementById('pgp-box').open = true;
+}
+document.getElementById('pgp-save').onclick = async () => {
+  try {
+    await api('/api/team/ruf-pgp', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key: document.getElementById('pgp-key').value})});
+    toast(_t('Saved'));
+    loadPgp();
+  } catch (err) { if (err.message !== 'auth') document.getElementById('pgp-status').textContent = err.message; }
+};
+document.getElementById('pgp-del').onclick = async () => {
+  if (!confirm(_t('Stop encrypting new failure reports? Reports already stored stay encrypted.'))) return;
+  try { await api('/api/team/ruf-pgp', {method: 'DELETE'}); loadPgp(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+
+/* ---------------- required 2FA gate ---------------- */
+function mfaGate() {
+  document.querySelector('section.dash').innerHTML = `<div class="panel" style="max-width:620px;margin:40px auto">
+    <h2><span class="dot"></span>${_t('Set up two-factor authentication')}</h2>
+    <p>${_t('Your team requires an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…) to sign in. Set it up to open the dashboard.')}</p>
+    <div id="gate-body"><button class="btn" id="gate-start" type="button">${_t('Start')}</button></div></div>`;
+  document.getElementById('gate-start').onclick = async () => {
+    try {
+      const d = await api('/api/auth/mfa/setup', {method: 'POST'});
+      document.getElementById('gate-body').innerHTML = `<p class="small">${_t('Add this secret in your authenticator app, or open the link on your phone:')}</p>
+        <p><code class="copy">${escapeHtml(d.secret)}</code></p>
+        <p class="small"><a href="${escapeHtml(d.otpauth_url)}">${_t('Open in authenticator app')}</a></p>
+        <form id="gate-form" class="scanbox small"><input id="gate-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Code">
+        <button class="btn" type="submit">${_t('Verify')}</button></form>`;
+      document.getElementById('gate-form').onsubmit = async (e) => {
+        e.preventDefault();
+        try {
+          await api('/api/auth/mfa/verify', {method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({code: document.getElementById('gate-code').value.trim()})});
+          location.reload();
+        } catch (err) { if (err.message !== 'auth') toast(_t('Invalid code — try again.')); }
+      };
+    } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  };
+}
 
 /* ---------------- SIEM and PSA ---------------- */
 // [name, label, type, placeholder]; type "secret" keeps the stored value when left blank.
@@ -1147,6 +1252,7 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
 /* ---------------- boot ---------------- */
 (async function init() {
   try {
+    if ((await api('/api/auth/me')).mfa_setup_required) return mfaGate();
     await loadDashboard();
     await loadEnterprise();
     loadDmarc().catch(() => {});

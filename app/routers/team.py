@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import audit, branding, mailer, models, schemas, tokens, webhooks
+from .. import audit, branding, mailer, models, pgp, schemas, tokens, webhooks
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, rate_limit, require_owner
@@ -69,8 +69,60 @@ def list_members(request: Request, db: Session = Depends(get_db),
                        models.User.is_active.is_(True))
                .order_by(models.User.created_at).all())
     return [{"id": m.id, "email": m.email, "role": m.role,
-             "is_verified": m.is_verified,
+             "is_verified": m.is_verified, "mfa_enabled": m.mfa_enabled,
              "created_at": m.created_at.isoformat() + "Z"} for m in members]
+
+
+class PgpKeyIn(BaseModel):
+    key: str
+
+
+@router.get("/ruf-pgp")
+def get_ruf_pgp(user: models.User = Depends(get_current_user)):
+    t = user.tenant
+    return {"available": pgp.available(), "fingerprint": t.ruf_pgp_fingerprint,
+            "key": t.ruf_pgp_key}
+
+
+@router.put("/ruf-pgp")
+def put_ruf_pgp(payload: PgpKeyIn, request: Request, db: Session = Depends(get_db),
+                user: models.User = Depends(require_owner)):
+    try:
+        info = pgp.inspect(payload.key)
+    except pgp.PgpError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    user.tenant.ruf_pgp_key, user.tenant.ruf_pgp_fingerprint = info["key"], info["fingerprint"]
+    db.commit()
+    audit.log_request(db, request, "ruf_pgp.update", user, {"fingerprint": info["fingerprint"]})
+    return {"available": True, "fingerprint": info["fingerprint"], "uids": info["uids"], "key": info["key"]}
+
+
+@router.delete("/ruf-pgp")
+def delete_ruf_pgp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+    user.tenant.ruf_pgp_key = user.tenant.ruf_pgp_fingerprint = None
+    db.commit()
+    audit.log_request(db, request, "ruf_pgp.delete", user)
+    return {"ok": True}
+
+
+class SecurityIn(BaseModel):
+    mfa_required: bool
+
+
+@router.get("/security")
+def get_security(user: models.User = Depends(get_current_user)):
+    return {"mfa_required": bool(user.tenant.mfa_required)}
+
+
+@router.put("/security")
+def put_security(payload: SecurityIn, request: Request, db: Session = Depends(get_db),
+                 user: models.User = Depends(require_owner)):
+    if payload.mfa_required and not user.mfa_enabled:
+        raise HTTPException(status_code=400, detail="Turn on two-factor authentication for your own account first")
+    user.tenant.mfa_required = payload.mfa_required
+    db.commit()
+    audit.log_request(db, request, "team.mfa_required", user, {"on": payload.mfa_required})
+    return {"mfa_required": payload.mfa_required}
 
 
 @router.post("/invite", status_code=201)

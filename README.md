@@ -32,8 +32,8 @@ on Cloudflare, DigitalOcean, deSEC, GoDaddy or Amazon Route 53.
 Free tools, no account needed: `/tools` has a phishing link checker,
 single-record checkers, record generators (DMARC, SPF, MTA-STS, TLS-RPT, BIMI)
 and a DNS propagation checker. The app (public pages, dashboard and scan
-report screens) is available in English, Spanish, French, German, Portuguese
-and Hindi. Scan findings and fix advice are still written in English.
+report screens) is available in English, Spanish, French, German, Portuguese,
+Hindi, Italian, Dutch and Japanese (machine-translated; corrections welcome). Scan findings and fix advice are still written in English.
 
 | Scan report | Dashboard |
 |---|---|
@@ -121,6 +121,8 @@ app/
 
 - **Forensic (RUF) reports**: failure reports (ARF) are read from the same
   mailbox or uploaded as .eml; only headers are kept, never message bodies.
+  Paste your team's PGP public key and the sender, subject and auth details
+  are encrypted to it (PhishLens keeps only the encrypted copy; needs `gpg`).
 - **Hosted DMARC / SPF / MTA-STS / TLS-RPT / BIMI** with SPF flattening and
   BIMI logo hosting: `docs/HOSTED-RECORDS.md`.
 - **DKIM key health**: from aggregate reports, every selector that signs for
@@ -133,6 +135,10 @@ app/
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
 - **SSO** (OpenID Connect or SAML 2.0, optional enforcement): `docs/SSO.md`.
+- **Required 2FA**: owners can make every member set up an authenticator app
+  before using the dashboard (SSO sign-ins are exempt; the IdP handles MFA).
+- **SCIM 2.0 provisioning** from Okta, Microsoft Entra ID and others:
+  `docs/SCIM.md`.
 - **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
   or to Splunk HEC, and a ticket per alerting domain in ConnectWise Manage,
   HaloPSA or Autotask: `docs/INTEGRATIONS.md`.

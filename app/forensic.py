@@ -8,11 +8,13 @@ private mail.
 """
 import hashlib
 import ipaddress
+import logging
 from email import message_from_bytes, policy
 from email.parser import HeaderParser
 from email.utils import parseaddr, parsedate_to_datetime
 
 MAX_BYTES = 5 * 1024 * 1024
+log = logging.getLogger("phishlens.forensic")
 
 
 class ForensicError(ValueError):
@@ -89,6 +91,26 @@ def parse(raw: bytes) -> dict:
     return out
 
 
+# Fields that identify people: with a team PGP key they are kept only encrypted.
+SEALED = ("header_from", "original_mail_from", "subject", "auth_results")
+
+
+def seal(parsed: dict, tenant) -> dict:
+    from . import pgp
+
+    secret = {k: parsed.get(k) for k in SEALED}
+    out = {**parsed, **{k: None for k in SEALED}}
+    try:
+        out["encrypted"] = pgp.encrypt(tenant.ruf_pgp_key, tenant.ruf_pgp_fingerprint,
+                                       {"domain": parsed.get("domain"), "source_ip": parsed.get("source_ip"),
+                                        **secret})
+    except pgp.PgpError as exc:
+        # Never fall back to plaintext: keep the report's statistics only.
+        log.warning("RUF encryption for tenant %s failed: %s", tenant.id, exc)
+        out["encrypted"] = None
+    return out
+
+
 def store(db, tenant_id: str, parsed: dict):
     from . import models
 
@@ -97,6 +119,9 @@ def store(db, tenant_id: str, parsed: dict):
                         models.ForensicReport.fingerprint == parsed["fingerprint"]).first())
     if existing:
         return existing, False
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if tenant and tenant.ruf_pgp_key:
+        parsed = seal(parsed, tenant)
     row = models.ForensicReport(tenant_id=tenant_id, **parsed)
     db.add(row)
     db.commit()

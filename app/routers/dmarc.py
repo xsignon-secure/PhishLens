@@ -1,7 +1,7 @@
 """DMARC aggregate reports: upload / API ingest, per-sender summary."""
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -176,4 +176,16 @@ def list_forensic(domain: str | None = None, db: Session = Depends(get_db),
              "arrival_date": r.arrival_date.isoformat() + "Z" if r.arrival_date else None,
              "auth_failure": r.auth_failure, "delivery_result": r.delivery_result,
              "header_from": r.header_from, "original_mail_from": r.original_mail_from,
-             "subject": r.subject} for r in rows]
+             "subject": r.subject, "encrypted": bool(r.encrypted)} for r in rows]
+
+
+@router.get("/forensic/{report_id}.asc")
+def forensic_encrypted(report_id: str, db: Session = Depends(get_db),
+                       user: models.User = Depends(get_current_user)):
+    """The PGP-encrypted details of one failure report, to decrypt with the team's private key."""
+    r = (db.query(models.ForensicReport)
+         .filter(models.ForensicReport.id == report_id, models.ForensicReport.tenant_id == user.tenant_id).first())
+    if not r or not r.encrypted:
+        raise HTTPException(status_code=404, detail="Not found")
+    return Response(r.encrypted, media_type="application/pgp-encrypted",
+                    headers={"Content-Disposition": f'attachment; filename="failure-report-{r.id}.asc"'})

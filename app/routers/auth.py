@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 from .. import audit, mailer, models, schemas, security, tokens
 from ..config import settings
 from ..database import get_db
-from ..deps import auth_limit, get_current_user
+from ..deps import auth_limit, get_current_user, needs_mfa_setup
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-def _user_out(user: models.User) -> schemas.UserOut:
+def _user_out(user: models.User, token_payload: dict | None = None) -> schemas.UserOut:
     return schemas.UserOut(
         id=user.id,
         email=user.email,
@@ -22,6 +22,7 @@ def _user_out(user: models.User) -> schemas.UserOut:
         tenant_name=user.tenant.name if user.tenant else "",
         is_verified=user.is_verified,
         mfa_enabled=user.mfa_enabled,
+        mfa_setup_required=needs_mfa_setup(user, token_payload),
     )
 
 
@@ -171,6 +172,8 @@ def mfa_disable(payload: schemas.MfaDisableIn, request: Request,
                 db: Session = Depends(get_db),
                 user: models.User = Depends(get_current_user)):
     auth_limit(request, "mfa_disable", user.id, limit=5)
+    if user.tenant and user.tenant.mfa_required:
+        raise HTTPException(status_code=400, detail="Your team requires two-factor authentication")
     if not security.verify_password(payload.password, user.password_hash):
         # 400, not 401: the session is fine, and the dashboard treats 401 as "log in again".
         raise HTTPException(status_code=400, detail="Invalid password")
@@ -274,5 +277,5 @@ def revoke_sessions(request: Request, response: Response, db: Session = Depends(
 
 
 @router.get("/me", response_model=schemas.UserOut)
-def me(user: models.User = Depends(get_current_user)):
-    return _user_out(user)
+def me(request: Request, user: models.User = Depends(get_current_user)):
+    return _user_out(user, getattr(request.state, "token_payload", None))

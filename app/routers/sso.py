@@ -199,7 +199,8 @@ def _complete_login(db: Session, request: Request, tenant: models.Tenant, email:
         user.is_verified = True
         db.commit()
     audit.log_request(db, request, "auth.login", user, {"sso": protocol})
-    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version)
+    token = security.create_access_token(user_id=user.id, tenant_id=user.tenant_id, version=user.token_version,
+                                         sso=True)
     resp = RedirectResponse("/dashboard", status_code=303)
     _set_session_cookies(resp, token)
     return resp

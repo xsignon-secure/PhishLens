@@ -12,7 +12,7 @@ from jinja2 import pass_context
 from markupsafe import Markup
 
 LANGS = {"en": "English", "es": "Español", "fr": "Français", "de": "Deutsch",
-         "pt": "Português", "hi": "हिन्दी"}
+         "pt": "Português", "hi": "हिन्दी", "it": "Italiano", "nl": "Nederlands", "ja": "日本語"}
 _DIR = Path(__file__).resolve().parent / "locales"
 _catalogs: dict[str, dict[str, str]] = {
     p.stem: json.loads(p.read_text(encoding="utf-8")) for p in _DIR.glob("*.json") if p.stem in LANGS}

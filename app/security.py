@@ -30,9 +30,11 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, user_id: str, tenant_id: str, version: int = 0) -> str:
+def create_access_token(*, user_id: str, tenant_id: str, version: int = 0, sso: bool = False) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     payload = {"sub": user_id, "tid": tenant_id, "exp": expire, "typ": "access", "tv": version or 0}
+    if sso:  # the identity provider did the login (and its own MFA)
+        payload["amr"] = "sso"
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
