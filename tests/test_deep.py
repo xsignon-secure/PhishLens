@@ -1,7 +1,6 @@
 """Deep-scanner tests: real crypto parsing, null MX, CAA, advanced signals."""
 import base64
 
-import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 

@@ -3,17 +3,14 @@ import hashlib
 import hmac
 import json
 
-import time
 
-import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from app import mailer, models, tokens, webhooks
-from app.config import settings
+from app import models, webhooks
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
-from app.scanner import engine as scan_engine
+from tests.conftest import admin_login
 
 
 @pytest.fixture()
@@ -39,12 +36,8 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _signup(client, email, **kw):
-    body = {"email": email, "password": "correct-horse-123", "company": "Acme"}
-    body.update(kw)
-    r = client.post("/api/auth/signup", json=body)
-    assert r.status_code == 201, r.text
-    return r.json()
+def _signup(client, *_args, **_kw):
+    return admin_login(client, keep_cookies=True)
 
 
 def _bearer(token):
@@ -76,143 +69,12 @@ def test_csrf_exempt_for_bearer_even_with_cookie_jar(client):
 
 
 # ------------------------------------------------------------------ MFA
-def test_mfa_full_flow(client, db):
-    data = _signup(client, "mfa@example.com")
-    h = _bearer(data["access_token"])
-    r = client.post("/api/auth/mfa/setup", headers=h)
-    assert r.status_code == 200
-    secret = r.json()["secret"]
-    code = pyotp.TOTP(secret).now()
-    r = client.post("/api/auth/mfa/verify", json={"code": code}, headers=h)
-    assert r.status_code == 200
-
-    # login now requires the second factor
-    client.cookies.clear()
-    r = client.post("/api/auth/login",
-                    json={"email": "mfa@example.com", "password": "correct-horse-123"})
-    assert r.status_code == 200
-    assert r.json().get("mfa_required") is True
-    mfa_token = r.json()["mfa_token"]
-
-    # wrong code fails
-    r = client.post("/api/auth/mfa/challenge",
-                    json={"mfa_token": mfa_token, "code": "000000"})
-    assert r.status_code == 401
-    # the code already used to enable MFA can't be replayed
-    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": code})
-    assert r.status_code == 401
-    # the next code completes login (one step of clock drift is accepted)
-    nxt = pyotp.TOTP(secret).at(time.time() + 30)
-    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": nxt})
-    assert r.status_code == 200
-    assert "access_token" in r.json()
-    # ...and only once
-    r = client.post("/api/auth/mfa/challenge", json={"mfa_token": mfa_token, "code": nxt})
-    assert r.status_code == 401
-    # the seed is encrypted at rest
-    user = db.query(models.User).filter_by(email="mfa@example.com").one()
-    db.refresh(user)
-    assert user.totp_secret != secret
-
-
-def test_password_reset_and_sign_out_everywhere_revoke_sessions(client, db):
-    data = _signup(client, "rev@example.com")
-    h = _bearer(data["access_token"])
-    assert client.get("/api/auth/me", headers=h).status_code == 200
-    r = client.post("/api/auth/sessions/revoke", headers=h)
-    assert r.status_code == 200
-    assert client.get("/api/auth/me", headers=h).status_code == 401
-    h2 = _bearer(r.json()["access_token"])
-    assert client.get("/api/auth/me", headers=h2).status_code == 200
-    user = db.query(models.User).filter_by(email="rev@example.com").one()
-    raw = tokens.create(db, "password_reset", ttl_hours=2, user_id=user.id)
-    client.cookies.clear()
-    assert client.post("/api/auth/password/reset",
-                       json={"token": raw, "new_password": "another-horse-456"}).status_code == 200
-    assert client.get("/api/auth/me", headers=h2).status_code == 401
-
-
-def test_mfa_disable(client):
-    data = _signup(client, "mfa2@example.com")
-    h = _bearer(data["access_token"])
-    secret = client.post("/api/auth/mfa/setup", headers=h).json()["secret"]
-    client.post("/api/auth/mfa/verify",
-                json={"code": pyotp.TOTP(secret).now()}, headers=h)
-    r = client.post("/api/auth/mfa/disable",
-                    json={"password": "correct-horse-123"}, headers=h)
-    assert r.status_code == 200
-    client.cookies.clear()
-    r = client.post("/api/auth/login",
-                    json={"email": "mfa2@example.com", "password": "correct-horse-123"})
-    assert "access_token" in r.json()  # no MFA step anymore
 
 
 # ------------------------------------------------------------------ password reset + verification
-def test_password_reset_flow(client, db, monkeypatch):
-    _signup(client, "reset@example.com")
-    sent = {}
-    monkeypatch.setattr(mailer, "send_email",
-                        lambda to, subject, body: sent.update(body=body) or True)
-    r = client.post("/api/auth/password/forgot", json={"email": "reset@example.com"})
-    assert r.status_code == 200
-    # unknown email also returns 200 (no enumeration)
-    r = client.post("/api/auth/password/forgot", json={"email": "nobody@example.com"})
-    assert r.status_code == 200
-    import re
-    token = re.search(r"token=([A-Za-z0-9_\-]+)", sent["body"]).group(1)
-    r = client.post("/api/auth/password/reset",
-                    json={"token": token, "new_password": "brand-new-pass-1"})
-    assert r.status_code == 200
-    # token is single-use
-    r = client.post("/api/auth/password/reset",
-                    json={"token": token, "new_password": "another-pass-22"})
-    assert r.status_code == 400
-    client.cookies.clear()
-    r = client.post("/api/auth/login",
-                    json={"email": "reset@example.com", "password": "brand-new-pass-1"})
-    assert r.status_code == 200
-
-
-def test_email_verification(client, db, monkeypatch):
-    data = _signup(client, "verify@example.com")
-    h = _bearer(data["access_token"])
-    assert data["user"]["is_verified"] is False
-    tok = db.query(models.AuthToken).filter(
-        models.AuthToken.purpose == "verify_email").first()
-    assert tok is not None
-    # need the raw token: create a fresh one via resend and capture the email
-    sent = {}
-    monkeypatch.setattr(mailer, "send_email",
-                        lambda to, subject, body: sent.update(body=body) or True)
-    client.post("/api/auth/verify/resend", headers=h)
-    import re
-    raw = re.search(r"token=([A-Za-z0-9_\-]+)", sent["body"]).group(1)
-    r = client.post("/api/auth/verify", json={"token": raw}, headers=h)
-    assert r.status_code == 200
-    assert client.get("/api/auth/me", headers=h).json()["is_verified"] is True
 
 
 # ------------------------------------------------------------------ invites
-def test_invite_joins_existing_tenant(client, db, monkeypatch):
-    owner = _signup(client, "owner@example.com")
-    ho = _bearer(owner["access_token"])
-    captured = {}
-    monkeypatch.setattr(mailer, "send_email",
-                        lambda to, subject, body: captured.update(body=body) or True)
-    r = client.post("/api/team/invite", json={"email": "member@example.com"}, headers=ho)
-    assert r.status_code == 201, r.text
-    import re
-    raw = re.search(r"invite=([A-Za-z0-9_\-]+)", captured["body"]).group(1)
-
-    client.cookies.clear()
-    member = _signup(client, "member@example.com", invite_token=raw)
-    assert member["user"]["tenant_id"] == owner["user"]["tenant_id"]
-    assert member["user"]["role"] == "member"
-
-    # member cannot invite others
-    hm = _bearer(member["access_token"])
-    r = client.post("/api/team/invite", json={"email": "x@example.com"}, headers=hm)
-    assert r.status_code == 403
 
 
 # ------------------------------------------------------------------ API keys
@@ -286,24 +148,3 @@ def test_webhook_signed_delivery(client, db, monkeypatch):
 
 
 # ------------------------------------------------------------------ audit
-def test_audit_log_records_and_is_owner_only(client):
-    owner = _signup(client, "auditowner@example.com")
-    ho = _bearer(owner["access_token"])
-    client.get("/api/auth/me", headers=ho)
-    r = client.get("/api/team/audit", headers=ho)
-    assert r.status_code == 200
-    actions = [e["action"] for e in r.json()]
-    assert "auth.signup" in actions
-
-    # invite a member, then member is denied the audit log
-    import re
-    captured = {}
-    orig_send = mailer.send_email
-    mailer.send_email = lambda to, subject, body: captured.update(body=body) or True
-    client.post("/api/team/invite", json={"email": "auditor@example.com"}, headers=ho)
-    mailer.send_email = orig_send
-    raw = re.search(r"invite=([A-Za-z0-9_\-]+)", captured["body"]).group(1)
-    client.cookies.clear()
-    member = _signup(client, "auditor@example.com", invite_token=raw)
-    r = client.get("/api/team/audit", headers=_bearer(member["access_token"]))
-    assert r.status_code == 403

@@ -9,10 +9,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import mailer, models
+from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
 from app.scanner import dns_checks, dns_snapshot, observations
 from app.scanner import engine as scan_engine
+from tests.conftest import admin_headers
 
 REAL_SNAPSHOT = dns_snapshot.snapshot  # conftest stubs it per test
 
@@ -35,11 +37,8 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _auth(client, email="owner@x.com"):
-    r = client.post("/api/auth/signup", json={"email": email, "password": "correct-horse-123", "company": "Acme"})
-    assert r.status_code == 201, r.text
-    client.cookies.clear()
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+def _auth(client, *_args, **_kw):
+    return admin_headers(client)
 
 
 # ------------------------------------------------------------------ snapshots
@@ -133,9 +132,6 @@ def test_monitor_alert_level_and_changes_endpoint(client, db):
     db.commit()
     changes = client.get(f"/api/monitors/{mid}/changes", headers=h).json()["changes"]
     assert changes[0]["record"] == "SPF" and changes[0]["new"] == []
-    # Another team cannot read the timeline.
-    other = _auth(client, "other@y.com")
-    assert client.get(f"/api/monitors/{mid}/changes", headers=other).status_code == 404
     assert client.delete(f"/api/monitors/{mid}", headers=h).status_code in (200, 204)
     assert db.query(models.DnsChange).count() == 0
 
@@ -153,16 +149,10 @@ def test_email_report_goes_to_own_address(client, monkeypatch):
     assert sent["to"] == ["owner@x.com"]
     name, data, mime = sent["att"][0]
     assert mime == "application/pdf" and data.startswith(b"%PDF")
-    other = _auth(client, "other@y.com")
-    assert client.post(f"/api/scans/{sid}/email", headers=other).status_code == 404
-
-
-def test_setup_page_needs_login(client):
-    r = client.get("/setup", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"] == "/login"
-    client.post("/api/auth/signup", json={"email": "o@x.com", "password": "correct-horse-123", "company": "Acme"})
-    r = client.get("/setup")
-    assert r.status_code == 200 and "Set up DMARC for your domain" in r.text
+    monkeypatch.setattr(settings, "ADMIN_EMAIL", "")
+    client.post("/api/auth/login", json={"password": "test-admin-password"})  # syncs the address
+    client.cookies.clear()
+    assert client.post(f"/api/scans/{sid}/email", headers=h).status_code == 400  # nowhere to send it
 
 
 def test_spf_tree_endpoint(client, monkeypatch):

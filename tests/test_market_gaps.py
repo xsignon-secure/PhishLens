@@ -13,6 +13,7 @@ from app import dmarc_reports, header_analyzer, models, webhooks
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
 from app.scanner import dns_checks, engine as scan_engine, lookalike
+from tests.conftest import admin_headers
 
 
 @pytest.fixture()
@@ -33,12 +34,8 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _auth(client, email):
-    r = client.post("/api/auth/signup", json={"email": email, "password": "correct-horse-123",
-                                              "company": "Acme"})
-    assert r.status_code == 201, r.text
-    client.cookies.clear()
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+def _auth(client, *_args, **_kw):
+    return admin_headers(client)
 
 
 def _report(domain="example.com", report_id="r-1", begin=None, days=1, p="none", rows=None):
@@ -131,14 +128,6 @@ def test_summary_recommends_next_policy_when_clean(client):
     assert v["level"] == "pass" and "p=quarantine" in v["message"]
 
 
-def test_dmarc_reports_are_tenant_scoped(client):
-    a = _auth(client, "a@one.com")
-    b = _auth(client, "b@two.com")
-    rid = client.post("/api/dmarc/reports", content=_report(), headers=a).json()["id"]
-    assert client.get("/api/dmarc/domains", headers=b).json() == []
-    assert client.get("/api/dmarc/summary/example.com", headers=b).json()["messages"] == 0
-    assert client.delete(f"/api/dmarc/reports/{rid}", headers=b).status_code == 404
-    assert client.delete(f"/api/dmarc/reports/{rid}", headers=a).status_code == 200
 
 
 def test_upload_rejects_garbage(client):

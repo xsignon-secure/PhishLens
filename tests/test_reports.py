@@ -10,6 +10,7 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
 from app.scanner import engine as scan_engine, reputation
+from tests.conftest import admin_login
 
 
 @pytest.fixture()
@@ -40,11 +41,8 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _signup(client, email):
-    r = client.post("/api/auth/signup", json={
-        "email": email, "password": "correct-horse-123", "company": "Acme"})
-    assert r.status_code == 201, r.text
-    return r.json()
+def _signup(client, *_args, **_kw):
+    return admin_login(client, keep_cookies=True)
 
 
 def _bearer(token):
@@ -136,8 +134,6 @@ def test_pdf_for_tenant_scan(client):
 def test_pdf_tenant_isolation(client):
     ha = _bearer(_signup(client, "pa@example.com")["access_token"])
     scan = client.post("/api/scans", json={"domain": "example.com"}, headers=ha).json()
-    hb = _bearer(_signup(client, "pb@example.com")["access_token"])
-    assert client.get(f"/api/scans/{scan['id']}/pdf", headers=hb).status_code == 404
     # a tenant scan is not reachable via the anonymous-scan route either
     assert client.get(f"/api/scans/public/{scan['id']}/pdf").status_code == 404
     # nor via the shared route until it is shared

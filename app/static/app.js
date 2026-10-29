@@ -503,7 +503,6 @@ function renderReport(scan, isPublic, opts = {}) {
     <h3 class="findings-title">${_t('Findings')}</h3>
     ${hasGuides && !plan.some(p => p.guide) ? providerPicker(pk, detected) : ''}
     ${checksHtml}
-    ${isPublic ? `<p class="upsell">${_t('Want drift alerts and history for your domains?')} <a href="/signup">${_t('Create a free account →')}</a></p>` : ''}
   </div>`;
 }
 

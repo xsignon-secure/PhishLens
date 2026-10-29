@@ -23,8 +23,10 @@ def is_due(tenant: models.Tenant, now: datetime) -> bool:
 
 
 def recipients(db: Session, tenant: models.Tenant) -> list[str]:
+    from .workspace import real_email
     owners = [e for (e,) in db.query(models.User.email).filter(
-        models.User.tenant_id == tenant.id, models.User.role == "owner", models.User.is_active.is_(True))]
+        models.User.tenant_id == tenant.id, models.User.role == "owner", models.User.is_active.is_(True))
+        if real_email(e)]
     return owners + [e for e in (tenant.alert_emails or []) if e not in owners]
 
 

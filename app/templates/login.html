@@ -2,60 +2,31 @@
 {% block title %}{{ _("Log in") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="auth">
-  <h1>{{ _("Log in") }}</h1>
+  <h1>{{ _("Dashboard") }}</h1>
+  {% if enabled %}
   <form id="login-form">
-    <label>{{ _("Email") }}<input name="email" type="email" required></label>
-    <label>{{ _("Password") }}<input name="password" type="password" required></label>
+    <label>{{ _("Admin password") }}<input name="password" type="password" autocomplete="current-password" required autofocus></label>
     <button class="btn big" type="submit">{{ _("Log in") }}</button>
-    <button class="btn ghost" type="button" id="sso-btn" style="margin-top:10px">{{ _("Sign in with SSO") }}</button>
     <p id="login-err" class="error"></p>
   </form>
-  <form id="mfa-form" class="hidden">
-    <p class="sub">{{ _("Enter the 6-digit code from your authenticator app.") }}</p>
-    <label>{{ _("Authenticator code") }}<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
-    <button class="btn big" type="submit">{{ _("Verify") }}</button>
-  </form>
-  <p>{{ _("No account?") }} <a href="/signup">{{ _("Sign up free") }}</a> · <a href="/forgot-password">{{ _("Forgot password?") }}</a></p>
+  {% else %}
+  <p class="sub">{{ _("The dashboard is off on this server. To turn it on, set the ADMIN_PASSWORD environment variable and restart.") }}</p>
+  {% endif %}
+  <p class="muted small">{{ _("No account needed for the free tools:") }} <a href="/">{{ _("Scan") }}</a> · <a href="/tools">{{ _("Free tools") }}</a> · <a href="/tools/headers">{{ _("Header check") }}</a></p>
 </section>
 {% endblock %}
 {% block scripts %}
+{% if enabled %}
 <script>
-let mfaToken = null;
-const ssoError = new URLSearchParams(location.search).get('sso_error');
-if (ssoError) document.getElementById('login-err').textContent = ssoError;
-document.getElementById('sso-btn').addEventListener('click', () => {
-  const email = document.querySelector('#login-form input[name=email]').value.trim();
-  const err = document.getElementById('login-err');
-  if (!email.includes('@')) { err.textContent = _t('Enter your work email, then choose Sign in with SSO.'); return; }
-  location.href = '/api/auth/sso/start?email=' + encodeURIComponent(email);
-});
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target);
   const err = document.getElementById('login-err');
-  const r = await fetch('/api/auth/login', {method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({email: fd.get('email'), password: fd.get('password')})});
+  const r = await fetch('/api/auth/login', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({password: new FormData(e.target).get('password')})});
   const d = await r.json().catch(() => ({}));
-  if (r.ok && d.mfa_required) {
-    mfaToken = d.mfa_token;
-    document.getElementById('login-form').classList.add('hidden');
-    document.getElementById('mfa-form').classList.remove('hidden');
-    document.getElementById('mfa-code').focus();
-    return;
-  }
   if (r.ok) { location.href = '/dashboard'; }
   else { err.textContent = d.detail || _t('Login failed'); }
 });
-document.getElementById('mfa-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const code = document.getElementById('mfa-code').value.trim();
-  const err = document.getElementById('login-err');
-  const r = await fetch('/api/auth/mfa/challenge', {method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({mfa_token: mfaToken, code})});
-  if (r.ok) { location.href = '/dashboard'; }
-  else { err.textContent = _t('Invalid code — try again'); }
-});
 </script>
+{% endif %}
 {% endblock %}

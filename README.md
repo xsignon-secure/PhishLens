@@ -25,8 +25,7 @@ Everything is included for everyone: monitoring with drift alerts, DMARC
 aggregate and forensic report analysis, SMTP TLS (TLS-RPT) report analysis,
 report import from IMAP, Microsoft 365 or Gmail, lookalike-domain alerts, an
 email header analyzer, PDF reports, Slack/Teams/Discord/SIEM alerts, a
-Prometheus `/api/metrics` endpoint for Grafana, API keys, MFA, teams, SSO
-(OIDC or SAML 2.0), white-label reports, hosted DMARC/SPF/MTA-STS and one-click DNS fixes
+Prometheus `/api/metrics` endpoint for Grafana, API keys, white-label reports, hosted DMARC/SPF/MTA-STS and one-click DNS fixes
 on Cloudflare, DigitalOcean, deSEC, GoDaddy or Amazon Route 53.
 
 Free tools, no account needed: `/tools` has a phishing link checker,
@@ -79,10 +78,10 @@ app/
     scoring.py       weighted 0-100, grades, prioritized action plan
     engine.py        orchestration + persistence
   routers/
-    auth.py          signup (creates tenant+owner), login, logout, me
+    auth.py          admin password login, logout, sign out everywhere
     scans.py         public scan, tenant scans, share/unshare report links
     monitors.py      watch domains, rescan, drift alerts
-    pages.py         landing, login, signup, dashboard, shared report
+    pages.py         landing, login, dashboard, shared report
   templates/ + static/   server-rendered UI, vanilla JS (no build step)
 ```
 
@@ -134,11 +133,8 @@ app/
   API token (`docs/DOMAIN-CONNECT.md`).
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
-- **SSO** (OpenID Connect or SAML 2.0, optional enforcement): `docs/SSO.md`.
-- **Required 2FA**: owners can make every member set up an authenticator app
-  before using the dashboard (SSO sign-ins are exempt; the IdP handles MFA).
-- **SCIM 2.0 provisioning** from Okta, Microsoft Entra ID and others:
-  `docs/SCIM.md`.
+- **No user accounts**: the dashboard opens with one `ADMIN_PASSWORD` set on
+  the server. Leave it blank and only the free public tools are served.
 - **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
   or to Splunk HEC, and a ticket per alerting domain in the free, open-source
   helpdesks Zammad or GLPI, or in ConnectWise Manage, HaloPSA or Autotask:
@@ -178,14 +174,17 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
   tier's 4 lookups/minute. Use your own free VirusTotal key (its public API is
   for non-commercial use, which fits this free tool).
 
-## Multi-tenancy & security model
+## Security model
 
-- Every tenant-owned row carries `tenant_id`; all queries filter on it via
-  `tenant_*()` helpers in `deps.py`. Covered by `tests/test_security.py`
-  (cross-tenant read/update/delete all return 404).
-- Passwords: bcrypt(12). Sessions: short-lived JWT (Bearer or httpOnly cookie).
-- Public scan endpoint is rate-limited per IP (default 20/hour); login, MFA,
-  signup, password-reset and verification endpoints have brute-force limits.
+- There are no user accounts, signups or invites. The dashboard asks for
+  `ADMIN_PASSWORD` (set it in the server environment; use a long random
+  value). Changing it signs every browser out, and the dashboard's
+  **Sign out everywhere** button does the same without changing it.
+- Set `ADMIN_EMAIL` to receive alert and report emails.
+- Sessions: short-lived JWT in an httpOnly cookie (or Bearer); API keys
+  (`X-API-Key`) for scripts.
+- Public scan endpoint is rate-limited per IP (default 20/hour); the admin
+  login has a brute-force limit and failed attempts are in the audit log.
   Behind a proxy run uvicorn with `--proxy-headers` (the Dockerfile does).
   Limits are in-process by default; set `RATE_LIMIT_STORAGE=database` when
   running several workers or instances so they share one counter. The

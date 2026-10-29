@@ -1,22 +1,17 @@
-"""SSO, hosted records, one-click DNS, forensic reports, white-label."""
+"""Hosted records, one-click DNS, forensic reports, white-label."""
 import base64
-import hashlib
-import hmac
 import io
 import json
-import time
-import urllib.parse
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from jose import jwt
 
-from app import (branding, crypto, dns_providers, forensic, hosted, mailer, models,
-                 pdf_report, sso)
+from app import branding, dns_providers, forensic, hosted, mailer, models, pdf_report
 from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
+from tests.conftest import admin_headers, admin_tenant
 
 
 @pytest.fixture()
@@ -38,16 +33,12 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _auth(client, email, company="Acme"):
-    r = client.post("/api/auth/signup", json={"email": email, "password": "correct-horse-123",
-                                              "company": company})
-    assert r.status_code == 201, r.text
-    client.cookies.clear()
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+def _auth(client, *_args, **_kw):
+    return admin_headers(client)
 
 
-def _tenant(db, email):
-    return db.query(models.User).filter(models.User.email == email).first().tenant
+def _tenant(db, *_args):
+    return admin_tenant(db)
 
 
 # ------------------------------------------------------------------ fully free
@@ -65,104 +56,6 @@ def test_operator_can_cap_monitors(client, monkeypatch):
     assert client.post("/api/monitors", json={"domain": "a.com"}, headers=h).status_code == 201
     r = client.post("/api/monitors", json={"domain": "b.com"}, headers=h)
     assert r.status_code == 429 and "allows 1" in r.json()["detail"]
-
-
-# ------------------------------------------------------------------ SSO
-@pytest.fixture()
-def idp(monkeypatch):
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from jose import jwk
-
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-                            serialization.NoEncryption())
-    pub = jwk.construct(key.public_key().public_bytes(
-        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo), "RS256").to_dict()
-    pub.update(kid="k1", use="sig")
-    issuer = "https://idp.example.com"
-    docs = {issuer + "/.well-known/openid-configuration": {
-                "issuer": issuer, "authorization_endpoint": issuer + "/authorize",
-                "token_endpoint": issuer + "/token", "jwks_uri": issuer + "/jwks"},
-            issuer + "/jwks": {"keys": [pub]}}
-    monkeypatch.setattr(sso, "_get_json", lambda url: docs[url])
-    monkeypatch.setattr(sso.webhooks, "url_allowed", lambda url: True)
-    sso._discovery_cache.clear()
-    sso._jwks_cache.clear()
-    state = {"claims": {}}
-
-    def fake_token(url, data=None, timeout=None, follow_redirects=None):
-        claims = {"iss": issuer, "aud": "client-1", "exp": int(time.time()) + 300,
-                  "iat": int(time.time()), "sub": "u1", **state["claims"]}
-        tok = jwt.encode(claims, pem.decode(), algorithm="RS256", headers={"kid": "k1"})
-        return httpx.Response(200, json={"id_token": tok, "access_token": "x"})
-    monkeypatch.setattr(sso.httpx, "post", fake_token)
-    return {"issuer": issuer, "state": state}
-
-
-def _setup_sso(client, h, idp, enforced=False):
-    r = client.put("/api/team/sso", headers=h, json={
-        "issuer": idp["issuer"], "client_id": "client-1", "client_secret": "s3cret",
-        "email_domain": "acme.com", "enforced": enforced})
-    assert r.status_code == 200, r.text
-    return r
-
-
-def _sso_login(client, idp, email):
-    r = client.get("/api/auth/sso/start", params={"email": email}, follow_redirects=False)
-    assert r.status_code == 303, r.text
-    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers["location"]).query))
-    assert q["code_challenge_method"] == "S256" and q["client_id"] == "client-1"
-    idp["state"]["claims"] = {"email": email, "email_verified": True, "nonce": q["nonce"]}
-    return client.get("/api/auth/sso/callback", params={"code": "c", "state": q["state"]},
-                      follow_redirects=False)
-
-
-def test_sso_provisions_member_and_signs_in(client, db, idp):
-    h = _auth(client, "boss@acme.com")
-    _setup_sso(client, h, idp)
-    t = _tenant(db, "boss@acme.com")
-    assert crypto.decrypt(t.sso_client_secret) == "s3cret" and t.sso_client_secret != "s3cret"
-    r = _sso_login(client, idp, "new.hire@acme.com")
-    assert r.status_code == 303 and r.headers["location"] == "/dashboard"
-    assert "access_token" in r.cookies or "access_token" in client.cookies
-    u = db.query(models.User).filter(models.User.email == "new.hire@acme.com").first()
-    assert u.tenant_id == t.id and u.role == "member" and u.is_verified
-
-
-def test_sso_rejects_wrong_domain_and_bad_nonce(client, idp):
-    h = _auth(client, "boss@acme.com")
-    _setup_sso(client, h, idp)
-    r = client.get("/api/auth/sso/start", params={"email": "x@acme.com"}, follow_redirects=False)
-    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers["location"]).query))
-    idp["state"]["claims"] = {"email": "intruder@evil.com", "nonce": q["nonce"]}
-    r = client.get("/api/auth/sso/callback", params={"code": "c", "state": q["state"]}, follow_redirects=False)
-    assert "sso_error" in r.headers["location"]
-    r = client.get("/api/auth/sso/start", params={"email": "x@acme.com"}, follow_redirects=False)
-    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers["location"]).query))
-    idp["state"]["claims"] = {"email": "x@acme.com", "nonce": "replayed"}
-    r = client.get("/api/auth/sso/callback", params={"code": "c", "state": q["state"]}, follow_redirects=False)
-    assert "nonce" in urllib.parse.unquote(r.headers["location"])
-    r = client.get("/api/auth/sso/callback", params={"code": "c", "state": "forged"}, follow_redirects=False)
-    assert "sso_error" in r.headers["location"]
-
-
-def test_sso_domain_must_match_owner_and_enforcement(client, db, idp):
-    h = _auth(client, "boss@acme.com")
-    r = client.put("/api/team/sso", headers=h, json={
-        "issuer": idp["issuer"], "client_id": "c", "client_secret": "s", "email_domain": "gmail.com"})
-    assert r.status_code == 400
-    _setup_sso(client, h, idp, enforced=True)
-    member = models.User(tenant_id=_tenant(db, "boss@acme.com").id, email="m@acme.com", role="member",
-                         is_verified=True, password_hash=__import__("app.security", fromlist=["x"])
-                         .hash_password("correct-horse-123"))
-    db.add(member)
-    db.commit()
-    r = client.post("/api/auth/login", json={"email": "m@acme.com", "password": "correct-horse-123"})
-    assert r.status_code == 403
-    client.cookies.clear()
-    r = client.post("/api/auth/login", json={"email": "boss@acme.com", "password": "correct-horse-123"})
-    assert r.status_code == 200  # owner keeps break-glass password login
 
 
 # ------------------------------------------------------------------ hosted records
@@ -286,16 +179,6 @@ def test_hosted_dmarc_publish_update_delete(client, hosted_on):
     assert not hosted_on
 
 
-def test_hosted_records_isolated_between_tenants(client, hosted_on):
-    a = _auth(client, "a@x.com")
-    b = _auth(client, "b@y.com")
-    for h in (a, b):
-        client.post("/api/scans", json={"domain": "x.com"}, headers=h)
-    ra = client.put("/api/hosted/x.com/dmarc", json={"config": {"p": "reject"}}, headers=a).json()
-    rb = client.put("/api/hosted/x.com/dmarc", json={"config": {"p": "none"}}, headers=b).json()
-    assert set(ra["published"]).isdisjoint(set(rb["published"]) - {"x.com._report._dmarc.reports.hosted.test"})
-    assert client.get("/api/hosted", headers=b).json()["records"][0]["config"]["p"] == "none"
-    assert client.delete("/api/hosted/x.com/spf", headers=b).status_code == 404
 
 
 def test_mta_sts_policy_served_by_host(client, db, hosted_on):
@@ -405,10 +288,11 @@ def test_forensic_upload_list_and_mailbox(client, db):
     assert client.post("/api/dmarc/forensic", content=_ARF, headers=h).json()["duplicate"]
     rows = client.get("/api/dmarc/forensic", headers=h).json()
     assert len(rows) == 1 and rows[0]["subject"] == "Urgent wire transfer"
-    other = _auth(client, "b@y.com")
-    assert client.get("/api/dmarc/forensic", headers=other).json() == []
-    client.post("/api/monitors", json={"domain": "x.com"}, headers=other)
-    assert fetch.file_message(db, _ARF) == (1, 0)  # filed for the tenant monitoring x.com
+    db.query(models.ForensicReport).delete()
+    db.commit()
+    assert fetch.file_message(db, _ARF) == (0, 1)  # nobody monitors x.com yet
+    client.post("/api/monitors", json={"domain": "x.com"}, headers=h)
+    assert fetch.file_message(db, _ARF) == (1, 0)  # filed once x.com is monitored
 
 
 # ------------------------------------------------------------------ white-label
@@ -448,7 +332,7 @@ def test_branding_on_pdf_shared_report_and_alerts(client, db, monkeypatch):
     db.commit()
     s = db.query(models.Scan).first()
     mailer.notify_monitor_alerts(db, mon, s, [models.Alert(kind="score_drop", message="dropped")], 90)
-    assert "tickets@psa.example" in sent["to"] and "msp@acme-it.com" in sent["to"]
+    assert "tickets@psa.example" in sent["to"] and "owner@x.com" in sent["to"]
     assert sent["subject"].startswith("[Client Co]") and "Acme IT monitor alert" in sent["body"]
 
 

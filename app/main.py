@@ -16,8 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from . import scheduler
 from .config import settings
 from .database import init_db
-from .routers import (auth, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, scans, scim,
-                      sso, team, tlsrpt, tools)
+from .routers import (auth, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, scans,
+                      team, tlsrpt, tools)
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -55,11 +55,8 @@ app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lif
 # Endpoints that establish a session/credential, or need no session at all
 # (they are authorized by credentials/tokens in the body, not by cookies)
 _CSRF_EXEMPT = {
-    "/api/auth/signup", "/api/auth/login", "/api/auth/mfa/challenge",
-    "/api/auth/password/forgot", "/api/auth/password/reset",
-    "/api/auth/verify", "/api/scans/public", "/api/tools/headers", "/api/tools/check",
+    "/api/auth/login", "/api/scans/public", "/api/tools/headers", "/api/tools/check",
     "/api/tools/propagation", "/api/tools/url", "/api/tools/spf-tree", "/api/tools/bimi-svg",
-    "/api/auth/saml/acs",  # cross-site POST from the IdP; the signed assertion authorizes it
 }
 
 
@@ -162,18 +159,11 @@ app.include_router(dmarc.router)
 app.include_router(tlsrpt.router)
 app.include_router(metrics.router)
 app.include_router(tools.router)
-app.include_router(sso.router)
 app.include_router(hosted.router)
 app.include_router(overview.router)
 app.include_router(mcp.router)
 app.include_router(mailtest.router)
 app.include_router(integrations.router)
-app.include_router(scim.router)
-
-
-@app.exception_handler(scim.ScimError)
-async def scim_error(request, exc):
-    return scim.error_response(exc)
 
 
 @app.get("/api/health")

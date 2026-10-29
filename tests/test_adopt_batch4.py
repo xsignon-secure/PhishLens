@@ -52,12 +52,9 @@ def test_mcp_handshake_tools_and_auth(client, db):
     assert client.post("/mcp", content=b"{", headers=key).json()["error"]["code"] == -32700
     assert client.get("/mcp", headers=key).status_code == 405
 
-    # Other teams' data stays out; a browser cookie alone is refused.
-    other = _key(client, _auth(client, "p@y.com"))
-    got = _rpc(client, other, "tools/call", {"name": "list_monitors", "arguments": {}}).json()["result"]
-    assert got["structuredContent"]["items"] == []
+    # A browser cookie alone is refused.
     assert client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "ping"}).status_code == 401
-    client.post("/api/auth/login", json={"email": "o@x.com", "password": "correct-horse-123"})
+    client.post("/api/auth/login", json={"password": "test-admin-password"})
     assert client.cookies.get("access_token")
     assert client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "ping"}).status_code == 401
     assert _rpc(client, {"Authorization": "Bearer plk_wrong"}, "ping").status_code == 401
@@ -82,7 +79,7 @@ def test_mailtest_flow(client, db, mailtest_on, monkeypatch):
     t = client.post("/api/mailtest", headers=h).json()
     token = t["token"]
     assert t["status"] == "waiting" and t["address"] == f"check+{token}@reports.example.net"
-    assert client.get(f"/api/mailtest/{token}", headers=_auth(client, "p@y.com")).status_code == 404
+    assert client.get(f"/api/mailtest/{token}").status_code == 401
 
     # The fetch picks it up instead of treating it as a report.
     raw = RAW.replace(b"{token}", token.encode())
