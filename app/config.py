@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     DOMAIN_CONNECT_KEY_ID: str = "_dck1"
     # TLS-RPT report mailbox for hosted TLS-RPT (defaults to HOSTED_DMARC_RUA).
     HOSTED_TLSRPT_RUA: str = ""
+    # "Send a test email" analyzer: an address in the report mailbox that
+    # scripts/fetch_dmarc_reports.py reads. Each test gets local+token@domain,
+    # so the mailbox must accept plus addressing (Gmail, Microsoft 365 and
+    # most hosts do).
+    MAILTEST_ADDRESS: str = ""
     # Hostname customers CNAME mta-sts.<their domain> to (defaults to APP_URL's host).
     MTA_STS_TARGET: str = ""
     # Optional: let PhishLens add mta-sts.<domain> as a Render custom domain

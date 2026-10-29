@@ -34,6 +34,9 @@ class Tenant(Base):
     # Scheduled PDF reports by email: off | weekly | monthly.
     report_schedule = Column(String(10), nullable=False, default="off", server_default="off")
     report_sent_at = Column(DateTime, nullable=True)
+    # Alert exports (app/integrations.py). Secrets inside are encrypted.
+    siem = Column(JSON, nullable=True)
+    psa = Column(JSON, nullable=True)
     # SSO (OpenID Connect). Secrets are stored encrypted (app/crypto.py).
     sso_issuer = Column(String(300), nullable=True)
     sso_client_id = Column(String(300), nullable=True)
@@ -281,3 +284,17 @@ class RateCounter(Base):
     key = Column(String(200), primary_key=True)
     window_start = Column(DateTime, nullable=False)
     count = Column(Integer, nullable=False, default=0)
+
+
+class MailTest(Base):
+    """One "send a test email" check: the user mails a one-off address and the
+    report-mailbox fetcher stores what the receiving server saw."""
+    __tablename__ = "mail_tests"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(String(32), ForeignKey("users.id"), nullable=False)
+    token = Column(String(32), nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    received_at = Column(DateTime, nullable=True)
+    result = Column(JSON, nullable=True)

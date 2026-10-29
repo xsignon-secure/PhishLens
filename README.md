@@ -103,6 +103,10 @@ app/
 - **Email header analyzer**: `/tools/headers` (public, nothing stored) reads
   SPF/DKIM/DMARC verdicts and flags Reply-To redirection, fake display-name
   addresses and punycode senders.
+- **Send a test email**: signed in, `/tools/headers` gives you a one-off
+  address; mail it from any service you send with and see SPF, DKIM, DMARC
+  alignment and the delivery path as the receiving server recorded them. Needs
+  `MAILTEST_ADDRESS` in the report mailbox (`docs/INTEGRATIONS.md`).
 - **Guided setup**: `/setup` walks through domain, DMARC policy, publishing
   (hosted CNAME, TXT, or one click with a connected DNS provider) and alerts.
 - **Alert levels and DNS timeline**: each monitor alerts at None, Essential
@@ -129,6 +133,11 @@ app/
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
 - **SSO** (OpenID Connect or SAML 2.0, optional enforcement): `docs/SSO.md`.
+- **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
+  or to Splunk HEC, and a ticket per alerting domain in ConnectWise Manage,
+  HaloPSA or Autotask: `docs/INTEGRATIONS.md`.
+- **MCP server**: connect Claude or any MCP client to `/mcp` with a team API
+  key to scan domains and read reports, alerts and DMARC data: `docs/MCP.md`.
 - **White-label (MSPs)**: brand name, colour, logo and footer on shared
   reports, PDFs and alert emails; client tags on monitors; extra alert
   recipients such as a PSA's email-to-ticket inbox.

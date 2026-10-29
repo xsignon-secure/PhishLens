@@ -16,7 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from . import scheduler
 from .config import settings
 from .database import init_db
-from .routers import auth, dmarc, hosted, metrics, monitors, overview, pages, scans, sso, team, tlsrpt, tools
+from .routers import (auth, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, scans, sso,
+                      team, tlsrpt, tools)
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -164,6 +165,9 @@ app.include_router(tools.router)
 app.include_router(sso.router)
 app.include_router(hosted.router)
 app.include_router(overview.router)
+app.include_router(mcp.router)
+app.include_router(mailtest.router)
+app.include_router(integrations.router)
 
 
 @app.get("/api/health")

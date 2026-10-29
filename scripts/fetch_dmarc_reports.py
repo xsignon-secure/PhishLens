@@ -42,7 +42,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import dmarc_reports, forensic, models, tls_reports  # noqa: E402
+from app import dmarc_reports, forensic, mailtest, models, tls_reports  # noqa: E402
 from app.database import SessionLocal, init_db  # noqa: E402
 from app.routers.dmarc import store_report  # noqa: E402
 
@@ -85,7 +85,9 @@ def _is_tlsrpt(blob: bytes) -> bool:
 
 def file_message(db, raw: bytes) -> tuple[int, int]:
     """Store every report in one email (aggregate attachments, or a failure
-    report). Returns (stored, skipped)."""
+    report, or a "send a test email" message). Returns (stored, skipped)."""
+    if mailtest.record(db, raw):
+        return 0, 0
     msg = email.message_from_bytes(raw, policy=policy.default)
     stored = skipped = 0
     if forensic.is_arf(msg):
