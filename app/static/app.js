@@ -543,7 +543,7 @@ function bindReportInteractions(container) {
       if (see) {
         e.preventDefault();
         const el = container.querySelector(see.getAttribute('href'));
-        if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+        if (el) { if (window.revealSection) revealSection(el); el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
       }
     });
   }
@@ -591,6 +591,7 @@ function startTour(steps) {
   function place() {
     const step = steps[idx];
     const el = document.querySelector(step.el);
+    if (el && window.revealSection) revealSection(el);
     if (!el || el.offsetParent === null) { next(); return; }
     el.scrollIntoView({behavior: 'smooth', block: 'center'});
     setTimeout(() => {
@@ -656,7 +657,7 @@ function renderChecklist(container, steps) {
       const t = btn.getAttribute('data-target');
       if (t) {
         const el = document.querySelector(t);
-        if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        if (el) { if (window.revealSection) revealSection(el); el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
       }
     });
   });

@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/static/style.css?v={{ asset_v }}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <header class="nav">
   <a class="brand" href="/"><span class="brand-mark">◈</span> PhishLens</a>
   <nav>

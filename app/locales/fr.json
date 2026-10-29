@@ -741,5 +741,7 @@
  "Owner's name": "Nom du propriétaire",
  "Authenticator code": "Code d'authentification",
  "On. {0} recovery codes left.": "Activée. {0} codes de secours restants.",
- "Confirm it's you": "Confirmez votre identité"
+ "Confirm it's you": "Confirmez votre identité",
+ "DNS &amp; hosting": "DNS et hébergement",
+ "Integrations": "Intégrations"
 }
