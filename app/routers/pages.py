@@ -63,12 +63,8 @@ def headers_tool(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"request": request})
-
-
-@router.get("/signup", response_class=HTMLResponse)
-def signup_page(request: Request):
-    return templates.TemplateResponse(request, "signup.html", {"request": request})
+    from .. import workspace
+    return templates.TemplateResponse(request, "login.html", {"request": request, "enabled": workspace.enabled()})
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -82,32 +78,17 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 @router.get("/setup", response_class=HTMLResponse)
 def setup_wizard(request: Request, db: Session = Depends(get_db)):
     user = _user_or_none(request, db)
-    if not user:  # signed in but still owing 2FA setup: the dashboard asks for it
-        return RedirectResponse("/dashboard" if request.cookies.get("access_token") else "/login", status_code=302)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(request, "setup.html", {"request": request, "user": user})
 
 
 @router.get("/overview", response_class=HTMLResponse)
 def overview_page(request: Request, db: Session = Depends(get_db)):
     user = _user_or_none(request, db)
-    if not user:  # signed in but still owing 2FA setup: the dashboard asks for it
-        return RedirectResponse("/dashboard" if request.cookies.get("access_token") else "/login", status_code=302)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(request, "overview.html", {"request": request, "user": user})
-
-
-@router.get("/verify", response_class=HTMLResponse)
-def verify_page(request: Request):
-    return templates.TemplateResponse(request, "verify.html", {"request": request})
-
-
-@router.get("/forgot-password", response_class=HTMLResponse)
-def forgot_password_page(request: Request):
-    return templates.TemplateResponse(request, "forgot-password.html", {"request": request})
-
-
-@router.get("/reset-password", response_class=HTMLResponse)
-def reset_password_page(request: Request):
-    return templates.TemplateResponse(request, "reset-password.html", {"request": request})
 
 
 @router.get("/terms", response_class=HTMLResponse)

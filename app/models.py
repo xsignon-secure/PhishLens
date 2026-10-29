@@ -45,7 +45,7 @@ class Tenant(Base):
     sso_enforced = Column(Boolean, nullable=False, default=False)
     # Everyone signing in with a password must use an authenticator app.
     mfa_required = Column(Boolean, nullable=False, default=False)
-    # SCIM provisioning (docs/SCIM.md): sha256 of the bearer token.
+    # Unused since SCIM was removed; kept so old databases need no migration.
     scim_token_hash = Column(String(64), nullable=True, unique=True)
     # PGP public key: failure (RUF) report details are stored encrypted to it.
     ruf_pgp_key = Column(Text, nullable=True)

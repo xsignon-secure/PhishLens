@@ -118,14 +118,17 @@ def scan_pdf(scan_id: str, request: Request, db: Session = Depends(get_db),
 @router.post("/{scan_id}/email")
 def email_scan(scan_id: str, request: Request, db: Session = Depends(get_db),
                user: models.User = Depends(get_current_user)):
-    """Email the PDF report to the signed-in user's own address. Never to an
-    address typed in: that would make the app a spam relay."""
+    """Email the PDF report to ADMIN_EMAIL. Never to an address typed in:
+    that would make the app a spam relay."""
     from .. import mailer
     scan = tenant_scans(db, user).filter(models.Scan.id == scan_id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     if not mailer.is_configured():
         raise HTTPException(status_code=503, detail="Email is not set up on this server")
+    from ..workspace import real_email
+    if not real_email(user.email):
+        raise HTTPException(status_code=400, detail="Set ADMIN_EMAIL on the server to email reports")
     rate_limit(request, f"report-email:{user.id}", 10)
     pdf, filename = _pdf_bytes(scan, db, with_history=True)
     body = (f"Your PhishLens report for {scan.domain} is attached.\n\n"

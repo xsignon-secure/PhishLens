@@ -3,10 +3,6 @@
 {% block content %}
 <section class="dash">
   <h1>{{ _("Dashboard") }}</h1>
-  <div id="verify-banner" class="panel warn hidden">
-    <p>{{ _("Your email isn't verified yet.") }} <button id="verify-resend" class="btn tiny">{{ _("Resend verification email") }}</button></p>
-  </div>
-
   <div id="kpis" class="kpi-row" aria-live="polite"></div>
 
   <div class="panel" id="onboarding-panel">
@@ -82,15 +78,6 @@
   </div>
   <div class="dash-grid">
     <div class="panel">
-      <h2><span class="dot"></span>{{ _("Team") }}</h2>
-      <div id="members"></div>
-      <form id="invite-form" class="scanbox small owner-only hidden">
-        <input id="invite-email" type="email" placeholder="teammate@company.com" required>
-        <button class="btn" type="submit">{{ _("Invite") }}</button>
-      </form>
-      <p id="invite-msg" class="muted"></p>
-    </div>
-    <div class="panel">
       <h2><span class="dot"></span>{{ _("API keys") }}</h2>
       <div id="apikeys"></div>
       <form id="apikey-form" class="scanbox small owner-only hidden">
@@ -99,8 +86,6 @@
       </form>
       <p id="apikey-new" class="hidden"></p>
     </div>
-  </div>
-  <div class="dash-grid">
     <div class="panel">
       <h2><span class="dot"></span>{{ _("Alert webhook") }}</h2>
       <form id="webhook-form" class="owner-only hidden">
@@ -112,13 +97,6 @@
       </form>
       <p id="webhook-status" class="muted"></p>
       <p class="muted small">{{ _("Delivered as JSON, signed with HMAC-SHA256 in <code>X-PhishLens-Signature</code> — ready for SIEM ingestion. Slack, Microsoft Teams and Discord webhook URLs get a readable chat message instead (any 16+ character secret).") }}</p>
-    </div>
-    <div class="panel">
-      <h2><span class="dot"></span>{{ _("Security") }}</h2>
-      <div id="mfa-box"><p class="muted">{{ _("Loading…") }}</p></div>
-      <label class="owner-only hidden" style="font-weight:500"><input id="mfa-required" type="checkbox" style="width:auto"> {{ _("Require two-factor authentication for everyone on the team") }}</label>
-      <p id="mfa-team" class="muted small"></p>
-      <p><a href="/forgot-password">{{ _("Reset password") }}</a> · <button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">{{ _("Export my data") }}</button></p>
     </div>
   </div>
 
@@ -151,36 +129,10 @@
     <div id="hosted-list"></div>
   </div>
   <div class="dash-grid">
-    <div class="panel" id="sso-panel">
-      <h2><span class="dot"></span>{{ _("Single sign-on") }}</h2>
-      <p class="muted small">{{ _("Sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. New people from your email domain are added as members on first sign-in.") }}</p>
-      <div id="sso-status" class="muted small"></div>
-      <form id="sso-form" class="owner-only hidden">
-        <label>{{ _("Protocol") }}<select id="sso-protocol"><option value="oidc">OpenID Connect</option><option value="saml">SAML 2.0</option></select></label>
-        <div id="sso-oidc">
-          <label>{{ _("Issuer URL") }}<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
-          <label>{{ _("Client ID") }}<input id="sso-client-id" type="text"></label>
-          <label>{{ _("Client secret") }}<input id="sso-secret" type="password" autocomplete="new-password" placeholder="{{ _("leave blank to keep") }}"></label>
-        </div>
-        <div id="sso-saml" class="hidden">
-          <label>{{ _("IdP metadata XML (paste it, or fill in the three fields below)") }}<textarea id="saml-metadata" rows="3" style="width:100%" placeholder="&lt;EntityDescriptor ...&gt;"></textarea></label>
-          <label>{{ _("IdP entity ID") }}<input id="saml-entity" type="text"></label>
-          <label>{{ _("IdP sign-in URL") }}<input id="saml-url" type="url" placeholder="https://idp.example.com/saml/sso"></label>
-          <label>{{ _("IdP signing certificate (PEM)") }}<textarea id="saml-cert" rows="2" style="width:100%" placeholder="{{ _("leave blank to keep") }}"></textarea></label>
-        </div>
-        <label>{{ _("Email domain") }}<input id="sso-domain" type="text" placeholder="acme.com"></label>
-        <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> {{ _("Require SSO for members (owners can still use a password)") }}</label>
-        <button class="btn" type="submit">{{ _("Save") }}</button>
-        <button id="sso-del" class="btn ghost" type="button">{{ _("Remove") }}</button>
-      </form>
-      <div class="owner-only hidden" id="scim-box">
-        <h3 style="margin:18px 0 6px;font-size:15px">{{ _("User provisioning (SCIM)") }}</h3>
-        <p class="muted small">{{ _("Let Okta, Microsoft Entra ID, OneLogin or JumpCloud add and remove team members automatically. People removed in your directory are signed out and blocked here.") }}</p>
-        <p id="scim-status" class="muted small"></p>
-        <button class="btn tiny" type="button" id="scim-new">{{ _("Create SCIM token") }}</button>
-        <button class="btn tiny ghost" type="button" id="scim-del">{{ _("Turn off") }}</button>
-        <div id="scim-token"></div>
-      </div>
+    <div class="panel" id="security-panel">
+      <h2><span class="dot"></span>{{ _("Security") }}</h2>
+      <p class="muted small">{{ _("There are no user accounts: the dashboard opens with the ADMIN_PASSWORD set on the server. Changing it there signs every browser out.") }}</p>
+      <p><button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">{{ _("Export my data") }}</button></p>
     </div>
     <div class="panel" id="brand-panel">
       <h2><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
@@ -271,7 +223,7 @@ function renderTimeline(d) {
 }
 
 /* shared dashboard state */
-const dashData = { monitors: [], alerts: [], scans: [], me: null, members: [] };
+const dashData = { monitors: [], alerts: [], scans: [], me: null };
 
 const TOUR_STEPS = [
   { el: '#kpis', title: _t('Your command center'), text: _t('These tiles track monitored domains, average score, open alerts and scan activity — everything at a glance.') },
@@ -405,32 +357,13 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   } catch (err) { el.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p></div>'; }
 });
 
-/* ---------------- enterprise: team, api keys, webhooks, mfa, audit -------- */
+/* ---------------- workspace: api keys, webhooks, audit -------- */
 async function loadEnterprise() {
   const me = await api('/api/auth/me');
   dashData.me = me;
   const isOwner = me.role === 'owner';
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
-  if (!me.is_verified) {
-    document.getElementById('verify-banner').classList.remove('hidden');
-    document.getElementById('verify-resend').onclick = async () => {
-      await api('/api/auth/verify/resend', {method: 'POST'});
-      document.getElementById('verify-banner').innerHTML = ('<p>' + _t('Verification email sent — check your inbox.') + '</p>');
-    };
-  }
-  // team
-  const members = await api('/api/team/members');
-  dashData.members = members;
-  document.getElementById('members').innerHTML = members.map(m =>
-    `<div class="mon"><strong>${escapeHtml(m.email)}</strong>
-     <span class="muted">${escapeHtml(m.role)}${m.is_verified ? '' : (' ' + _t('· unverified'))}${m.mfa_enabled ? (' ' + _t('· 2FA on')) : ''}</span></div>`).join('');
-  const sec = await api('/api/team/security');
-  document.getElementById('mfa-required').checked = sec.mfa_required;
-  const without = members.filter(m => !m.mfa_enabled).length;
-  document.getElementById('mfa-team').textContent = sec.mfa_required
-    ? (without ? _t('Required. {0} member(s) will be asked to set it up at their next sign-in.', {0: without}) : _t('Required, and everyone has it on.'))
-    : (isOwner ? _t('{0} of {1} members have it on.', {0: members.length - without, 1: members.length}) : '');
-  if (isOwner) { loadScim().catch(() => {}); loadPgp().catch(() => {}); }
+  if (isOwner) loadPgp().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length
@@ -449,32 +382,6 @@ async function loadEnterprise() {
   document.getElementById('webhook-url').value = wh.url || '';
   document.getElementById('webhook-status').textContent =
     wh.url ? (_t('Configured:') + ' ') + wh.url : _t('Not configured.');
-  // mfa
-  document.getElementById('mfa-box').innerHTML = me.mfa_enabled
-    ? `<p>${_t('✓ Authenticator MFA is on.')} <button id="mfa-disable" class="btn tiny ghost">${_t('Disable')}</button></p>`
-    : `<p class="muted">${_t('Add a second factor to your login.')}</p><button id="mfa-setup" class="btn tiny">${_t('Set up authenticator')}</button>`;
-  const setupBtn = document.getElementById('mfa-setup');
-  if (setupBtn) setupBtn.onclick = async () => {
-    const d = await api('/api/auth/mfa/setup', {method: 'POST'}).catch(err => { toast(err.message); return null; });
-    if (!d) return;
-    const code = prompt((_t('Scan this in your authenticator app (or enter the secret manually):') + '\n\n') + d.secret + ('\n\n' + _t('Then enter the 6-digit code:')));
-    if (!code) return;
-    const v = await api('/api/auth/mfa/verify', {method: 'POST',
-      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code})}).catch(() => null);
-    toast(v ? _t('✓ MFA enabled.') : _t('Invalid code — try again.'));
-    loadEnterprise();
-  };
-  const disBtn = document.getElementById('mfa-disable');
-  if (disBtn) disBtn.onclick = async () => {
-    const pw = prompt(_t('Enter your password to disable MFA:'));
-    if (!pw) return;
-    try {
-      await api('/api/auth/mfa/disable', {method: 'POST',
-        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw})});
-      toast(_t('MFA disabled.'));
-    } catch (err) { if (err.message !== 'auth') toast(err.message); }
-    loadEnterprise();
-  };
   // audit (owner only)
   if (isOwner) {
     const events = await api('/api/team/audit?limit=50');
@@ -485,19 +392,6 @@ async function loadEnterprise() {
   }
   renderOnboarding();
 }
-document.getElementById('invite-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('invite-email').value.trim();
-  const msg = document.getElementById('invite-msg');
-  try {
-    await api('/api/team/invite', {method: 'POST',
-      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email})});
-    msg.textContent = (_t('Invite sent to') + ' ') + email;
-    document.getElementById('invite-email').value = '';
-    toast((_t('✓ Invite sent to') + ' ') + email);
-    loadEnterprise();
-  } catch (err) { msg.textContent = err.message; }
-});
 document.getElementById('apikey-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('apikey-name').value.trim();
@@ -554,19 +448,16 @@ document.getElementById('export-btn').onclick = async () => {
 
 /* ---------------- guided onboarding ---------------- */
 function renderOnboarding() {
-  const { me, members, monitors, scans } = dashData;
+  const { me, monitors, scans } = dashData;
   if (!me) return;
   let dismissed = false;
   try { dismissed = localStorage.getItem('phishlens_checklist_dismissed') === '1'; } catch (_) {}
   const panel = document.getElementById('onboarding-panel');
   if (dismissed) { panel.classList.add('hidden'); return; }
   const steps = [
-    { label: _t('Verify your email'), hint: _t('Unlocks alerts and team invites'), done: me.is_verified, target: '#verify-banner', num: '1' },
-    { label: _t('Run your first scan'), hint: _t('Grade any domain — no setup needed'), done: scans.length > 0, target: '#adhoc-form', num: '2' },
-    { label: _t('Monitor a domain'), hint: _t('Get drift alerts when records change'), done: monitors.length > 0, target: '#monitor-form', num: '3' },
+    { label: _t('Run your first scan'), hint: _t('Grade any domain — no setup needed'), done: scans.length > 0, target: '#adhoc-form', num: '1' },
+    { label: _t('Monitor a domain'), hint: _t('Get drift alerts when records change'), done: monitors.length > 0, target: '#monitor-form', num: '2' },
   ];
-  if (me.role === 'owner') steps.push(
-    { label: _t('Invite a teammate'), hint: _t('Owners can add team members'), done: members.length > 1, target: '#invite-form', num: '4' });
   renderChecklist(document.getElementById('checklist'), steps);
 }
 document.getElementById('tour-btn').addEventListener('click', () => startTour(TOUR_STEPS));
@@ -972,37 +863,7 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
   loadHosted();
 });
 
-/* ---------------- team 2FA, SCIM, PGP ---------------- */
-document.getElementById('mfa-required').addEventListener('change', async (e) => {
-  try {
-    await api('/api/team/security', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mfa_required: e.target.checked})});
-    toast(_t('Saved'));
-  } catch (err) { e.target.checked = !e.target.checked; if (err.message !== 'auth') toast(err.message); }
-  loadEnterprise();
-});
-async function loadScim() {
-  const c = await api('/api/team/scim');
-  document.getElementById('scim-status').innerHTML = (c.enabled ? _t('✓ On.') : _t('Off.'))
-    + ` ${_t('SCIM base URL:')} <code>${escapeHtml(c.base_url)}</code>`;
-  document.getElementById('scim-del').style.display = c.enabled ? '' : 'none';
-  document.getElementById('scim-new').textContent = c.enabled ? _t('Replace SCIM token') : _t('Create SCIM token');
-}
-document.getElementById('scim-new').onclick = async () => {
-  if (document.getElementById('scim-del').style.display !== 'none'
-      && !confirm(_t('Replace the token? Your directory stops syncing until you paste the new one.'))) return;
-  try {
-    const d = await api('/api/team/scim/token', {method: 'POST'});
-    document.getElementById('scim-token').innerHTML = `<p class="small">${_t('Copy this token into your identity provider now. It is shown only once.')}</p>
-      <p><code class="copy">${escapeHtml(d.token)}</code> <button class="btn tiny ghost" type="button" id="scim-copy">${_t('Copy')}</button></p>`;
-    document.getElementById('scim-copy').onclick = (ev) => copyText(d.token, ev.target);
-    loadScim();
-  } catch (err) { if (err.message !== 'auth') toast(err.message); }
-};
-document.getElementById('scim-del').onclick = async () => {
-  if (!confirm(_t('Turn off SCIM? Your directory can no longer change team members.'))) return;
-  try { await api('/api/team/scim/token', {method: 'DELETE'}); document.getElementById('scim-token').innerHTML = ''; loadScim(); }
-  catch (err) { if (err.message !== 'auth') toast(err.message); }
-};
+/* ---------------- PGP for failure reports ---------------- */
 async function loadPgp() {
   const c = await api('/api/team/ruf-pgp');
   document.getElementById('pgp-key').value = c.key || '';
@@ -1025,32 +886,6 @@ document.getElementById('pgp-del').onclick = async () => {
   try { await api('/api/team/ruf-pgp', {method: 'DELETE'}); loadPgp(); }
   catch (err) { if (err.message !== 'auth') toast(err.message); }
 };
-
-/* ---------------- required 2FA gate ---------------- */
-function mfaGate() {
-  document.querySelector('section.dash').innerHTML = `<div class="panel" style="max-width:620px;margin:40px auto">
-    <h2><span class="dot"></span>${_t('Set up two-factor authentication')}</h2>
-    <p>${_t('Your team requires an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…) to sign in. Set it up to open the dashboard.')}</p>
-    <div id="gate-body"><button class="btn" id="gate-start" type="button">${_t('Start')}</button></div></div>`;
-  document.getElementById('gate-start').onclick = async () => {
-    try {
-      const d = await api('/api/auth/mfa/setup', {method: 'POST'});
-      document.getElementById('gate-body').innerHTML = `<p class="small">${_t('Add this secret in your authenticator app, or open the link on your phone:')}</p>
-        <p><code class="copy">${escapeHtml(d.secret)}</code></p>
-        <p class="small"><a href="${escapeHtml(d.otpauth_url)}">${_t('Open in authenticator app')}</a></p>
-        <form id="gate-form" class="scanbox small"><input id="gate-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Code">
-        <button class="btn" type="submit">${_t('Verify')}</button></form>`;
-      document.getElementById('gate-form').onsubmit = async (e) => {
-        e.preventDefault();
-        try {
-          await api('/api/auth/mfa/verify', {method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({code: document.getElementById('gate-code').value.trim()})});
-          location.reload();
-        } catch (err) { if (err.message !== 'auth') toast(_t('Invalid code — try again.')); }
-      };
-    } catch (err) { if (err.message !== 'auth') toast(err.message); }
-  };
-}
 
 /* ---------------- SIEM and PSA ---------------- */
 // [name, label, type, placeholder]; type "secret" keeps the stored value when left blank.
@@ -1172,60 +1007,7 @@ document.getElementById('sched-now').addEventListener('click', async (e) => {
   loadSchedule();
 });
 
-/* ---------------- SSO ---------------- */
-async function loadSso() {
-  const c = await api('/api/team/sso');
-  document.getElementById('sso-status').innerHTML = (c.configured
-    ? _t('✓ {0} SSO on for @{1}{2}.', {0: c.protocol === 'saml' ? 'SAML' : 'OpenID Connect', 1: escapeHtml(c.email_domain), 2: c.enforced ? (' ' + _t('(required for members)')) : ''})
-    : _t('Not set up.')) + `<br>${_t('OpenID Connect redirect URI:')} <code>${escapeHtml(c.redirect_uri)}</code>` +
-    `<br>${_t('SAML: entity ID / metadata')} <code>${escapeHtml(c.sp_entity_id)}</code>${_t(', ACS URL')} <code>${escapeHtml(c.acs_url)}</code>`;
-  document.getElementById('sso-protocol').value = c.protocol || 'oidc';
-  showSsoProtocol();
-  document.getElementById('saml-entity').value = c.saml_entity_id || '';
-  document.getElementById('saml-url').value = c.saml_sso_url || '';
-  document.getElementById('sso-issuer').value = c.issuer || '';
-  document.getElementById('sso-client-id').value = c.client_id || '';
-  document.getElementById('sso-domain').value = c.email_domain || (dashData.me ? dashData.me.email.split('@')[1] : '');
-  document.getElementById('sso-enforced').checked = !!c.enforced;
-}
-function showSsoProtocol() {
-  const saml = document.getElementById('sso-protocol').value === 'saml';
-  document.getElementById('sso-saml').classList.toggle('hidden', !saml);
-  document.getElementById('sso-oidc').classList.toggle('hidden', saml);
-}
-document.getElementById('sso-protocol').addEventListener('change', showSsoProtocol);
-document.getElementById('sso-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    if (document.getElementById('sso-protocol').value === 'saml') {
-      await api('/api/team/saml', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-        metadata_xml: document.getElementById('saml-metadata').value.trim() || null,
-        entity_id: document.getElementById('saml-entity').value.trim() || null,
-        sso_url: document.getElementById('saml-url').value.trim() || null,
-        certificate: document.getElementById('saml-cert').value.trim() || null,
-        email_domain: document.getElementById('sso-domain').value.trim(),
-        enforced: document.getElementById('sso-enforced').checked})});
-      document.getElementById('saml-metadata').value = document.getElementById('saml-cert').value = '';
-      toast(_t('✓ SSO saved. Test it from the login page in a private window before requiring it.'));
-      loadSso();
-      return;
-    }
-    await api('/api/team/sso', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-      issuer: document.getElementById('sso-issuer').value.trim(), client_id: document.getElementById('sso-client-id').value.trim(),
-      client_secret: document.getElementById('sso-secret').value || null, email_domain: document.getElementById('sso-domain').value.trim(),
-      enforced: document.getElementById('sso-enforced').checked})});
-    document.getElementById('sso-secret').value = '';
-    toast(_t('✓ SSO saved. Test it from the login page in a private window before requiring it.'));
-  } catch (err) { if (err.message !== 'auth') toast(err.message); }
-  loadSso();
-});
-document.getElementById('sso-del').addEventListener('click', async () => {
-  if (!confirm(_t('Turn off SSO?'))) return;
-  try { await api('/api/team/sso', {method: 'DELETE'}); } catch (err) { toast(err.message); }
-  loadSso();
-});
-
-/* ---------------- white-label ---------------- */
+/* ---------------- branding ---------------- */
 async function loadBranding() {
   const b = await api('/api/team/branding');
   document.getElementById('brand-name').value = b.brand_name || '';
@@ -1258,7 +1040,6 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
 /* ---------------- boot ---------------- */
 (async function init() {
   try {
-    if ((await api('/api/auth/me')).mfa_setup_required) return mfaGate();
     await loadDashboard();
     await loadEnterprise();
     loadDmarc().catch(() => {});
@@ -1266,7 +1047,6 @@ document.getElementById('brand-form').addEventListener('submit', (e) => { e.prev
     loadTls().catch(() => {});
     await loadCloudflare().catch(() => {});
     loadHosted().catch(() => {});
-    loadSso().catch(() => {});
     loadBranding().catch(() => {});
     loadSchedule().catch(() => {});
     maybeWelcome();

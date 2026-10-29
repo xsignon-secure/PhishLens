@@ -1,4 +1,5 @@
-"""Route 53 / GoDaddy one-click fixes, phishing URL checker, SAML, translations."""
+"""Route 53 / GoDaddy one-click fixes, phishing URL checker, translations."""
+import glob
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -171,166 +172,10 @@ def test_safe_browsing_feed_marks_dangerous(offline, monkeypatch):
     assert r["verdict"] == "dangerous" and {"source": "Google Safe Browsing", "listed": True} in r["feeds"]
 
 
-# ------------------------------------------------------------------ SAML
-import base64  # noqa: E402
-import urllib.parse  # noqa: E402
-import zlib  # noqa: E402
-from datetime import timedelta  # noqa: E402
-
-from cryptography import x509 as cx509  # noqa: E402
-from cryptography.hazmat.primitives import hashes, serialization  # noqa: E402
-from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
-from cryptography.x509.oid import NameOID  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from lxml import etree  # noqa: E402
-from signxml import XMLSigner  # noqa: E402
 
-from app import models, saml  # noqa: E402
-from app.database import Base, SessionLocal, engine as sa_engine  # noqa: E402
+from app.database import Base, engine as sa_engine  # noqa: E402
 from app.main import app  # noqa: E402
-
-IDP = "https://idp.example.com/saml"
-
-
-def _keypair(cn="idp"):
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = cx509.Name([cx509.NameAttribute(NameOID.COMMON_NAME, cn)])
-    now = datetime.now(timezone.utc)
-    cert = (cx509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
-            .serial_number(1).not_valid_before(now - timedelta(days=1)).not_valid_after(now + timedelta(days=30))
-            .sign(key, hashes.SHA256()))
-    return (key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-                              serialization.NoEncryption()),
-            cert.public_bytes(serialization.Encoding.PEM).decode())
-
-
-KEY, CERT = _keypair()
-EVIL_KEY, EVIL_CERT = _keypair("evil")
-
-
-def _assertion(email, rid, *, issuer=IDP, audience=None, recipient=None, minutes=5):
-    now = datetime.now(timezone.utc)
-    ts = lambda d: (now + d).strftime("%Y-%m-%dT%H:%M:%SZ")  # noqa: E731
-    return (f'<saml:Assertion xmlns:saml="{saml.NS["saml"]}" ID="_a1" Version="2.0" IssueInstant="{ts(timedelta())}">'
-            f'<saml:Issuer>{issuer}</saml:Issuer>'
-            f'<saml:Subject><saml:NameID>{email}</saml:NameID>'
-            f'<saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">'
-            f'<saml:SubjectConfirmationData InResponseTo="{rid}" Recipient="{recipient or saml.acs_url()}" '
-            f'NotOnOrAfter="{ts(timedelta(minutes=minutes))}"/></saml:SubjectConfirmation></saml:Subject>'
-            f'<saml:Conditions NotBefore="{ts(timedelta(minutes=-1))}" NotOnOrAfter="{ts(timedelta(minutes=minutes))}">'
-            f'<saml:AudienceRestriction><saml:Audience>{audience or saml.sp_entity_id()}</saml:Audience>'
-            f'</saml:AudienceRestriction></saml:Conditions></saml:Assertion>')
-
-
-def _response(assertion_xml, *, key=KEY, cert=CERT, sign=True):
-    a = etree.fromstring(assertion_xml)
-    if sign:
-        # Real IdPs use exclusive c14n, so the signature survives being embedded in the Response.
-        a = XMLSigner(c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#").sign(a, key=key, cert=cert)
-    resp = etree.fromstring(
-        f'<samlp:Response xmlns:samlp="{saml.NS["samlp"]}" ID="_r1" Version="2.0" IssueInstant="2026-01-01T00:00:00Z">'
-        f'<samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>'
-        f'</samlp:Response>')
-    resp.append(a)
-    return base64.b64encode(etree.tostring(resp)).decode()
-
-
-@pytest.fixture()
-def saml_client(monkeypatch):
-    Base.metadata.drop_all(bind=sa_engine)
-    Base.metadata.create_all(bind=sa_engine)
-    monkeypatch.setattr("app.webhooks.url_allowed", lambda u: True)
-    c = TestClient(app)
-    r = c.post("/api/auth/signup", json={"email": "boss@acme.com", "password": "correct-horse-123", "company": "Acme"})
-    assert r.status_code == 201
-    c.cookies.clear()
-    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
-    metadata = (f'<md:EntityDescriptor xmlns:md="{saml.NS["md"]}" xmlns:ds="{saml.NS["ds"]}" entityID="{IDP}">'
-                f'<md:IDPSSODescriptor protocolSupportEnumeration="{saml.NS["samlp"]}">'
-                f'<md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>'
-                f'{"".join(CERT.splitlines()[1:-1])}</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor>'
-                f'<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" '
-                f'Location="https://idp.example.com/sso"/></md:IDPSSODescriptor></md:EntityDescriptor>')
-    r = c.put("/api/team/saml", headers=h, json={"metadata_xml": metadata, "email_domain": "acme.com"})
-    assert r.status_code == 200, r.text
-    assert r.json()["protocol"] == "saml" and r.json()["saml_sso_url"] == "https://idp.example.com/sso"
-    return c
-
-
-def _start(c, email="new.hire@acme.com"):
-    r = c.get("/api/auth/sso/start", params={"email": email}, follow_redirects=False)
-    assert r.status_code == 303 and r.headers["location"].startswith("https://idp.example.com/sso?")
-    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(r.headers["location"]).query))
-    req = zlib.decompress(base64.b64decode(q["SAMLRequest"]), -15).decode()
-    rid = re.search(r'ID="([^"]+)"', req).group(1)
-    assert saml.acs_url() in req
-    return rid, q["RelayState"]
-
-
-def _post(c, saml_response, relay):
-    return c.post("/api/auth/saml/acs", data={"SAMLResponse": saml_response, "RelayState": relay},
-                  follow_redirects=False)
-
-
-def test_saml_metadata_endpoint(saml_client):
-    r = saml_client.get("/api/auth/saml/metadata")
-    assert r.status_code == 200 and saml.acs_url() in r.text and "EntityDescriptor" in r.text
-
-
-def test_saml_signs_in_and_provisions_member(saml_client):
-    rid, relay = _start(saml_client)
-    r = _post(saml_client, _response(_assertion("new.hire@acme.com", rid)), relay)
-    assert r.status_code == 303 and r.headers["location"] == "/dashboard", r.headers["location"]
-    db = SessionLocal()
-    u = db.query(models.User).filter(models.User.email == "new.hire@acme.com").first()
-    assert u and u.role == "member" and u.is_verified
-    db.close()
-    # the same response can't be replayed
-    r = _post(saml_client, _response(_assertion("new.hire@acme.com", rid)), relay)
-    assert "sso_error" in r.headers["location"]
-
-
-def _error(r):
-    assert r.status_code == 303 and "sso_error" in r.headers["location"], r.headers.get("location")
-    return urllib.parse.unquote(r.headers["location"])
-
-
-def test_saml_rejects_bad_responses(saml_client):
-    cases = [
-        (lambda rid: _response(_assertion("x@acme.com", rid), key=EVIL_KEY, cert=EVIL_CERT), "signature"),
-        (lambda rid: _response(_assertion("x@acme.com", rid), sign=False), "didn't sign"),
-        (lambda rid: _response(_assertion("x@acme.com", "_other")), "doesn't match"),
-        (lambda rid: _response(_assertion("x@acme.com", rid, audience="https://other.example")), "different service"),
-        (lambda rid: _response(_assertion("x@acme.com", rid, issuer="https://evil.example")), "different identity"),
-        (lambda rid: _response(_assertion("x@acme.com", rid, minutes=-10)), "expired"),
-        (lambda rid: _response(_assertion("x@evil.com", rid)), "@acme.com"),
-    ]
-    for build, expect in cases:
-        rid, relay = _start(saml_client)
-        assert expect in _error(_post(saml_client, build(rid), relay)), expect
-
-
-def test_saml_rejects_signature_wrapping(saml_client):
-    rid, relay = _start(saml_client)
-    signed = etree.fromstring(base64.b64decode(_response(_assertion("boss@acme.com", rid))))
-    # Attacker adds a second, unsigned assertion for another user.
-    evil = etree.fromstring(_assertion("boss@acme.com", rid).replace('ID="_a1"', 'ID="_evil"'))
-    signed.insert(1, evil)
-    assert "exactly one" in _error(_post(saml_client, base64.b64encode(etree.tostring(signed)).decode(), relay))
-    # Or tampers with the signed assertion's email.
-    rid, relay = _start(saml_client)
-    xml = base64.b64decode(_response(_assertion("new.hire@acme.com", rid))).replace(b"new.hire@", b"boss@")
-    assert "signature" in _error(_post(saml_client, base64.b64encode(xml).decode(), relay))
-
-
-def test_saml_requires_matching_relay_state(saml_client):
-    rid, _ = _start(saml_client)
-    assert "mismatch" in _error(_post(saml_client, _response(_assertion("a@acme.com", rid)), "forged"))
-
-
-# ------------------------------------------------------------------ translations
-import glob  # noqa: E402
-
 from app import i18n  # noqa: E402
 
 
@@ -369,7 +214,7 @@ def test_language_from_cookie_then_accept_language():
     assert 'lang="es"' in r.text and "¿Este enlace es phishing?" in r.text
     c.cookies.set("lang", "xx")
     r = c.get("/login", headers={"Accept-Language": "fr-CA,fr;q=0.9"})
-    assert "Mot de passe oublié ?" in r.text
+    assert "Outils gratuits" in r.text
     c.cookies.clear()
     assert "Scan my domain" in c.get("/").text
 

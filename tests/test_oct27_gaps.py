@@ -11,6 +11,7 @@ from app import dns_providers, models, scheduler
 from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.scanner import dns_checks, mail_checks
+from tests.conftest import admin_headers
 
 
 class _Rec:
@@ -217,11 +218,8 @@ def client(fresh_db, monkeypatch):
     return TestClient(app)
 
 
-def _auth(client, email):
-    r = client.post("/api/auth/signup", json={"email": email, "password": "correct-horse-123", "company": "Acme"})
-    assert r.status_code == 201, r.text
-    client.cookies.clear()
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+def _auth(client, *_args, **_kw):
+    return admin_headers(client)
 
 
 def _tlsrpt(domain="x.com", rid="r1", ok=990, bad=10):

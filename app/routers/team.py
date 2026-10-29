@@ -1,4 +1,4 @@
-"""Tenant administration: API keys, team invites, webhooks, audit log, data export."""
+"""Workspace settings: API keys, webhooks, audit log, data export, branding."""
 import hashlib
 import secrets
 import urllib.parse
@@ -9,8 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import audit, branding, mailer, models, pgp, schemas, tokens, webhooks
-from ..config import settings
+from .. import audit, branding, mailer, models, pgp, schemas, webhooks
 from ..database import get_db
 from ..deps import get_current_user, rate_limit, require_owner
 
@@ -60,19 +59,6 @@ def revoke_api_key(key_id: str, request: Request, db: Session = Depends(get_db),
     return {"ok": True}
 
 
-# ------------------------------------------------------------------ team
-@router.get("/members")
-def list_members(request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(get_current_user)):
-    members = (db.query(models.User)
-               .filter(models.User.tenant_id == user.tenant_id,
-                       models.User.is_active.is_(True))
-               .order_by(models.User.created_at).all())
-    return [{"id": m.id, "email": m.email, "role": m.role,
-             "is_verified": m.is_verified, "mfa_enabled": m.mfa_enabled,
-             "created_at": m.created_at.isoformat() + "Z"} for m in members]
-
-
 class PgpKeyIn(BaseModel):
     key: str
 
@@ -105,45 +91,6 @@ def delete_ruf_pgp(request: Request, db: Session = Depends(get_db), user: models
     return {"ok": True}
 
 
-class SecurityIn(BaseModel):
-    mfa_required: bool
-
-
-@router.get("/security")
-def get_security(user: models.User = Depends(get_current_user)):
-    return {"mfa_required": bool(user.tenant.mfa_required)}
-
-
-@router.put("/security")
-def put_security(payload: SecurityIn, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_owner)):
-    if payload.mfa_required and not user.mfa_enabled:
-        raise HTTPException(status_code=400, detail="Turn on two-factor authentication for your own account first")
-    user.tenant.mfa_required = payload.mfa_required
-    db.commit()
-    audit.log_request(db, request, "team.mfa_required", user, {"on": payload.mfa_required})
-    return {"mfa_required": payload.mfa_required}
-
-
-@router.post("/invite", status_code=201)
-def invite_member(payload: schemas.InviteIn, request: Request,
-                  db: Session = Depends(get_db),
-                  user: models.User = Depends(require_owner)):
-    email = payload.email.lower().strip()
-    if db.query(models.User).filter(models.User.email == email).first():
-        raise HTTPException(status_code=409, detail="Email already registered")
-    raw = tokens.create(db, "invite", ttl_hours=72, tenant_id=user.tenant_id,
-                        extra={"email": email, "role": "member"})
-    link = f"{settings.APP_URL}/signup?invite={raw}"
-    mailer.send_email(
-        [email], f"Join {user.tenant.name} on {settings.APP_NAME}",
-        f"{user.email} invited you to join {user.tenant.name}.\n\n"
-        f"Accept (expires in 72h):\n{link}")
-    audit.log_request(db, request, "team.invite", user, {"email": email})
-    return {"ok": True}
-
-
-# ------------------------------------------------------------------ webhooks
 def _validate_webhook_url(url: str) -> str:
     url = url.strip()
     parts = urllib.parse.urlparse(url)
@@ -218,10 +165,6 @@ def export_data(request: Request, db: Session = Depends(get_db),
     tid = user.tenant_id
     data = {
         "tenant": {"id": tid, "name": user.tenant.name},
-        "users": [{"id": u.id, "email": u.email, "role": u.role,
-                   "is_verified": u.is_verified,
-                   "created_at": u.created_at.isoformat() + "Z"}
-                  for u in db.query(models.User).filter(models.User.tenant_id == tid).all()],
         "monitors": [{"domain": m.domain, "last_score": m.last_score,
                       "is_active": m.is_active} for m in
                      db.query(models.Monitor).filter(models.Monitor.tenant_id == tid).all()],

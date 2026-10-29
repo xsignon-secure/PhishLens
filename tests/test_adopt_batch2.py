@@ -9,7 +9,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from app import bimi, dmarc_reports, domain_connect, hosted, models
+from app import bimi, dmarc_reports, domain_connect
 from app.config import settings
 from app.scanner import dns_checks
 from tests.test_fill_gaps import _auth, client, db, hosted_on  # noqa: F401  (fixtures)
@@ -126,8 +126,6 @@ def test_dkim_endpoint(client, monkeypatch):
     monkeypatch.setattr(dns_checks, "dkim_key_info", lambda sel, d: {"found": True, "type": "rsa", "bits": 512, "revoked": False})
     sel = client.get("/api/dmarc/dkim/x.com", headers=h).json()["selectors"]
     assert sel[0]["selector"] == "google" and sel[0]["bits"] == 512 and sel[0]["status"] == "fail"
-    other = _auth(client, "p@y.com")
-    assert client.get("/api/dmarc/dkim/x.com", headers=other).json()["selectors"] == []
 
 
 def test_dkim_key_info(monkeypatch):

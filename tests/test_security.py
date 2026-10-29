@@ -2,10 +2,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import models
 from app.database import Base, SessionLocal, engine
 from app.main import app
 from app.scanner import scoring
+from tests.conftest import admin_login
 
 
 @pytest.fixture()
@@ -33,53 +33,12 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _signup(client, email, company="Acme"):
-    r = client.post("/api/auth/signup", json={
-        "email": email, "password": "correct-horse-123", "company": company})
-    assert r.status_code == 201, r.text
-    return r.json()
+def _signup(client, *_args, **_kw):
+    return admin_login(client, keep_cookies=True)
 
 
-def test_signup_and_login(client):
-    data = _signup(client, "a@example.com")
-    assert data["access_token"]
-    assert data["user"]["email"] == "a@example.com"
-    r = client.post("/api/auth/login", json={"email": "a@example.com", "password": "correct-horse-123"})
-    assert r.status_code == 200
-    r = client.post("/api/auth/login", json={"email": "a@example.com", "password": "wrong"})
-    assert r.status_code == 401
 
 
-def test_duplicate_email_rejected(client):
-    _signup(client, "dup@example.com")
-    r = client.post("/api/auth/signup", json={
-        "email": "dup@example.com", "password": "correct-horse-123", "company": "X"})
-    assert r.status_code == 409
-
-
-def test_tenant_isolation(client):
-    alice = _signup(client, "alice@example.com", "AliceCo")
-    bob = _signup(client, "bob@example.com", "BobCo")
-    ha = {"Authorization": f"Bearer {alice['access_token']}"}
-    hb = {"Authorization": f"Bearer {bob['access_token']}"}
-
-    # Alice adds a monitor
-    r = client.post("/api/monitors", json={"domain": "example.com"}, headers=ha)
-    assert r.status_code == 201, r.text
-    mid = r.json()["id"]
-
-    # Bob cannot see, rescan, or delete Alice's monitor
-    assert client.get("/api/monitors", headers=hb).json() == []
-    assert client.post(f"/api/monitors/{mid}/rescan", headers=hb).status_code == 404
-    assert client.delete(f"/api/monitors/{mid}", headers=hb).status_code == 404
-
-    # Bob cannot read Alice's scans either (seed one via monitor baseline)
-    assert client.get("/api/scans", headers=hb).json() == []
-    scans_alice = client.get("/api/scans", headers=ha).json()
-    assert len(scans_alice) >= 1
-    sid = scans_alice[0]["id"]
-    assert client.get(f"/api/scans/{sid}", headers=hb).status_code == 404
-    assert client.get(f"/api/scans/{sid}", headers=ha).status_code == 200
 
 
 def test_shared_report_requires_opt_in(client):

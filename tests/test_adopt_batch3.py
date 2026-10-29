@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from app import ip_enrich, mailer, models, scheduled_reports
 from app.dmarc_reports import summarize
 from tests.test_fill_gaps import _auth, client, db  # noqa: F401  (fixtures)
+from tests.conftest import admin_tenant
 
 
 # ------------------------------------------------------------------ report views
@@ -32,8 +33,8 @@ def test_summary_counts_per_ip_and_groups_by_host_and_country(monkeypatch):
 
 
 # ------------------------------------------------------------------ scheduled reports
-def _tenant(db, email):
-    return db.query(models.User).filter(models.User.email == email).first().tenant
+def _tenant(db, *_args):
+    return admin_tenant(db)
 
 
 def test_schedule_api_and_send_now(client, db, monkeypatch):
@@ -51,7 +52,7 @@ def test_schedule_api_and_send_now(client, db, monkeypatch):
     r = client.post("/api/team/report-schedule/send-now", headers=h)
     assert r.status_code == 200 and r.json()["last_sent"]
     to, subject, body, att = sent[0]
-    assert to == ["o@x.com"] and subject.startswith("Weekly email security report")
+    assert to == ["owner@x.com"] and subject.startswith("Weekly email security report")
     assert "x.com [Acme]" in body and att[0][2] == "application/pdf" and att[0][1].startswith(b"%PDF")
 
 
@@ -70,7 +71,7 @@ def test_send_due_respects_schedule(client, db, monkeypatch):
     db.commit()
     now = datetime.utcnow()
     assert scheduled_reports.send_due(db, now) == 1
-    assert sent == [["o@x.com", "tickets@psa.test"]]
+    assert sent == [["owner@x.com", "tickets@psa.test"]]
     assert scheduled_reports.send_due(db, now + timedelta(days=20)) == 0
     assert scheduled_reports.send_due(db, now + timedelta(days=30)) == 1
 
@@ -99,6 +100,4 @@ def test_overview(client, db):
     acme = next(c for c in o["clients"] if c["client"] == "Acme")
     assert acme == {"client": "Acme", "domains": 2, "avg_score": 70, "below_70": 1, "alerts_30d": 2,
                     "lowest": {**acme["lowest"], "domain": "b.com", "score": 50}}
-    other = _auth(client, "p@y.com")
-    assert client.get("/api/overview", headers=other).json()["totals"]["domains"] == 0
     assert client.get("/overview", follow_redirects=False).status_code == 302

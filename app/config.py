@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-only-change-me"
     DATABASE_URL: str = "sqlite:///./phishlens.db"
     JWT_EXPIRE_MINUTES: int = 60
+    # There are no user accounts: this one password opens the dashboard.
+    # Leave empty to keep the dashboard closed (the free tools stay public).
+    ADMIN_PASSWORD: str = ""
+    # Where alert emails and scheduled reports go (optional).
+    ADMIN_EMAIL: str = ""
     CORS_ORIGINS: str = ""
     SCAN_RATE_LIMIT_PER_HOUR: int = 20
     # Optional per-team cap on monitored domains for public instances (0 = unlimited).

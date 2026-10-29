@@ -4,16 +4,16 @@ import ssl
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 
-import pyotp
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 from fastapi.testclient import TestClient
 
-from app import mailer, models, tokens, webhooks
+from app import mailer, models
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
 from app.scanner import dns_checks, engine as scan_engine, net, web_checks
+from tests.conftest import admin_login
 
 
 # ------------------------------------------------------------------ fixtures
@@ -35,12 +35,8 @@ def client(db, monkeypatch):
     return TestClient(app)
 
 
-def _signup(client, email, **kw):
-    body = {"email": email, "password": "correct-horse-123", "company": "Acme"}
-    body.update(kw)
-    r = client.post("/api/auth/signup", json=body)
-    assert r.status_code == 201, r.text
-    return r.json()
+def _signup(client, *_args, **_kw):
+    return admin_login(client, keep_cookies=True)
 
 
 def _bearer(token):
@@ -224,64 +220,12 @@ def test_logout_with_csrf_header_clears_session(client):
     assert client.get("/api/auth/me").status_code == 401
 
 
-def test_email_verification_works_without_a_session(client, db):
-    _signup(client, "fresh@example.com")
-    user = db.query(models.User).filter_by(email="fresh@example.com").one()
-    raw = tokens.create(db, "verify_email", user_id=user.id)
-    anon = TestClient(app)  # e.g. link opened on another device
-    assert anon.post("/api/auth/verify", json={"token": raw}).status_code == 200
-    db.refresh(user)
-    assert user.is_verified
-
-
-def test_mfa_setup_cannot_silently_disable_mfa(client, db):
-    h = _bearer(_signup(client, "mfa2@example.com")["access_token"])
-    secret = client.post("/api/auth/mfa/setup", headers=h).json()["secret"]
-    assert client.post("/api/auth/mfa/verify", headers=h,
-                       json={"code": pyotp.TOTP(secret).now()}).status_code == 200
-    assert client.post("/api/auth/mfa/setup", headers=h).status_code == 409
-    user = db.query(models.User).filter_by(email="mfa2@example.com").one()
-    db.refresh(user)
-    assert user.mfa_enabled
-
-
-def test_mfa_challenge_is_rate_limited(client):
-    h = _bearer(_signup(client, "mfa3@example.com")["access_token"])
-    secret = client.post("/api/auth/mfa/setup", headers=h).json()["secret"]
-    client.post("/api/auth/mfa/verify", headers=h, json={"code": pyotp.TOTP(secret).now()})
-    mfa_token = client.post("/api/auth/login", json={
-        "email": "mfa3@example.com", "password": "correct-horse-123"}).json()["mfa_token"]
-    codes = [client.post("/api/auth/mfa/challenge",
-                         json={"mfa_token": mfa_token, "code": "000000"}).status_code
-             for _ in range(7)]
-    assert codes[-1] == 429
-
-
 def test_login_is_rate_limited(client):
     _signup(client, "brute@example.com")
     statuses = [client.post("/api/auth/login", json={
         "email": "brute@example.com", "password": "wrong-password"}).status_code
         for _ in range(12)]
     assert 429 in statuses
-
-
-def test_wrong_email_does_not_burn_invite(client, db):
-    owner = _signup(client, "boss@example.com")
-    raw = tokens.create(db, "invite", ttl_hours=72, tenant_id=owner["user"]["tenant_id"],
-                        extra={"email": "new@example.com", "role": "member"})
-    r = client.post("/api/auth/signup", json={
-        "email": "typo@example.com", "password": "correct-horse-123",
-        "company": "x", "invite_token": raw})
-    assert r.status_code == 400
-    joined = _signup(client, "new@example.com", invite_token=raw)
-    assert joined["user"]["tenant_id"] == owner["user"]["tenant_id"]
-    assert joined["user"]["role"] == "member"
-
-
-def test_overlong_password_is_400_not_500(client):
-    r = client.post("/api/auth/signup", json={
-        "email": "long@example.com", "password": "é" * 40, "company": "x"})
-    assert r.status_code == 400
 
 
 def test_removing_monitor_with_alerts(client, db):

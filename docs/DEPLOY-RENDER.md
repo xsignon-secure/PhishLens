@@ -83,6 +83,8 @@ Under **Environment Variables** add:
 |---|---|
 | `DATABASE_URL` | the Internal Database URL from step A3 |
 | `SECRET_KEY` | click **Generate** (or paste a long random string) |
+| `ADMIN_PASSWORD` | the dashboard password (long and random; there are no user accounts) |
+| `ADMIN_EMAIL` | where alert and report emails go (optional) |
 | `VIRUSTOTAL_API_KEY` | your VirusTotal key (optional) |
 
 Under **Advanced**, set **Health Check Path** to `/api/health`. Then click
@@ -93,7 +95,7 @@ Under **Advanced**, set **Health Check Path** to `/api/health`. Then click
 Under **Logs** you should see `Running upgrade -> 7af353fb1c9a` and then
 `Uvicorn running on http://0.0.0.0:10000`. When the status shows **Live**,
 open `https://phishlens-xxxx.onrender.com/api/health` (it returns
-`{"ok":true,...}`), then go to `/signup` to create your account.
+`{"ok":true,...}`), then go to `/login` and enter your `ADMIN_PASSWORD`.
 
 ## Updating later
 
@@ -165,13 +167,14 @@ When the status turns **Live**, open the service URL
 (`https://phishlens-xxxx.onrender.com`) and check `/api/health`, which
 should return `{"ok":true,...}`.
 
-## Step 4: Create your account
+## Step 4: Open the dashboard
 
-Go to `/signup` on your new URL and create the first owner account. Then work
+Go to `/login` on your new URL and enter the `ADMIN_PASSWORD` you set in
+**Environment** (there are no user accounts to create). Then work
 through the checks in `docs/DEPLOY.md` → "Pre-launch verification": scan a
 real domain, add a monitor, share a report, and download a PDF.
 
-## Step 5 (optional): Email alerts and verification emails
+## Step 5 (optional): Email alerts
 
 Without SMTP, the app works and alerts show on the dashboard only. To send
 email: **phishlens** service → **Environment** → add `SMTP_HOST`,

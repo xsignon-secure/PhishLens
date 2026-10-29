@@ -60,7 +60,7 @@ def send_email(to: list[str], subject: str, body: str,
 
 def notify_monitor_alerts(db, monitor: "models.Monitor", scan: "models.Scan",
                           alerts: list["models.Alert"], prev_score: int | None) -> bool:
-    """Email the tenant's owners about new monitor alerts. Returns True if sent."""
+    """Email ADMIN_EMAIL (and any extra recipients) about new monitor alerts. Returns True if sent."""
     owners = (
         db.query(models.User.email)
         .filter(models.User.tenant_id == monitor.tenant_id,
@@ -68,7 +68,8 @@ def notify_monitor_alerts(db, monitor: "models.Monitor", scan: "models.Scan",
                 models.User.is_active.is_(True))
         .all()
     )
-    recipients = [email for (email,) in owners]
+    from .workspace import real_email
+    recipients = [email for (email,) in owners if real_email(email)]
     tenant = db.query(models.Tenant).filter(models.Tenant.id == monitor.tenant_id).first()
     # Extra recipients, e.g. an MSP's PSA email-to-ticket inbox.
     recipients += [e for e in (tenant.alert_emails or []) if e not in recipients] if tenant else []

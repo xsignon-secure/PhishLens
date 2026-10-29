@@ -71,12 +71,12 @@
 
   <details class="faq">
     <summary>Do I need an account to scan? <span class="chev">▾</span></summary>
-    <div class="faq-body">No. The scanner on the home page is free and needs no signup. Accounts add monitoring, drift alerts, scan history, team access, and API keys.</div>
+    <div class="faq-body">No. There are no accounts at all. The scanner and the free tools need nothing. Whoever runs this server opens the dashboard (monitoring, drift alerts, scan history and API keys) with one admin password.</div>
   </details>
 
   <details class="faq">
     <summary>How often should I rescan? <span class="chev">▾</span></summary>
-    <div class="faq-body">Rescan after every DNS change to confirm it took effect. With a free account you can also schedule automatic rescans and get alerted if a score drops or a record changes unexpectedly — which can be an early sign of tampering.</div>
+    <div class="faq-body">Rescan after every DNS change to confirm it took effect. In the dashboard you can also schedule automatic rescans and get alerted if a score drops or a record changes unexpectedly — which can be an early sign of tampering.</div>
   </details>
 
   <details class="faq">
@@ -91,7 +91,7 @@
 
   <details class="faq">
     <summary>What data do you keep about my scans? <span class="chev">▾</span></summary>
-    <div class="faq-body">Anonymous one-off scans keep only the domain and result. Account scans are tied to your workspace so you get history and monitoring. You can export all your data from the dashboard at any time, and shareable report links are strictly opt-in.</div>
+    <div class="faq-body">Anonymous one-off scans keep only the domain and result. Dashboard scans are kept so you get history and monitoring. You can export all your data from the dashboard at any time, and shareable report links are strictly opt-in.</div>
   </details>
 </section>
 
@@ -100,7 +100,6 @@
   <ul>
     <li><strong>Monitoring &amp; alerts</strong> — watch domains continuously; get notified when a score drops, a record changes, or a certificate nears expiry.</li>
     <li><strong>Scheduled rescans</strong> — automatic re-checks on a cadence you choose.</li>
-    <li><strong>Team workspaces</strong> — invite teammates with owner/member roles; every account supports authenticator-app MFA.</li>
     <li><strong>API keys</strong> — run scans programmatically with per-key prefixes and revocation.</li>
     <li><strong>SIEM webhooks</strong> — alert payloads delivered as signed JSON (HMAC-SHA256), ready for ingestion.</li>
     <li><strong>Slack, Teams &amp; Discord alerts</strong> — paste a chat webhook URL and alerts arrive as a readable message.</li>
@@ -117,7 +116,7 @@
   <h2>Privacy &amp; security</h2>
   <ul>
     <li>Scans query <strong>public records only</strong> — we never ask for credentials or access to your infrastructure.</li>
-    <li>Passwords are hashed with bcrypt; sessions use HTTP-only cookies; all state-changing requests are CSRF-protected.</li>
+    <li>The dashboard is behind one admin password set on the server; sessions use HTTP-only cookies; all state-changing requests are CSRF-protected.</li>
     <li>Report links are private unless you explicitly share them.</li>
     <li>We don't sell data. Ever.</li>
   </ul>

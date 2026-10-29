@@ -1,8 +1,9 @@
 """Request dependencies: auth, tenant scoping, rate limiting, domain validation.
 
-Tenant isolation rule: every database read/write for tenant data goes through
-get_current_user(), and filters on tenant_id == user.tenant_id. Anonymous
-public scans (tenant_id NULL) are only reachable by their unguessable id.
+There are no user accounts: get_current_user() returns the built-in admin for a
+request with an admin session or API key, and dashboard data is filtered on
+its tenant_id. Anonymous public scans (tenant_id NULL) are only reachable by
+their unguessable id.
 """
 import hashlib
 import ipaddress
@@ -100,6 +101,10 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.User:
+    """The built-in admin (see app/workspace.py), for a request carrying an
+    admin session or an API key."""
+    from . import workspace
+    admin = workspace.get_admin(db)
     # 1) API key (automation / SIEM integrations / MCP clients): X-API-Key,
     # or "Authorization: Bearer plk_..." which is what MCP clients send.
     api_key = request.headers.get("x-api-key")
@@ -110,61 +115,32 @@ def get_current_user(
         digest = hashlib.sha256(api_key.encode()).hexdigest()
         key = (
             db.query(models.ApiKey)
-            .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True))
+            .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True),
+                    models.ApiKey.tenant_id == admin.tenant_id)
             .first()
         )
         if not key:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
         key.last_used_at = datetime.utcnow()
         db.commit()
-        user = (
-            db.query(models.User)
-            .filter(models.User.id == key.user_id, models.User.is_active.is_(True))
-            .first()
-        )
-        if not user or user.tenant_id != key.tenant_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
         request.state.auth_method = "api_key"
-        return user
-    # 2) JWT: Bearer header or httpOnly cookie (browser pages)
+        return admin
+    # 2) Admin session: Bearer header or httpOnly cookie (browser pages)
     token = None
     if credentials and credentials.scheme.lower() == "bearer":
         token = credentials.credentials
-    if not token:  # also accept cookie for browser pages
+    if not token:
         token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     payload = decode_token(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-    user = (
-        db.query(models.User)
-        .filter(models.User.id == payload.get("sub"), models.User.is_active.is_(True))
-        .first()
-    )
-    if not user or user.tenant_id != payload.get("tid"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
-    if payload.get("tv", 0) != (user.token_version or 0):
+    if not payload or not workspace.enabled():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session")
+    if (payload.get("sub") != admin.id or payload.get("pw") != workspace.password_fingerprint()
+            or payload.get("tv", 0) != (admin.token_version or 0)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session was signed out")
     request.state.auth_method = "cookie" if request.cookies.get("access_token") else "bearer"
-    request.state.token_payload = payload
-    if needs_mfa_setup(user, payload) and request.url.path not in MFA_SETUP_PATHS:
-        raise HTTPException(status_code=403, detail="Your team requires two-factor authentication: "
-                                                    "set up an authenticator app to continue")
-    return user
-
-
-# Reachable while a required authenticator isn't set up yet (the dashboard
-# page shows the setup screen).
-MFA_SETUP_PATHS = {"/dashboard", "/api/auth/me", "/api/auth/mfa/setup", "/api/auth/mfa/verify", "/api/auth/logout"}
-
-
-def needs_mfa_setup(user: models.User, token_payload: dict | None = None) -> bool:
-    """The team requires 2FA and this password login has none. Single
-    sign-on logins are exempt: the identity provider enforces its own MFA."""
-    if (token_payload or {}).get("amr") == "sso":
-        return False
-    return bool(user.tenant and user.tenant.mfa_required and not user.mfa_enabled)
+    return admin
 
 
 def require_owner(user: models.User = Depends(get_current_user)) -> models.User:
