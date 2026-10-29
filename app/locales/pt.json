@@ -723,5 +723,15 @@
  "{0} of {1} members have it on.": "{0} de {1} membros ativaram.",
  "· 2FA on": "· 2FA ativada",
  "✓ New failure reports are encrypted to key {0}.": "✓ Novos relatórios de falha são criptografados com a chave {0}.",
- "✓ On.": "✓ Ativado."
+ "✓ On.": "✓ Ativado.",
+ "Zammad URL": "URL do Zammad",
+ "Access token": "Token de acesso",
+ "Group": "Grupo",
+ "Default customer email": "E-mail do cliente padrão",
+ "Client label = customer email (one per line)": "Rótulo do cliente = e-mail do cliente (um por linha)",
+ "GLPI URL": "URL do GLPI",
+ "User API token": "Token de API do usuário",
+ "App token (optional)": "Token do aplicativo (opcional)",
+ "Default entity id (optional)": "ID da entidade padrão (opcional)",
+ "Client label = entity id (one per line)": "Rótulo do cliente = ID da entidade (um por linha)"
 }

@@ -1,12 +1,13 @@
 """Alert exports beyond webhooks: a SIEM (syslog RFC 5424 over UDP, TCP or
-TLS, or Splunk HTTP Event Collector) and PSA tickets (ConnectWise Manage,
-HaloPSA, Autotask). Configured per team; secrets are encrypted at rest.
+TLS, or Splunk HTTP Event Collector) and tickets in a PSA (ConnectWise Manage,
+HaloPSA, Autotask) or an open-source helpdesk (Zammad, GLPI). Configured per team; secrets are encrypted at rest.
 
 Delivery is best-effort, like webhooks: alerts are stored whatever happens
 here, and a failed export never fails a scan. Every destination must be a
 public host (https for HTTP APIs), so a team can't point PhishLens at the
 server's own network."""
 import base64
+import html
 import ipaddress
 import json
 import logging
@@ -29,8 +30,11 @@ _HOST_RE = re.compile(r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9
 
 # Secret fields: stored encrypted under "<name>_enc", never returned.
 SIEM_SECRETS = {"splunk_hec": ("token",), "syslog": ()}
-PSA_SECRETS = {"connectwise": ("private_key",), "halopsa": ("client_secret",), "autotask": ("secret",)}
-PSA_NAMES = {"connectwise": "ConnectWise Manage", "halopsa": "HaloPSA", "autotask": "Autotask"}
+PSA_SECRETS = {"connectwise": ("private_key",), "halopsa": ("client_secret",), "autotask": ("secret",),
+               "zammad": ("token",), "glpi": ("user_token",)}
+PSA_NAMES = {"connectwise": "ConnectWise Manage", "halopsa": "HaloPSA", "autotask": "Autotask",
+             "zammad": "Zammad", "glpi": "GLPI"}
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class ConfigError(ValueError):
@@ -173,8 +177,27 @@ def clean_psa(raw: dict, previous: dict | None = None) -> dict:
                  "priority": _int(raw.get("priority"), "Priority", 1, 4) or 2}
         if not clean["default_company"]:
             raise ConfigError("Default company id is required")
+    elif kind == "zammad":
+        # Zammad tickets need a customer: client labels map to customer emails.
+        clean = {**base, "url": _https_url(raw.get("url"), "Zammad URL"),
+                 "group": _text(raw.get("group") or "Users", "Group", max_len=100),
+                 "default_company": _text(raw.get("default_company"), "Default customer email", max_len=200).lower()}
+        for email in [clean["default_company"], *clean["companies"].values()]:
+            if not _EMAIL_RE.match(email):
+                raise ConfigError(f"{email} isn't an email address")
+    elif kind == "glpi":
+        clean = {**base, "url": _https_url(raw.get("url"), "GLPI URL").removesuffix("/apirest.php"),
+                 "default_company": _opt_str(_int(raw.get("default_company"), "Default entity id", 0))}
+        if any(not v.isdigit() for v in clean["companies"].values()):
+            raise ConfigError("GLPI entity ids are numbers")
+        # The app token is optional (GLPI only asks for one if an API client sets it).
+        app_token = str(raw.get("app_token") or "").strip()
+        if app_token:
+            clean["app_token_enc"] = crypto.encrypt(app_token)
+        elif previous and previous.get("kind") == "glpi" and previous.get("app_token_enc"):
+            clean["app_token_enc"] = previous["app_token_enc"]
     else:
-        raise ConfigError("Choose ConnectWise, HaloPSA or Autotask")
+        raise ConfigError("Choose ConnectWise, HaloPSA, Autotask, Zammad or GLPI")
     return _keep_secrets(clean, raw, previous, PSA_SECRETS[kind])
 
 
@@ -324,7 +347,40 @@ def _autotask(cfg, title, body, company, http) -> str:
     return str(r.json().get("itemId"))
 
 
-_PSA = {"connectwise": _connectwise, "halopsa": _halopsa, "autotask": _autotask}
+def _zammad(cfg, title, body, company, http) -> str:
+    # "guess:<email>" finds the customer by email, or creates them.
+    payload = {"title": title[:250], "group": cfg["group"], "customer_id": f"guess:{company}",
+               "article": {"subject": title[:250], "body": body, "type": "note", "internal": False,
+                           "content_type": "text/plain"}}
+    r = http.post(f"{cfg['url']}/api/v1/tickets", json=payload,
+                  headers={"Authorization": f"Token token={_secret(cfg, 'token')}"})
+    r.raise_for_status()
+    return str(r.json().get("number") or r.json().get("id"))
+
+
+def _glpi(cfg, title, body, company, http) -> str:
+    api = f"{cfg['url']}/apirest.php"
+    headers = {"App-Token": crypto.decrypt(cfg["app_token_enc"])} if cfg.get("app_token_enc") else {}
+    s = http.get(f"{api}/initSession", headers={**headers, "Authorization": f"user_token {_secret(cfg, 'user_token')}"})
+    s.raise_for_status()
+    headers["Session-Token"] = s.json()["session_token"]
+    try:
+        # GLPI shows the description as rich text: one paragraph per line.
+        content = "".join(f"<p>{html.escape(line)}</p>" for line in body.split("\n"))
+        ticket = {"name": title[:255], "content": content, "type": 1}  # 1 = incident
+        if company:
+            ticket["entities_id"] = int(company)
+        r = http.post(f"{api}/Ticket", json={"input": ticket}, headers=headers)
+        r.raise_for_status()
+        return str(r.json().get("id"))
+    finally:
+        try:
+            http.get(f"{api}/killSession", headers=headers)
+        except httpx.HTTPError:
+            pass
+
+
+_PSA = {"connectwise": _connectwise, "halopsa": _halopsa, "autotask": _autotask, "zammad": _zammad, "glpi": _glpi}
 
 
 def create_ticket(cfg: dict, events: list[dict], http: httpx.Client | None = None) -> str | None:

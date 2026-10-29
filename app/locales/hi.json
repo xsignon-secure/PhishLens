@@ -723,5 +723,15 @@
  "{0} of {1} members have it on.": "{1} में से {0} सदस्यों ने इसे चालू किया है।",
  "· 2FA on": "· 2FA चालू",
  "✓ New failure reports are encrypted to key {0}.": "✓ नई फ़ेलियर रिपोर्ट की {0} से एन्क्रिप्ट होती हैं।",
- "✓ On.": "✓ चालू।"
+ "✓ On.": "✓ चालू।",
+ "Zammad URL": "Zammad URL",
+ "Access token": "एक्सेस टोकन",
+ "Group": "समूह",
+ "Default customer email": "डिफ़ॉल्ट ग्राहक ईमेल",
+ "Client label = customer email (one per line)": "क्लाइंट लेबल = ग्राहक ईमेल (प्रति पंक्ति एक)",
+ "GLPI URL": "GLPI URL",
+ "User API token": "उपयोगकर्ता API टोकन",
+ "App token (optional)": "ऐप टोकन (वैकल्पिक)",
+ "Default entity id (optional)": "डिफ़ॉल्ट एंटिटी आईडी (वैकल्पिक)",
+ "Client label = entity id (one per line)": "क्लाइंट लेबल = एंटिटी आईडी (प्रति पंक्ति एक)"
 }

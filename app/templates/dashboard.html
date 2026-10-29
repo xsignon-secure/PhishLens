@@ -221,7 +221,7 @@
       <form id="psa-form" class="integration-form" data-which="psa">
         <h3>{{ _("PSA tickets") }}</h3>
         <label>{{ _("PSA") }}<select name="kind">
-          <option value="">{{ _("Off") }}</option><option value="connectwise">ConnectWise Manage</option><option value="halopsa">HaloPSA</option><option value="autotask">Autotask</option>
+          <option value="">{{ _("Off") }}</option><option value="connectwise">ConnectWise Manage</option><option value="halopsa">HaloPSA</option><option value="autotask">Autotask</option><option value="zammad">Zammad</option><option value="glpi">GLPI</option>
         </select></label>
         <div class="int-fields"></div>
         <p class="int-msg muted small"></p>
@@ -1072,6 +1072,12 @@ const INT_FIELDS = {
              ['secret', N_('API secret'), 'secret'], ['integration_code', N_('Integration code'), 'text'],
              ['default_company', N_('Default company id'), 'number', '0'], ['queue_id', N_('Queue id (optional)'), 'number'],
              ['priority', N_('Priority'), ['2', '1', '3', '4']], COMPANIES_FIELD],
+  zammad: [['url', N_('Zammad URL'), 'url', 'https://helpdesk.example.com'], ['token', N_('Access token'), 'secret'],
+           ['group', N_('Group'), 'text', 'Users'], ['default_company', N_('Default customer email'), 'text', 'it@example.com'],
+           ['companies', N_('Client label = customer email (one per line)'), 'map', 'Acme = it@acme.com']],
+  glpi: [['url', N_('GLPI URL'), 'url', 'https://glpi.example.com'], ['user_token', N_('User API token'), 'secret'],
+         ['app_token', N_('App token (optional)'), 'secret'], ['default_company', N_('Default entity id (optional)'), 'number', '0'],
+         ['companies', N_('Client label = entity id (one per line)'), 'map', 'Acme = 3']],
 };
 const INT_KINDS = {score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
                    lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring')};

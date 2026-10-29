@@ -140,8 +140,9 @@ app/
 - **SCIM 2.0 provisioning** from Okta, Microsoft Entra ID and others:
   `docs/SCIM.md`.
 - **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
-  or to Splunk HEC, and a ticket per alerting domain in ConnectWise Manage,
-  HaloPSA or Autotask: `docs/INTEGRATIONS.md`.
+  or to Splunk HEC, and a ticket per alerting domain in the free, open-source
+  helpdesks Zammad or GLPI, or in ConnectWise Manage, HaloPSA or Autotask:
+  `docs/INTEGRATIONS.md`.
 - **MCP server**: connect Claude or any MCP client to `/mcp` with a team API
   key to scan domains and read reports, alerts and DMARC data: `docs/MCP.md`.
 - **White-label (MSPs)**: brand name, colour, logo and footer on shared
