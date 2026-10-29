@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from . import mailer, models
+from . import mailer, models, plans
 from .config import settings
 
 PERIODS = {"weekly": 7, "monthly": 30}
@@ -75,7 +75,7 @@ def send_due(db: Session, now: datetime | None = None) -> int:
     now = now or datetime.utcnow()
     sent = 0
     for tenant in db.query(models.Tenant).filter(models.Tenant.report_schedule.in_(list(PERIODS))).all():
-        if not is_due(tenant, now) or not mailer.config_for(tenant):
+        if not is_due(tenant, now) or not mailer.config_for(tenant) or not plans.has(tenant, "scheduled_reports"):
             continue
         try:
             sent += send(db, tenant, now)

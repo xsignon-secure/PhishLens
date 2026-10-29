@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .. import audit, integrations, models
+from .. import audit, integrations, models, plans
 from ..database import get_db
 from ..deps import rate_limit, require_admin
 
@@ -26,6 +26,7 @@ def get_integrations(db: Session = Depends(get_db), user: models.User = Depends(
 @router.put("/integrations/{which}")
 def put_integration(which: str, request: Request, payload: dict = Body(...), db: Session = Depends(get_db),
                     user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "siem_psa")
     which = _which(which)
     t = user.tenant
     try:
@@ -51,6 +52,7 @@ def delete_integration(which: str, request: Request, db: Session = Depends(get_d
 @router.post("/integrations/{which}/test")
 def test_integration(which: str, request: Request, db: Session = Depends(get_db),
                      user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "siem_psa")
     which = _which(which)
     cfg = getattr(user.tenant, which)
     if not cfg:

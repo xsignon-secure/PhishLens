@@ -69,7 +69,8 @@ def login_page(request: Request):
 @router.get("/platform", response_class=HTMLResponse)
 def platform_page(request: Request):
     return templates.TemplateResponse(request, "platform.html",
-                                      {"request": request, "enabled": bool(settings.ADMIN_PASSWORD)})
+                                      {"request": request, "enabled": bool(settings.ADMIN_PASSWORD),
+                                       "plans_enabled": settings.PLANS_ENABLED})
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

@@ -7,13 +7,14 @@ company names and their people, never their domains, scans or reports.
 import hmac
 import secrets
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from .. import audit, credentials, mailer, models, security
+from .. import audit, credentials, mailer, models, plans, security
 from ..config import settings
 from ..database import get_db
 from ..deps import auth_limit
@@ -34,6 +35,13 @@ class CompanyIn(BaseModel):
     owner_email: str = Field(min_length=3, max_length=320)
     owner_name: str = Field(default="", max_length=200)
     send_email: bool = True
+    plan: Literal["free", "pro", "msp"] = "free"
+
+    model_config = {"extra": "forbid"}
+
+
+class PlanIn(BaseModel):
+    plan: Literal["free", "pro", "msp"]
 
     model_config = {"extra": "forbid"}
 
@@ -94,6 +102,7 @@ def _company_out(db: Session, t: models.Tenant) -> dict:
               .order_by(models.User.created_at).all())
     return {"id": t.id, "name": t.name, "status": t.status, "created_at": t.created_at.isoformat() + "Z",
             "users": {role: n for role, n in people}, "own_mail_server": bool((t.smtp or {}).get("host")),
+            "plan": t.plan or "free", "plans_enabled": plans.enabled(),
             "owners": [user_out(o) for o in owners if mailer.real_email(o.email)]}
 
 
@@ -105,7 +114,7 @@ def list_companies(db: Session = Depends(get_db), _: bool = Depends(require_plat
 @router.post("/companies", status_code=201)
 def create_company(payload: CompanyIn, request: Request, background: BackgroundTasks,
                    db: Session = Depends(get_db), _: bool = Depends(require_platform)):
-    tenant = models.Tenant(name=payload.name.strip())
+    tenant = models.Tenant(name=payload.name.strip(), plan=payload.plan)
     db.add(tenant)
     db.flush()
     try:
@@ -179,3 +188,20 @@ def suspend_company(tenant_id: str, request: Request, db: Session = Depends(get_
 def reactivate_company(tenant_id: str, request: Request, db: Session = Depends(get_db),
                        _: bool = Depends(require_platform)):
     return _set_status(db, request, tenant_id, "active")
+
+
+@router.post("/companies/{tenant_id}/plan")
+def set_plan(tenant_id: str, payload: PlanIn, request: Request, db: Session = Depends(get_db),
+             _: bool = Depends(require_platform)):
+    """Move a company to another plan. Nothing is deleted on a downgrade: data
+    over the new limits is kept and shows again after an upgrade."""
+    tenant = db.get(models.Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Company not found")
+    before = tenant.plan
+    tenant.plan = payload.plan
+    db.commit()
+    audit.log(db, "platform.company_plan", tenant_id=tenant.id,
+              ip=request.client.host if request.client else None,
+              detail={"from": before, "to": payload.plan})
+    return _company_out(db, tenant)

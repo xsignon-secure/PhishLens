@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import models, scheduled_reports  # noqa: E402
+from app import models, plans, scheduled_reports  # noqa: E402
 from app.database import SessionLocal, init_db  # noqa: E402
 from app.scanner import engine  # noqa: E402
 
@@ -52,15 +52,17 @@ def run(force: bool = False, min_age_hours: float = 20, domain: str | None = Non
             q = q.filter(models.Monitor.tenant_id == tenant)
         monitors = q.all()
 
-        cutoff = datetime.utcnow() - timedelta(hours=min_age_hours)
         done, skipped, failed, alerted = 0, 0, 0, 0
         for monitor in monitors:
+            tenant = monitor.tenant
+            # A company's plan can ask for rescans less often than the scheduler runs.
+            age = max(min_age_hours, plans.plan(tenant)["rescan_hours"] - 1)
             if (not force and monitor.last_checked_at
-                    and monitor.last_checked_at > cutoff):
+                    and monitor.last_checked_at > datetime.utcnow() - timedelta(hours=age)):
                 skipped += 1
                 continue
             try:
-                due = lookalike_days > 0 and (
+                due = lookalike_days > 0 and plans.has(tenant, "lookalike_watch") and (
                     not monitor.lookalikes_checked_at
                     or monitor.lookalikes_checked_at
                     < datetime.utcnow() - timedelta(days=lookalike_days))

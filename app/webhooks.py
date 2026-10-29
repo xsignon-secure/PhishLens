@@ -108,6 +108,9 @@ def notify_alerts(db, monitor, scan, alerts) -> bool:
     tenant = db.query(models.Tenant).filter(models.Tenant.id == monitor.tenant_id).first()
     if not tenant or not tenant.webhook_url or not tenant.webhook_secret:
         return False
+    from . import plans
+    if not plans.has(tenant, "webhook"):  # settings kept for an upgrade
+        return False
     event = {
         "event": "monitor.alert",
         "domain": monitor.domain,

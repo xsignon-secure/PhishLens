@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, models, schemas
+from .. import audit, models, plans, schemas
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, tenant_alerts, tenant_monitors
@@ -39,6 +39,8 @@ def add_monitor(payload: schemas.MonitorIn, request: Request, db: Session = Depe
     limit = settings.MAX_MONITORS_PER_TEAM  # 0 = unlimited; a server operator's abuse brake
     if limit and tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count() >= limit:
         raise HTTPException(status_code=429, detail=f"This server allows {limit} monitored domains per team")
+    plans.check_limit(user.tenant, "monitors",
+                      tenant_monitors(db, user).filter(models.Monitor.is_active.is_(True)).count(), "monitored domains")
     # Baseline scan BEFORE inserting: run_scan refuses unscannable domains, and
     # a failure must not leave a broken monitor behind.
     scan = engine.run_scan(db, domain, tenant_id=user.tenant_id)

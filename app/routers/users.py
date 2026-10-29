@@ -14,7 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import audit, credentials, mailer, models, passwords, sessions
+from .. import audit, credentials, mailer, models, passwords, plans, sessions
 from ..config import settings
 from ..database import get_db
 from ..deps import rate_limit, require_admin, require_step_up
@@ -120,9 +120,16 @@ def list_users(db: Session = Depends(get_db), user: models.User = Depends(requir
     return [user_out(u) for u in rows if mailer.real_email(u.email)]
 
 
+def _seats(db: Session, tenant_id: str) -> int:
+    """Accounts that count toward the plan: every real person, suspended ones too."""
+    return sum(1 for (email,) in db.query(models.User.email).filter(models.User.tenant_id == tenant_id)
+               if mailer.real_email(email))
+
+
 @router.post("", status_code=201)
 def create_user(payload: UserIn, request: Request, background: BackgroundTasks,
                 db: Session = Depends(get_db), actor: models.User = Depends(require_step_up)):
+    plans.check_limit(actor.tenant, "users", _seats(db, actor.tenant_id), "users")
     user, temp = _create(db, actor, payload.email, payload.full_name, payload.role, payload.temporary_password)
     _queue_credentials(request, background, user, temp, payload.send_email, db)
     audit.log_request(db, request, "user.create", actor,
@@ -241,6 +248,7 @@ def import_users(payload: ImportIn, request: Request, background: BackgroundTask
         try:
             if role not in ("admin", "member"):
                 raise HTTPException(status_code=400, detail="Role must be admin or member")
+            plans.check_limit(actor.tenant, "users", _seats(db, actor.tenant_id), "users")
             user, temp = _create(db, actor, email, name, role)
             _queue_credentials(request, background, user, temp, payload.send_email, db)
             results.append({"row": n, "email": user.email, "ok": True,

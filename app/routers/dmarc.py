@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, dmarc_reports, forensic, ip_enrich, models
+from .. import audit, dmarc_reports, forensic, ip_enrich, models, plans
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit
 
@@ -26,6 +26,15 @@ def store_report(db: Session, tenant_id: str, parsed: dict) -> tuple[models.Dmar
                 .first())
     if existing:
         return existing, False
+    known = {d for (d,) in db.query(models.DmarcReport.domain)
+             .filter(models.DmarcReport.tenant_id == tenant_id).distinct()}
+    if parsed["domain"] not in known:
+        tenant = db.get(models.Tenant, tenant_id)
+        limit = plans.plan(tenant)["dmarc_domains"]
+        if limit is not None and len(known) >= limit:
+            raise dmarc_reports.ReportError(
+                f"Your {plans.plan(tenant)['label']} plan includes DMARC reports for {limit} domain"
+                f"{'s' if limit != 1 else ''}. Ask the administrator of this service to upgrade your company.")
     records = parsed["records"]
     row = models.DmarcReport(
         tenant_id=tenant_id, domain=parsed["domain"], org_name=parsed["org_name"],
@@ -78,6 +87,7 @@ def list_reports(domain: str | None = None, db: Session = Depends(get_db),
     q = db.query(models.DmarcReport).filter(models.DmarcReport.tenant_id == user.tenant_id)
     if domain:
         q = q.filter(models.DmarcReport.domain == normalize_domain(domain))
+    q = q.filter(models.DmarcReport.date_begin >= plans.since(user.tenant, "dmarc_days"))
     rows = q.order_by(models.DmarcReport.date_begin.desc()).limit(200).all()
     return [{"id": r.id, "domain": r.domain, "org_name": r.org_name,
              "date_begin": r.date_begin.isoformat() + "Z" if r.date_begin else None,
@@ -96,7 +106,7 @@ def report_domains(db: Session = Depends(get_db), user: models.User = Depends(ge
 @router.get("/summary/{domain}")
 def domain_summary(domain: str, days: int = 30, enrich: bool = True, db: Session = Depends(get_db),
                    user: models.User = Depends(get_current_user)):
-    days = max(1, min(days, 365))
+    days = plans.days_cap(user.tenant, "dmarc_days", max(1, min(days, 365)))
     domain = normalize_domain(domain)
     since = datetime.utcnow() - timedelta(days=days)
     reports = (db.query(models.DmarcReport)
@@ -117,7 +127,7 @@ def dkim_selector_health(domain: str, days: int = 180, db: Session = Depends(get
 
     from ..scanner import dns_checks
 
-    days = max(1, min(days, 730))
+    days = plans.days_cap(user.tenant, "dmarc_days", max(1, min(days, 730)))
     domain = normalize_domain(domain)
     reports = (db.query(models.DmarcReport)
                .filter(models.DmarcReport.tenant_id == user.tenant_id,
@@ -150,6 +160,7 @@ def delete_report(report_id: str, request: Request, db: Session = Depends(get_db
 async def upload_forensic(request: Request, db: Session = Depends(get_db),
                           user: models.User = Depends(get_current_user)):
     """Send one failure report (.eml, as received) as the request body."""
+    plans.require(user.tenant, "ruf")
     rate_limit(request, f"dmarc-upload:{user.tenant_id}", 500)
     try:
         declared = int(request.headers.get("content-length") or 0)

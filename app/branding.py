@@ -15,7 +15,8 @@ class BrandingError(ValueError):
 
 def for_tenant(tenant) -> dict | None:
     """Branding to apply, or None."""
-    if tenant is None:
+    from . import plans
+    if tenant is None or not plans.has(tenant, "white_label"):  # kept, shown again on upgrade
         return None
     if not (tenant.brand_name or tenant.brand_color or tenant.brand_logo or tenant.report_footer):
         return None

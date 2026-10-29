@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .. import audit, models, tls_reports
+from .. import audit, models, plans, tls_reports
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit
 
@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/tlsrpt", tags=["tls-rpt"])
 async def upload_report(request: Request, db: Session = Depends(get_db),
                         user: models.User = Depends(get_current_user)):
     """Send one report (.json or .json.gz, as received) as the request body."""
+    plans.require(user.tenant, "tls_rpt")
     rate_limit(request, f"dmarc-upload:{user.tenant_id}", 500)
     try:
         declared = int(request.headers.get("content-length") or 0)
@@ -43,7 +44,7 @@ def report_domains(db: Session = Depends(get_db), user: models.User = Depends(ge
 @router.get("/summary/{domain}")
 def domain_summary(domain: str, days: int = 30, db: Session = Depends(get_db),
                    user: models.User = Depends(get_current_user)):
-    days = max(1, min(days, 365))
+    days = plans.days_cap(user.tenant, "dmarc_days", max(1, min(days, 365)))
     domain = normalize_domain(domain)
     reports = (db.query(models.TlsReport)
                .filter(models.TlsReport.tenant_id == user.tenant_id, models.TlsReport.domain == domain,

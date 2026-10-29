@@ -140,6 +140,9 @@ app/
   admins create their users, and login details go out from the company's own
   mail server. Temporary passwords, a required authenticator app for owners
   and admins, and a fresh code for sensitive changes (`docs/ACCOUNTS.md`).
+- **Hosted plans (optional)**: `PLANS_ENABLED=true` gives each company a Free,
+  Pro or MSP plan set at `/platform`. Off by default, so a self-hosted copy has
+  every feature (`docs/PLANS.md`).
 - **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
   or to Splunk HEC, and a ticket per alerting domain in the free, open-source
   helpdesks Zammad or GLPI, or in ConnectWise Manage, HaloPSA or Autotask:
