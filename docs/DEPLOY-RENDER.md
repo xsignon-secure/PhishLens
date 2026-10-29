@@ -83,8 +83,7 @@ Under **Environment Variables** add:
 |---|---|
 | `DATABASE_URL` | the Internal Database URL from step A3 |
 | `SECRET_KEY` | click **Generate** (or paste a long random string) |
-| `ADMIN_PASSWORD` | the dashboard password (long and random; there are no user accounts) |
-| `ADMIN_EMAIL` | where alert and report emails go (optional) |
+| `ADMIN_PASSWORD` | the platform admin password for `/platform`, where you create companies and owners (long and random) |
 | `VIRUSTOTAL_API_KEY` | your VirusTotal key (optional) |
 
 Under **Advanced**, set **Health Check Path** to `/api/health`. Then click
@@ -95,7 +94,7 @@ Under **Advanced**, set **Health Check Path** to `/api/health`. Then click
 Under **Logs** you should see `Running upgrade -> 7af353fb1c9a` and then
 `Uvicorn running on http://0.0.0.0:10000`. When the status shows **Live**,
 open `https://phishlens-xxxx.onrender.com/api/health` (it returns
-`{"ok":true,...}`), then go to `/login` and enter your `ADMIN_PASSWORD`.
+`{"ok":true,...}`), then go to `/platform` and enter your `ADMIN_PASSWORD`.
 
 ## Updating later
 
@@ -169,8 +168,11 @@ should return `{"ok":true,...}`.
 
 ## Step 4: Open the dashboard
 
-Go to `/login` on your new URL and enter the `ADMIN_PASSWORD` you set in
-**Environment** (there are no user accounts to create). Then work
+Go to `/platform` on your new URL and enter the `ADMIN_PASSWORD` you set in
+**Environment**. Create your company and its owner (you), then sign in at
+`/login` with the temporary password, choose your own password and set up an
+authenticator app. In the dashboard, **Email server** connects your company
+mail server and **Users** creates everyone else (`docs/ACCOUNTS.md`). Then work
 through the checks in `docs/DEPLOY.md` → "Pre-launch verification": scan a
 real domain, add a monitor, share a report, and download a PDF.
 

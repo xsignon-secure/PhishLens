@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Platform admin") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="dash">
+  <h1>{{ _("Platform admin") }}</h1>
+  {% if not enabled %}
+  <p class="sub">{{ _("This page is off. To turn it on, set the ADMIN_PASSWORD environment variable on the server and restart.") }}</p>
+  {% else %}
+  <form id="plat-login" class="auth">
+    <p class="muted small">{{ _("For whoever runs this server: create companies and their owners. Company data stays private to each company.") }}</p>
+    <label>{{ _("Platform admin password") }}<input id="plat-pw" type="password" autocomplete="current-password" required autofocus></label>
+    <button class="btn big" type="submit">{{ _("Log in") }}</button>
+    <p id="plat-err" class="error" role="alert"></p>
+  </form>
+  <div id="plat-main" class="hidden">
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("New company") }}</h2>
+      <form id="company-form" class="form-grid">
+        <label>{{ _("Company name") }}<input name="name" required maxlength="200"></label>
+        <label>{{ _("Owner's email") }}<input name="owner_email" type="email" required></label>
+        <label>{{ _("Owner's name") }}<input name="owner_name" maxlength="200"></label>
+        <label class="check-inline"><input name="send_email" type="checkbox" checked> {{ _("Email the login details") }}</label>
+        <button class="btn" type="submit">{{ _("Create company") }}</button>
+      </form>
+      <p id="company-msg" class="muted small" aria-live="polite"></p>
+    </div>
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Companies") }}</h2>
+      <div id="companies"></div>
+      <p><button id="plat-logout" class="btn tiny ghost">{{ _("Log out") }}</button></p>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+{% if enabled %}
+<script>
+const STATUS_WORDS = {active: N_('Active'), pending: N_('Waiting for first sign-in'), suspended: N_('Suspended')};
+function getCookie(n) { const m = document.cookie.match('(^|;)\\s*' + n + '=([^;]*)'); return m ? decodeURIComponent(m[2]) : ''; }
+async function papi(path, opts = {}) {
+  opts.headers = Object.assign({'Content-Type': 'application/json', 'X-CSRF-Token': getCookie('csrf_token')}, opts.headers || {});
+  const r = await fetch(path, opts);
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401 && !path.endsWith('/login')) { showLogin(); throw new Error(_t('Request failed')); }
+  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  return d;
+}
+function showLogin() {
+  document.getElementById('plat-login').classList.remove('hidden');
+  document.getElementById('plat-main').classList.add('hidden');
+}
+function tempNotice(email, d) {
+  // The temporary password is shown once, for handing over another way.
+  return _t('Login details for {0}: temporary password {1} (shown once; it expires and must be changed at first sign-in).',
+            {0: email, 1: d.temporary_password});
+}
+function ownerLine(o) {
+  const st = {sent: _t('Login details emailed'), sending: _t('Sending login details…'), failed: _t('Login email failed'), manual: _t('Give the password yourself')}[o.credentials_status] || '';
+  return `<div class="mon"><span>${escapeHtml(o.email)}</span>
+    <span class="muted small">${escapeHtml(_t(STATUS_WORDS[o.status] || o.status))}${st ? ' · ' + escapeHtml(st) : ''}${o.credentials_error ? ' — ' + escapeHtml(o.credentials_error) : ''}</span>
+    <span class="row-actions"><button class="btn tiny ghost" data-resend="${o.id}" data-email="${escapeHtml(o.email)}">${_t('New login details')}</button></span></div>`;
+}
+async function load() {
+  const list = await papi('/api/platform/companies');
+  document.getElementById('plat-login').classList.add('hidden');
+  document.getElementById('plat-main').classList.remove('hidden');
+  const el = document.getElementById('companies');
+  el.innerHTML = list.length ? list.map(c => `<div class="panel inner">
+      <h3>${escapeHtml(c.name)} <span class="muted small">${escapeHtml(_t(STATUS_WORDS[c.status] || c.status))} · ${_t('{0} owners, {1} admins, {2} members', {0: c.users.owner || 0, 1: c.users.admin || 0, 2: c.users.member || 0})}${c.own_mail_server ? ' · ' + _t('own mail server') : ''}</span></h3>
+      ${c.owners.map(ownerLine).join('') || `<p class="muted small">${_t('No owner yet.')}</p>`}
+      <form class="scanbox small" data-addowner="${c.id}">
+        <input name="email" type="email" placeholder="${_t('Add an owner: email')}" required>
+        <input name="full_name" placeholder="${_t('Name (optional)')}">
+        <button class="btn tiny" type="submit">${_t('Add owner')}</button>
+      </form>
+      <p><button class="btn tiny ghost" data-status="${c.id}" data-to="${c.status === 'active' ? 'suspend' : 'reactivate'}">${c.status === 'active' ? _t('Suspend company') : _t('Reactivate company')}</button></p>
+    </div>`).join('') : `<p class="muted">${_t('No companies yet.')}</p>`;
+  el.querySelectorAll('[data-resend]').forEach(b => b.onclick = async () => {
+    if (!confirm(_t('Send new login details to {0}? Their current password and authenticator app stop working.', {0: b.dataset.email}))) return;
+    try { const d = await papi(`/api/platform/owners/${b.dataset.resend}/resend`, {method: 'POST'}); alert(tempNotice(b.dataset.email, d)); load(); }
+    catch (x) { alert(x.message); }
+  });
+  el.querySelectorAll('[data-addowner]').forEach(f => f.onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(f);
+    try {
+      const d = await papi(`/api/platform/companies/${f.dataset.addowner}/owners`, {method: 'POST',
+        body: JSON.stringify({email: fd.get('email'), full_name: fd.get('full_name'), send_email: true})});
+      alert(tempNotice(d.email, d)); load();
+    } catch (x) { alert(x.message); }
+  });
+  el.querySelectorAll('[data-status]').forEach(b => b.onclick = async () => {
+    if (b.dataset.to === 'suspend' && !confirm(_t('Suspend this company? Everyone in it is signed out and can\'t sign in until you reactivate it. Its data is kept.'))) return;
+    try { await papi(`/api/platform/companies/${b.dataset.status}/${b.dataset.to}`, {method: 'POST'}); load(); }
+    catch (x) { alert(x.message); }
+  });
+}
+document.getElementById('plat-login').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await papi('/api/platform/login', {method: 'POST', body: JSON.stringify({password: document.getElementById('plat-pw').value})}); load(); }
+  catch (x) { document.getElementById('plat-err').textContent = x.message; }
+};
+document.getElementById('company-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const msg = document.getElementById('company-msg');
+  try {
+    const d = await papi('/api/platform/companies', {method: 'POST', body: JSON.stringify({
+      name: fd.get('name'), owner_email: fd.get('owner_email'), owner_name: fd.get('owner_name'),
+      send_email: !!fd.get('send_email')})});
+    msg.textContent = tempNotice(fd.get('owner_email'), d);
+    e.target.reset();
+    load();
+  } catch (x) { msg.textContent = x.message; }
+};
+document.getElementById('plat-logout').onclick = async () => { await papi('/api/platform/logout', {method: 'POST'}).catch(() => {}); showLogin(); };
+load().catch(() => showLogin());
+</script>
+{% endif %}
+{% endblock %}

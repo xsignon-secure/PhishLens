@@ -2,31 +2,66 @@
 {% block title %}{{ _("Log in") }} — PhishLens{% endblock %}
 {% block content %}
 <section class="auth">
-  <h1>{{ _("Dashboard") }}</h1>
-  {% if enabled %}
+  <h1>{{ _("Log in") }}</h1>
   <form id="login-form">
-    <label>{{ _("Admin password") }}<input name="password" type="password" autocomplete="current-password" required autofocus></label>
+    <label>{{ _("Email") }}<input name="email" type="email" autocomplete="username" required autofocus></label>
+    <label>{{ _("Password") }}<input name="password" type="password" autocomplete="current-password" required></label>
     <button class="btn big" type="submit">{{ _("Log in") }}</button>
-    <p id="login-err" class="error"></p>
   </form>
-  {% else %}
-  <p class="sub">{{ _("The dashboard is off on this server. To turn it on, set the ADMIN_PASSWORD environment variable and restart.") }}</p>
-  {% endif %}
+  <form id="pw-form" class="hidden">
+    <p class="sub">{{ _("Welcome! Choose your own password to replace the temporary one. Use at least 12 characters; a few words strung together work well.") }}</p>
+    <label>{{ _("New password") }}<input id="pw-new" type="password" autocomplete="new-password" minlength="12" required></label>
+    <label>{{ _("Repeat new password") }}<input id="pw-repeat" type="password" autocomplete="new-password" minlength="12" required></label>
+    <button class="btn big" type="submit">{{ _("Save password") }}</button>
+  </form>
+  <form id="mfa-form" class="hidden">
+    <p class="sub">{{ _("Enter the 6-digit code from your authenticator app, or one of your recovery codes.") }}</p>
+    <label>{{ _("Authenticator code") }}<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
+    <button class="btn big" type="submit">{{ _("Verify") }}</button>
+  </form>
+  <p id="login-err" class="error" role="alert"></p>
+  <p class="muted small">{{ _("Accounts are created by your company's administrator. Forgot your password? Ask them to send you new login details.") }}</p>
   <p class="muted small">{{ _("No account needed for the free tools:") }} <a href="/">{{ _("Scan") }}</a> · <a href="/tools">{{ _("Free tools") }}</a> · <a href="/tools/headers">{{ _("Header check") }}</a></p>
 </section>
 {% endblock %}
 {% block scripts %}
-{% if enabled %}
 <script>
+let stepToken = null;
+const err = document.getElementById('login-err');
+const show = id => ['login-form', 'pw-form', 'mfa-form'].forEach(f => document.getElementById(f).classList.toggle('hidden', f !== id));
+
+async function post(path, body) {
+  const r = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || _t('Login failed'));
+  return d;
+}
+
+function next(d) {
+  err.textContent = '';
+  stepToken = d.step_token || null;
+  if (d.next === 'change_password') { show('pw-form'); document.getElementById('pw-new').focus(); }
+  else if (d.next === 'mfa') { show('mfa-form'); document.getElementById('mfa-code').focus(); }
+  else location.href = '/dashboard';
+}
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const err = document.getElementById('login-err');
-  const r = await fetch('/api/auth/login', {method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({password: new FormData(e.target).get('password')})});
-  const d = await r.json().catch(() => ({}));
-  if (r.ok) { location.href = '/dashboard'; }
-  else { err.textContent = d.detail || _t('Login failed'); }
+  const fd = new FormData(e.target);
+  try { next(await post('/api/auth/login', {email: fd.get('email'), password: fd.get('password')})); }
+  catch (x) { err.textContent = x.message; }
+});
+document.getElementById('pw-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = document.getElementById('pw-new').value;
+  if (pw !== document.getElementById('pw-repeat').value) { err.textContent = _t("The two passwords don't match"); return; }
+  try { next(await post('/api/auth/first-password', {step_token: stepToken, password: pw})); }
+  catch (x) { err.textContent = x.message; }
+});
+document.getElementById('mfa-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try { next(await post('/api/auth/mfa', {step_token: stepToken, code: document.getElementById('mfa-code').value.trim()})); }
+  catch (x) { err.textContent = x.message; }
 });
 </script>
-{% endif %}
 {% endblock %}

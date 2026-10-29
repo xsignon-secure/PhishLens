@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, integrations, models
 from ..database import get_db
-from ..deps import rate_limit, require_owner
+from ..deps import rate_limit, require_admin
 
 router = APIRouter(prefix="/api/team", tags=["integrations"])
 _KINDS = {"siem": integrations.clean_siem, "psa": integrations.clean_psa}
@@ -17,7 +17,7 @@ def _which(which: str) -> str:
 
 
 @router.get("/integrations")
-def get_integrations(db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+def get_integrations(db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
     t = user.tenant
     return {"siem": integrations.public_view(t.siem), "psa": integrations.public_view(t.psa),
             "alert_kinds": list(integrations.ALERT_KINDS)}
@@ -25,7 +25,7 @@ def get_integrations(db: Session = Depends(get_db), user: models.User = Depends(
 
 @router.put("/integrations/{which}")
 def put_integration(which: str, request: Request, payload: dict = Body(...), db: Session = Depends(get_db),
-                    user: models.User = Depends(require_owner)):
+                    user: models.User = Depends(require_admin)):
     which = _which(which)
     t = user.tenant
     try:
@@ -40,7 +40,7 @@ def put_integration(which: str, request: Request, payload: dict = Body(...), db:
 
 @router.delete("/integrations/{which}")
 def delete_integration(which: str, request: Request, db: Session = Depends(get_db),
-                       user: models.User = Depends(require_owner)):
+                       user: models.User = Depends(require_admin)):
     which = _which(which)
     setattr(user.tenant, which, None)
     db.commit()
@@ -50,7 +50,7 @@ def delete_integration(which: str, request: Request, db: Session = Depends(get_d
 
 @router.post("/integrations/{which}/test")
 def test_integration(which: str, request: Request, db: Session = Depends(get_db),
-                     user: models.User = Depends(require_owner)):
+                     user: models.User = Depends(require_admin)):
     which = _which(which)
     cfg = getattr(user.tenant, which)
     if not cfg:

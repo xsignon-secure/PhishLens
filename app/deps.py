@@ -1,9 +1,8 @@
 """Request dependencies: auth, tenant scoping, rate limiting, domain validation.
 
-There are no user accounts: get_current_user() returns the built-in admin for a
-request with an admin session or API key, and dashboard data is filtered on
-its tenant_id. Anonymous public scans (tenant_id NULL) are only reachable by
-their unguessable id.
+Every company's data is filtered on the signed-in user's tenant_id (see the
+tenant_* helpers and the per-router queries). Anonymous public scans
+(tenant_id NULL) are only reachable by their unguessable id.
 """
 import hashlib
 import ipaddress
@@ -22,7 +21,6 @@ from sqlalchemy.orm import Session
 from . import models
 from .config import settings
 from .database import get_db
-from .security import decode_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -96,56 +94,126 @@ def assert_public_target(domain: str) -> None:
 
 
 # ---------------------------------------------------------------- auth
+# Owners and admins must have an authenticator app. Until they do, these are
+# the only things their session can reach.
+MFA_SETUP_PATHS = {"/dashboard", "/api/auth/me", "/api/auth/mfa/setup", "/api/auth/mfa/enable",
+                   "/api/auth/logout"}
+STEP_UP_MINUTES = 10
+
+
+def _unauthorized(detail: str = "Not authenticated"):
+    return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
+def _security_event(db: Session, request: Request, action: str, claims: dict) -> None:
+    """Audit a forged or mismatched token as critical, under the company it
+    pointed at when that company exists."""
+    from . import audit
+    tid = claims.get("tid") if isinstance(claims.get("tid"), str) else None
+    if tid and not db.get(models.Tenant, tid):
+        tid = None
+    audit.log(db, action, tenant_id=tid, ip=request.client.host if request.client else None,
+              detail={"severity": "critical", "path": request.url.path,
+                      "claimed_user": str(claims.get("sub"))[:40], "claimed_tenant": str(claims.get("tid"))[:40]})
+
+
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> models.User:
-    """The built-in admin (see app/workspace.py), for a request carrying an
-    admin session or an API key."""
-    from . import workspace
-    admin = workspace.get_admin(db)
-    # 1) API key (automation / SIEM integrations / MCP clients): X-API-Key,
-    # or "Authorization: Bearer plk_..." which is what MCP clients send.
+    """The signed-in user, from an API key or a session's access token.
+    Everything the user can reach is filtered on user.tenant_id."""
+    from jose import ExpiredSignatureError, JWTError, jwt as jose_jwt
+
+    from . import sessions
+    from .security import ALGORITHM
+    # 1) API key (scripts, SIEM, MCP clients): X-API-Key, or
+    # "Authorization: Bearer plk_..." which is what MCP clients send.
     api_key = request.headers.get("x-api-key")
     if not api_key and credentials and credentials.scheme.lower() == "bearer" \
             and credentials.credentials.startswith("plk_"):
         api_key = credentials.credentials
     if api_key:
         digest = hashlib.sha256(api_key.encode()).hexdigest()
-        key = (
-            db.query(models.ApiKey)
-            .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True),
-                    models.ApiKey.tenant_id == admin.tenant_id)
-            .first()
-        )
-        if not key:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        key = (db.query(models.ApiKey)
+               .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True)).first())
+        user = db.get(models.User, key.user_id) if key else None
+        # The key acts as the user who made it, in that user's company, and
+        # stops working when the user is suspended or removed.
+        if not key or not user or user.tenant_id != key.tenant_id or not sessions.account_usable(user):
+            raise _unauthorized("Invalid API key")
         key.last_used_at = datetime.utcnow()
         db.commit()
         request.state.auth_method = "api_key"
-        return admin
-    # 2) Admin session: Bearer header or httpOnly cookie (browser pages)
-    token = None
-    if credentials and credentials.scheme.lower() == "bearer":
+        request.state.session = None
+        return user
+    # 2) Session access token: Bearer header or httpOnly cookie (browser pages)
+    token = getattr(request.state, "access_token", None)  # just refreshed by the middleware
+    if not token and credentials and credentials.scheme.lower() == "bearer":
         token = credentials.credentials
     if not token:
         token = request.cookies.get("access_token")
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    payload = decode_token(token)
-    if not payload or not workspace.enabled():
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session")
-    if (payload.get("sub") != admin.id or payload.get("pw") != workspace.password_fingerprint()
-            or payload.get("tv", 0) != (admin.token_version or 0)):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session was signed out")
-    request.state.auth_method = "cookie" if request.cookies.get("access_token") else "bearer"
-    return admin
+        raise _unauthorized()
+    try:
+        claims = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise _unauthorized("Session expired")
+    except JWTError:
+        # Not signed by this server: someone edited a token (e.g. its company).
+        try:
+            unverified = jose_jwt.get_unverified_claims(token)
+        except JWTError:
+            raise _unauthorized("Invalid session")
+        _security_event(db, request, "security.token_tampered", unverified)
+        raise HTTPException(status_code=403, detail="Invalid session")
+    if claims.get("typ") != "access":
+        raise _unauthorized("Invalid session")
+    row = db.get(models.UserSession, claims.get("sid") or "")
+    if not sessions.is_live(row) or row.user_id != claims.get("sub"):
+        raise _unauthorized("Session was signed out")
+    user = db.get(models.User, row.user_id)
+    if not user or not sessions.account_usable(user) or claims.get("tv", 0) != (user.token_version or 0):
+        raise _unauthorized("Session was signed out")
+    if claims.get("tid") != user.tenant_id or row.tenant_id != user.tenant_id:
+        # A genuine token whose company no longer matches the account's.
+        _security_event(db, request, "security.cross_tenant", claims)
+        sessions.revoke(db, row, "cross_tenant")
+        raise HTTPException(status_code=403, detail="Invalid session")
+    now = datetime.utcnow()
+    if now - row.last_used_at > timedelta(seconds=60):  # idle timer, without a write per request
+        row.last_used_at = now
+        db.commit()
+    if user.role in ("owner", "admin") and not user.mfa_enabled and request.url.path not in MFA_SETUP_PATHS:
+        raise HTTPException(status_code=403, detail="mfa_setup_required")
+    request.state.auth_method = "cookie" if request.cookies.get("access_token") == token else "bearer"
+    request.state.session = row
+    return user
+
+
+def require_admin(user: models.User = Depends(get_current_user)) -> models.User:
+    """Owners and admins: company settings and user management."""
+    if user.role not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return user
 
 
 def require_owner(user: models.User = Depends(get_current_user)) -> models.User:
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Owner role required")
+    return user
+
+
+def require_step_up(request: Request, user: models.User = Depends(require_admin)) -> models.User:
+    """Sensitive changes (users, roles, the mail server, exports) need an
+    authenticator code from the last few minutes, even mid-session: a stolen
+    session cookie alone can't hand out accounts."""
+    row = getattr(request.state, "session", None)
+    if row is None:
+        raise HTTPException(status_code=403, detail="Not available with an API key")
+    if not row.mfa_at or datetime.utcnow() - row.mfa_at > timedelta(minutes=STEP_UP_MINUTES):
+        raise HTTPException(status_code=403, detail="step_up_required")
     return user
 
 

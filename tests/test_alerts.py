@@ -58,7 +58,10 @@ def test_send_email_composes_message(monkeypatch):
     sent = {}
 
     class FakeSMTP:
-        def __init__(self, host, port, timeout=None):
+        def __init__(self, timeout=None):
+            pass
+
+        def connect(self, host, port):
             sent["host"] = (host, port)
 
         def starttls(self, context=None):
@@ -80,7 +83,7 @@ def test_send_email_composes_message(monkeypatch):
     assert "body text" in sent["msg"].get_content()
 
 
-def test_notify_goes_to_owners_only(db, monkeypatch):
+def test_notify_goes_to_owners_and_admins_only(db, monkeypatch):
     tenant = _make_tenant(db)
     monitor = _make_monitor(db, tenant)
     monkeypatch.setattr(settings, "SMTP_HOST", "smtp.example.com")
@@ -88,7 +91,7 @@ def test_notify_goes_to_owners_only(db, monkeypatch):
     captured = {}
     monkeypatch.setattr(
         mailer, "send_email",
-        lambda to, subject, body: captured.update(to=to, subject=subject, body=body) or True,
+        lambda to, subject, body, **k: captured.update(to=to, subject=subject, body=body) or True,
     )
     alerts = [models.Alert(tenant_id=tenant.id, monitor_id=monitor.id,
                            kind="score_drop", message="dropped")]

@@ -762,3 +762,23 @@ code {
 .int-kinds { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 10px 0 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .int-kinds legend { padding: 0 4px; color: var(--muted); }
 .int-kinds label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+
+/* ---------- accounts: users, mail server, security, platform ---------- */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 14px; align-items: end; }
+.form-grid .btn { margin: 12px 0; }
+.panel label.check-inline, label.check-inline { display: flex; gap: 8px; align-items: center; font-weight: 500; }
+.panel label.check-inline input, label.check-inline input { width: auto; margin: 0; }
+.panel select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; width: 100%; margin-top: 6px; }
+.panel textarea { width: 100%; min-height: 90px; margin-top: 6px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; }
+.panel.inner { margin: 12px 0; background: var(--surface); }
+.panel.inner h3 { margin: 0 0 8px; font-size: 16px; color: #fff; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); color: var(--ink-dim); }
+.pill.ok { color: var(--green); border-color: var(--green); }
+.pill.warn { color: var(--amber, #f5b942); border-color: var(--amber, #f5b942); }
+.pill.bad { color: var(--red, #ff6b6b); border-color: var(--red, #ff6b6b); }
+.codes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; font-family: ui-monospace, monospace; font-size: 15px; margin: 14px 0; text-align: center; }
+.qr { background: #fff; border-radius: 12px; padding: 10px; width: 200px; margin: 12px auto; }
+.qr svg { width: 100%; height: auto; display: block; }
+.modal input { width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 16px; text-align: center; letter-spacing: .1em; }
+.modal .actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.temp-pw { font-family: ui-monospace, monospace; background: var(--surface); padding: 2px 6px; border-radius: 6px; user-select: all; }

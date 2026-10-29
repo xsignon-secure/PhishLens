@@ -7,7 +7,7 @@ another tenant's rows.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -57,6 +57,15 @@ class Tenant(Base):
     # Customer's own DNS provider for one-click fixes; the token is encrypted.
     dns_provider = Column(String(20), nullable=True)  # cloudflare | digitalocean | desec
     dns_token = Column(Text, nullable=True)
+    # active | suspended. A suspended company can't sign in; its data is kept.
+    status = Column(String(20), nullable=False, default="active", server_default="active")
+    # The company's own outgoing mail server for login details and alerts:
+    # {host, port, security, username, password (encrypted), from_address,
+    # from_name}. The password is write-only: no API returns it.
+    smtp = Column(JSON, nullable=True)
+    # Optional wording for the login-details email (plain text).
+    welcome_subject = Column(String(200), nullable=True)
+    welcome_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
@@ -71,8 +80,25 @@ class User(Base):
     tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
     email = Column(String(320), nullable=False, unique=True, index=True)
     password_hash = Column(String(200), nullable=False)
-    role = Column(String(20), nullable=False, default="owner")  # owner | member
+    full_name = Column(String(200), nullable=True)
+    # owner (created by the platform admin) | admin | member
+    role = Column(String(20), nullable=False, default="member")
+    # pending (temporary password not changed yet) | active | suspended
+    status = Column(String(20), nullable=False, default="active", server_default="active")
     is_active = Column(Boolean, nullable=False, default=True)
+    # Accounts are created by an admin with a one-time temporary password.
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default=false())
+    temp_password_expires_at = Column(DateTime, nullable=True)
+    # Brute-force lockout: consecutive failures and when the lock lifts.
+    failed_logins = Column(Integer, nullable=False, default=0, server_default="0")
+    locked_until = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
+    # sha256 of each unused one-time recovery code for the authenticator app.
+    recovery_codes = Column(JSON, nullable=True)
+    # Login-details email: sending | sent | failed | manual (shown to the admin).
+    credentials_status = Column(String(20), nullable=True)
+    credentials_error = Column(String(300), nullable=True)
+    credentials_sent_at = Column(DateTime, nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False)
     totp_secret = Column(String(200), nullable=True)  # Fernet-encrypted (app/crypto.py)
     mfa_enabled = Column(Boolean, nullable=False, default=False)
@@ -83,6 +109,28 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     tenant = relationship("Tenant", back_populates="users")
+
+
+class UserSession(Base):
+    """One signed-in browser or device. The access token names its session,
+    so ending the session ends the access token too. Refresh tokens rotate on
+    every use; presenting an old one again ends the whole session (replay)."""
+    __tablename__ = "user_sessions"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    user_id = Column(String(32), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    refresh_hash = Column(String(64), nullable=False, unique=True, index=True)
+    prev_refresh_hash = Column(String(64), nullable=True, index=True)
+    rotated_at = Column(DateTime, nullable=True)
+    device = Column(String(200), nullable=True)
+    ip = Column(String(64), nullable=True)
+    mfa_at = Column(DateTime, nullable=True)  # last authenticator-code check (step-up)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_used_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String(40), nullable=True)
 
 
 class Scan(Base):

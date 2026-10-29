@@ -15,12 +15,21 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "dev-only-change-me"
     DATABASE_URL: str = "sqlite:///./phishlens.db"
-    JWT_EXPIRE_MINUTES: int = 60
-    # There are no user accounts: this one password opens the dashboard.
-    # Leave empty to keep the dashboard closed (the free tools stay public).
+    # Sessions: a short access token, renewed from a rotating refresh token
+    # until the session has been idle too long or reaches its maximum age.
+    ACCESS_TOKEN_MINUTES: int = 15
+    SESSION_IDLE_MINUTES: int = 120
+    SESSION_MAX_HOURS: int = 12
+    # Platform admin password (/platform): creates companies and their owners.
+    # It never opens a company's data. Empty = platform page off.
     ADMIN_PASSWORD: str = ""
-    # Where alert emails and scheduled reports go (optional).
-    ADMIN_EMAIL: str = ""
+    # Temporary passwords that admins send to new users expire after this.
+    TEMP_PASSWORD_HOURS: int = 72
+    # Refuse passwords found in breaches (Have I Been Pwned range API: only
+    # the first 5 characters of the SHA-1 leave the server).
+    PASSWORD_BREACH_CHECK: bool = True
+    # Login-details emails each company can send per hour.
+    CREDENTIAL_EMAILS_PER_HOUR: int = 50
     CORS_ORIGINS: str = ""
     SCAN_RATE_LIMIT_PER_HOUR: int = 20
     # Optional per-team cap on monitored domains for public instances (0 = unlimited).

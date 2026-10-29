@@ -46,7 +46,7 @@ def test_schedule_api_and_send_now(client, db, monkeypatch):
     assert client.post("/api/team/report-schedule/send-now", headers=h).status_code == 503
     sent = []
     monkeypatch.setattr(mailer, "is_configured", lambda: True)
-    monkeypatch.setattr(mailer, "send_email", lambda to, subject, body, attachments=None: sent.append((to, subject, body, attachments)) or True)
+    monkeypatch.setattr(mailer, "send_email", lambda to, subject, body, attachments=None, **k: sent.append((to, subject, body, attachments)) or True)
     assert client.post("/api/team/report-schedule/send-now", headers=h).status_code == 400  # nothing monitored
     client.post("/api/monitors", json={"domain": "x.com", "client": "Acme"}, headers=h)
     r = client.post("/api/team/report-schedule/send-now", headers=h)

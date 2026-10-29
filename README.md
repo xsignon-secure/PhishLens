@@ -78,7 +78,9 @@ app/
     scoring.py       weighted 0-100, grades, prioritized action plan
     engine.py        orchestration + persistence
   routers/
-    auth.py          admin password login, logout, sign out everywhere
+    auth.py          login, first password, authenticator app, step-up, sessions
+    users.py         admins create, suspend and remove company users
+    platform.py      /platform: the server operator creates companies and owners
     scans.py         public scan, tenant scans, share/unshare report links
     monitors.py      watch domains, rescan, drift alerts
     pages.py         landing, login, dashboard, shared report
@@ -133,8 +135,11 @@ app/
   API token (`docs/DOMAIN-CONNECT.md`).
 - **One-click fixes**: connect a Cloudflare API token and publish fix records
   from the report.
-- **No user accounts**: the dashboard opens with one `ADMIN_PASSWORD` set on
-  the server. Leave it blank and only the free public tools are served.
+- **Admin-created accounts**: no signup and no invite links. The server
+  operator creates each company and its owner at `/platform`; owners and
+  admins create their users, and login details go out from the company's own
+  mail server. Temporary passwords, a required authenticator app for owners
+  and admins, and a fresh code for sensitive changes (`docs/ACCOUNTS.md`).
 - **SIEM and PSA**: monitor alerts as syslog (RFC 5424 over UDP, TCP or TLS)
   or to Splunk HEC, and a ticket per alerting domain in the free, open-source
   helpdesks Zammad or GLPI, or in ConnectWise Manage, HaloPSA or Autotask:
@@ -176,22 +181,29 @@ Market comparison: `docs/MARKET-ANALYSIS-2026-10.md`.
 
 ## Security model
 
-- There are no user accounts, signups or invites. The dashboard asks for
-  `ADMIN_PASSWORD` (set it in the server environment; use a long random
-  value). Changing it signs every browser out, and the dashboard's
-  **Sign out everywhere** button does the same without changing it.
-- Set `ADMIN_EMAIL` to receive alert and report emails.
-- Sessions: short-lived JWT in an httpOnly cookie (or Bearer); API keys
-  (`X-API-Key`) for scripts.
-- Public scan endpoint is rate-limited per IP (default 20/hour); the admin
-  login has a brute-force limit and failed attempts are in the audit log.
+- Accounts are created by admins only: no signup, no invites, no
+  self-service reset. `ADMIN_PASSWORD` opens `/platform`, where the server
+  operator creates companies and owners; it can't see company data. Each
+  company's data is isolated; another company's ids answer 404. Full details,
+  threat model and a pen-test checklist: `docs/ACCOUNTS.md`.
+- Passwords are Argon2id with a breached-password check; temporary passwords
+  expire and must be changed at first sign-in. Owners and admins must use an
+  authenticator app, and user, mail server, API key and export changes need
+  a code from the last 10 minutes.
+- Sessions: 15-minute JWT plus a rotating refresh token, both in httpOnly
+  cookies; idle and absolute expiry; refresh replay ends the session. API
+  keys (`X-API-Key`) for scripts.
+- Public scan endpoint is rate-limited per IP (default 20/hour); logins
+  have per-account and per-IP limits with account lockout, and failed
+  attempts are in the audit log.
   Behind a proxy run uvicorn with `--proxy-headers` (the Dockerfile does).
   Limits are in-process by default; set `RATE_LIMIT_STORAGE=database` when
   running several workers or instances so they share one counter. The
   rescan and report-fetch jobs take a database lease, so only one instance
   runs them.
-- Password reset and "Sign out other devices" revoke every existing session.
-  MFA codes can't be reused, and MFA secrets are encrypted at rest.
+- Password changes, role changes, suspension and "Sign out other devices"
+  revoke sessions at once. MFA codes can't be reused, and MFA secrets and
+  company SMTP passwords are encrypted at rest.
 - Input hardening: strict domain validation (IDNA, no IP literals, no
   `.local`/`.internal`/`.onion`), plus an SSRF guard that refuses targets
   resolving to non-public addresses. The same guard covers every outbound hop

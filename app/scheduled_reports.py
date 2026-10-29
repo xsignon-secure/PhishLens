@@ -1,4 +1,4 @@
-"""Scheduled PDF reports: a weekly or monthly email to a team's owners (and
+"""Scheduled PDF reports: a weekly or monthly email to a company's owners and admins (and
 extra alert recipients) with the latest report for each monitored domain.
 Sent by the rescan job, so it needs RESCAN_INTERVAL_HOURS or a cron'd
 scripts/rescan.py, plus SMTP."""
@@ -23,10 +23,7 @@ def is_due(tenant: models.Tenant, now: datetime) -> bool:
 
 
 def recipients(db: Session, tenant: models.Tenant) -> list[str]:
-    from .workspace import real_email
-    owners = [e for (e,) in db.query(models.User.email).filter(
-        models.User.tenant_id == tenant.id, models.User.role == "owner", models.User.is_active.is_(True))
-        if real_email(e)]
+    owners = mailer.team_recipients(db, tenant.id)
     return owners + [e for e in (tenant.alert_emails or []) if e not in owners]
 
 
@@ -66,7 +63,7 @@ def send(db: Session, tenant: models.Tenant, now: datetime | None = None) -> boo
     if not to or not built:
         return False
     subject, body, attachments = built
-    if not mailer.send_email(to, subject, body, attachments=attachments):
+    if not mailer.send_email(to, subject, body, attachments=attachments, tenant=tenant):
         return False
     tenant.report_sent_at = now or datetime.utcnow()
     db.commit()
@@ -75,12 +72,10 @@ def send(db: Session, tenant: models.Tenant, now: datetime | None = None) -> boo
 
 def send_due(db: Session, now: datetime | None = None) -> int:
     """Send every report that is due. Returns how many were sent."""
-    if not mailer.is_configured():
-        return 0
     now = now or datetime.utcnow()
     sent = 0
     for tenant in db.query(models.Tenant).filter(models.Tenant.report_schedule.in_(list(PERIODS))).all():
-        if not is_due(tenant, now):
+        if not is_due(tenant, now) or not mailer.config_for(tenant):
             continue
         try:
             sent += send(db, tenant, now)

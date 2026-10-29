@@ -3,9 +3,15 @@
 ## Shipped (verifiable in code + tests)
 
 **Access**
-- No user accounts: one `ADMIN_PASSWORD` set on the server opens the dashboard;
-  changing it (or **Sign out everywhere**) revokes every session
-- Short-lived JWT sessions (Bearer or httpOnly cookie), login brute-force limit
+- Admin-created accounts only (no signup, invites or self-service reset);
+  owner/admin/member roles; login details sent from each company's own SMTP
+- Temporary passwords that expire and must be changed; Argon2id with a
+  breached-password check; required TOTP for owners and admins; step-up for
+  sensitive changes
+- 15-minute JWT plus rotating refresh token with replay detection, idle and
+  absolute expiry, per-device sign-out; account lockout and per-IP limits
+- Company isolation tested (other companies' ids answer 404; tampered and
+  cross-company tokens refused and audited). See `docs/ACCOUNTS.md`
 - Double-submit CSRF protection on cookie-authenticated mutations;
   Bearer/API-key auth explicitly exempt
 - `Secure` cookie flag auto-enabled on https

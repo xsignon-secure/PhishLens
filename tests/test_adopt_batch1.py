@@ -9,7 +9,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import mailer, models
-from app.config import settings
 from app.database import Base, SessionLocal, engine as sa_engine
 from app.main import app
 from app.scanner import dns_checks, dns_snapshot, observations
@@ -143,16 +142,12 @@ def test_email_report_goes_to_own_address(client, monkeypatch):
     sent = {}
     monkeypatch.setattr(mailer, "is_configured", lambda: True)
     monkeypatch.setattr(mailer, "send_email",
-                        lambda to, subject, body, attachments=None: sent.update(to=to, att=attachments) or True)
+                        lambda to, subject, body, attachments=None, **k: sent.update(to=to, att=attachments) or True)
     r = client.post(f"/api/scans/{sid}/email", headers=h)
     assert r.json() == {"ok": True, "to": "owner@x.com"}
     assert sent["to"] == ["owner@x.com"]
     name, data, mime = sent["att"][0]
     assert mime == "application/pdf" and data.startswith(b"%PDF")
-    monkeypatch.setattr(settings, "ADMIN_EMAIL", "")
-    client.post("/api/auth/login", json={"password": "test-admin-password"})  # syncs the address
-    client.cookies.clear()
-    assert client.post(f"/api/scans/{sid}/email", headers=h).status_code == 400  # nowhere to send it
 
 
 def test_spf_tree_endpoint(client, monkeypatch):
