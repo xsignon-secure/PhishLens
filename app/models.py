@@ -66,6 +66,8 @@ class Tenant(Base):
     # Optional wording for the login-details email (plain text).
     welcome_subject = Column(String(200), nullable=True)
     welcome_message = Column(Text, nullable=True)
+    # Hosted plan: free | pro | msp. Only enforced when PLANS_ENABLED is on.
+    plan = Column(String(10), nullable=False, default="free", server_default="free")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")

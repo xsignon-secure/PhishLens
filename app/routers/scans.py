@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from .. import audit, models, pdf_report, schemas
+from .. import audit, models, pdf_report, plans, schemas
 from ..config import settings
 from ..database import get_db
 from ..deps import client_ip, get_current_user, public_scan_limit, rate_limit, tenant_scans
@@ -149,6 +149,7 @@ def get_shared_scan(scan_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{scan_id}/share")
 def share_scan(scan_id: str, request: Request, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    plans.require(user.tenant, "share")
     scan = tenant_scans(db, user).filter(models.Scan.id == scan_id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")

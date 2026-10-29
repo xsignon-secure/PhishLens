@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     SCAN_RATE_LIMIT_PER_HOUR: int = 20
     # Optional per-team cap on monitored domains for public instances (0 = unlimited).
     MAX_MONITORS_PER_TEAM: int = 0
+    # Hosted plans (Free / Pro / MSP, set per company at /platform). Off = every
+    # company gets everything, which is what a self-hosted copy wants.
+    PLANS_ENABLED: bool = False
     # Shown on the Terms/Privacy pages and footer of your instance.
     CONTACT_EMAIL: str = ""
     SOURCE_URL: str = "https://github.com/xsignon-secure/PhishLens"

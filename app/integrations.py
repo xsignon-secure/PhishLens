@@ -402,7 +402,8 @@ def notify_alerts(db, monitor, scan, alerts) -> dict:
     from . import models
     tenant = db.query(models.Tenant).filter(models.Tenant.id == monitor.tenant_id).first()
     out = {"siem": None, "psa": None}
-    if not tenant or not alerts:
+    from . import plans
+    if not tenant or not alerts or not plans.has(tenant, "siem_psa"):
         return out
     events = events_for(monitor, scan, alerts)
     if tenant.siem:

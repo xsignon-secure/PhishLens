@@ -14,6 +14,7 @@
       <a href="#security" data-nav="security" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>{{ _("Security") }}</span></a>
     </nav>
     <div class="side-foot">
+      <div id="plan-card" class="plan-card hidden"></div>
       <a href="/setup" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>{{ _("Guided DMARC setup →") }}</span></a>
       <a href="/help" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg><span>{{ _("Help") }}</span></a>
     </div>
@@ -100,7 +101,7 @@
 
   <div data-section="dns" class="hidden">
   <div class="panel" id="cloudflare-panel">
-      <h2><span class="dot"></span>{{ _("DNS provider (one-click fixes)") }}</h2>
+      <h2 data-feature="dns_fixes"><span class="dot"></span>{{ _("DNS provider (one-click fixes)") }}</h2>
       <p class="muted small">{{ _("Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.") }}</p>
       <div id="cf-status" class="muted small"></div>
       <form id="cf-form" class="scanbox small admin-only hidden">
@@ -111,7 +112,7 @@
       <button id="cf-del" class="btn tiny ghost admin-only hidden">{{ _("Disconnect") }}</button>
   </div>
   <div class="panel" id="hosted-panel">
-    <h2><span class="dot"></span>{{ _("Hosted DMARC, SPF, MTA-STS, TLS-RPT &amp; BIMI") }}</h2>
+    <h2 data-feature="hosted"><span class="dot"></span>{{ _("Hosted DMARC, SPF, MTA-STS, TLS-RPT &amp; BIMI") }}</h2>
     <p class="muted small">{{ _("Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.") }}</p>
     <div id="hosted-off" class="muted small hidden">{{ _("Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).") }}</div>
     <form id="hosted-form" class="admin-only hidden">
@@ -132,7 +133,7 @@
   <div data-section="integrations" class="hidden">
   <div class="dash-grid">
     <div class="panel">
-      <h2><span class="dot"></span>{{ _("API keys") }}</h2>
+      <h2 data-feature="api_keys"><span class="dot"></span>{{ _("API keys") }}</h2>
       <div id="apikeys"></div>
       <form id="apikey-form" class="scanbox small admin-only hidden">
         <input id="apikey-name" type="text" placeholder="{{ _("Key name, e.g. SIEM") }}" required maxlength="100">
@@ -141,7 +142,7 @@
       <p id="apikey-new" class="hidden"></p>
     </div>
     <div class="panel">
-      <h2><span class="dot"></span>{{ _("Alert webhook") }}</h2>
+      <h2 data-feature="webhook"><span class="dot"></span>{{ _("Alert webhook") }}</h2>
       <form id="webhook-form" class="admin-only hidden">
         <label>URL<input id="webhook-url" type="url" placeholder="https://…"></label>
         <label>{{ _("Secret (min 16 chars)") }}<input id="webhook-secret" type="password" autocomplete="new-password"></label>
@@ -154,7 +155,7 @@
     </div>
   </div>
   <div class="panel admin-only hidden" id="integrations-panel">
-    <h2><span class="dot"></span>{{ _("SIEM and PSA") }}</h2>
+    <h2 data-feature="siem_psa"><span class="dot"></span>{{ _("SIEM and PSA") }}</h2>
     <p class="muted small">{{ _("Send monitor alerts to your SIEM as syslog or to Splunk, and open a ticket in your PSA for each domain that alerts. Secrets are stored encrypted and never shown again.") }}</p>
     <div class="dash-grid">
       <form id="siem-form" class="integration-form" data-which="siem">
@@ -176,7 +177,7 @@
     </div>
   </div>
     <div class="panel" id="brand-panel">
-      <h2><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
+      <h2 data-feature="white_label"><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
       <p class="muted small">{{ _("Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).") }}</p>
       <form id="brand-form" class="admin-only hidden">
         <label>{{ _("Brand name") }}<input id="brand-name" type="text" maxlength="100" placeholder="{{ _("Acme IT Services") }}"></label>
@@ -188,7 +189,7 @@
         <button class="btn" type="submit">{{ _("Save") }}</button>
       </form>
       <p id="brand-msg" class="muted small"></p>
-      <h3 style="margin:18px 0 6px;font-size:15px">{{ _("Scheduled reports") }}</h3>
+      <h3 data-feature="scheduled_reports" style="margin:18px 0 6px;font-size:15px">{{ _("Scheduled reports") }}</h3>
       <p class="muted small">{{ _("Email the latest PDF report for each monitored domain to the team's owners and the extra alert addresses above.") }}</p>
       <div class="scanbox small admin-only hidden" id="sched-form">
         <select id="sched-select" aria-label="Schedule">
@@ -417,6 +418,23 @@ window.revealSection = (el) => {
 window.addEventListener('hashchange', () => { showSection(location.hash.slice(1)); window.scrollTo(0, 0); });
 showSection(location.hash.slice(1));
 
+/* Hosted plans: show the company's plan and mark what it doesn't include. */
+const PRO_ONLY = ['ruf', 'tls_rpt', 'lookalike_watch', 'hosted', 'dns_fixes', 'scheduled_reports', 'share', 'webhook', 'api_keys'];
+async function loadPlan() {
+  const p = await api('/api/team/plan');
+  if (!p.enabled) return;
+  const lim = v => v === null || v === undefined ? '∞' : v;
+  const card = document.getElementById('plan-card');
+  card.innerHTML = `<strong>${escapeHtml(_t('{0} plan', {0: p.label}))}</strong>
+    <span>${_t('Domains')} <b>${p.usage.monitors} / ${lim(p.limits.monitors)}</b></span>
+    <span>${_t('Users')} <b>${p.usage.users} / ${lim(p.limits.users)}</b></span>`;
+  card.classList.remove('hidden');
+  document.querySelectorAll('[data-feature]').forEach(h => {
+    if (p.features.includes(h.dataset.feature) || h.querySelector('.lock')) return;
+    h.insertAdjacentHTML('beforeend', ` <span class="pill lock">${PRO_ONLY.includes(h.dataset.feature) ? 'Pro' : 'MSP'}</span>`);
+  });
+}
+
 /* shared dashboard state */
 const dashData = { monitors: [], alerts: [], scans: [], me: null };
 
@@ -562,6 +580,7 @@ async function loadEnterprise() {
   const isOwner = me.role === 'owner' || me.role === 'admin';  // company admins
   document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isOwner));
   renderSecurity(me);
+  loadPlan().catch(() => {});
   if (isOwner) { loadUsers().catch(() => {}); loadSmtp().catch(() => {}); }
   if (isOwner) loadPgp().catch(() => {});
   // api keys

@@ -19,6 +19,7 @@
         <label>{{ _("Company name") }}<input name="name" required maxlength="200"></label>
         <label>{{ _("Owner's email") }}<input name="owner_email" type="email" required></label>
         <label>{{ _("Owner's name") }}<input name="owner_name" maxlength="200"></label>
+        {% if plans_enabled %}<label>{{ _("Plan") }}<select name="plan"><option value="free">Free</option><option value="pro">Pro</option><option value="msp">MSP</option></select></label>{% endif %}
         <label class="check-inline"><input name="send_email" type="checkbox" checked> {{ _("Email the login details") }}</label>
         <button class="btn" type="submit">{{ _("Create company") }}</button>
       </form>
@@ -36,6 +37,7 @@
 {% block scripts %}
 {% if enabled %}
 <script>
+const PLAN_NAMES = {free: 'Free', pro: 'Pro', msp: 'MSP'};
 const STATUS_WORDS = {active: N_('Active'), pending: N_('Waiting for first sign-in'), suspended: N_('Suspended')};
 function getCookie(n) { const m = document.cookie.match('(^|;)\\s*' + n + '=([^;]*)'); return m ? decodeURIComponent(m[2]) : ''; }
 async function papi(path, opts = {}) {
@@ -74,6 +76,8 @@ async function load() {
         <input name="full_name" placeholder="${_t('Name (optional)')}">
         <button class="btn tiny" type="submit">${_t('Add owner')}</button>
       </form>
+      ${c.plans_enabled ? `<p><label class="check-inline">${_t('Plan')}
+        <select data-plan="${c.id}">${['free', 'pro', 'msp'].map(k => `<option value="${k}"${c.plan === k ? ' selected' : ''}>${PLAN_NAMES[k]}</option>`).join('')}</select></label></p>` : ''}
       <p><button class="btn tiny ghost" data-status="${c.id}" data-to="${c.status === 'active' ? 'suspend' : 'reactivate'}">${c.status === 'active' ? _t('Suspend company') : _t('Reactivate company')}</button></p>
     </div>`).join('') : `<p class="muted">${_t('No companies yet.')}</p>`;
   el.querySelectorAll('[data-resend]').forEach(b => b.onclick = async () => {
@@ -89,6 +93,10 @@ async function load() {
         body: JSON.stringify({email: fd.get('email'), full_name: fd.get('full_name'), send_email: true})});
       alert(tempNotice(d.email, d)); load();
     } catch (x) { alert(x.message); }
+  });
+  el.querySelectorAll('[data-plan]').forEach(sel => sel.onchange = async () => {
+    try { await papi(`/api/platform/companies/${sel.dataset.plan}/plan`, {method: 'POST', body: JSON.stringify({plan: sel.value})}); load(); }
+    catch (x) { alert(x.message); load(); }
   });
   el.querySelectorAll('[data-status]').forEach(b => b.onclick = async () => {
     if (b.dataset.to === 'suspend' && !confirm(_t('Suspend this company? Everyone in it is signed out and can\'t sign in until you reactivate it. Its data is kept.'))) return;
@@ -108,7 +116,7 @@ document.getElementById('company-form').onsubmit = async (e) => {
   try {
     const d = await papi('/api/platform/companies', {method: 'POST', body: JSON.stringify({
       name: fd.get('name'), owner_email: fd.get('owner_email'), owner_name: fd.get('owner_name'),
-      send_email: !!fd.get('send_email')})});
+      send_email: !!fd.get('send_email'), ...(fd.get('plan') ? {plan: fd.get('plan')} : {})})});
     msg.textContent = tempNotice(fd.get('owner_email'), d);
     e.target.reset();
     load();

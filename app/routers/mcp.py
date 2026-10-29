@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from .. import audit, dmarc_reports, models
+from .. import audit, dmarc_reports, models, plans
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit, tenant_monitors
@@ -151,6 +151,7 @@ def _header_auth(request: Request) -> None:
 
 @router.post("/mcp", dependencies=[Depends(_header_auth)])
 async def mcp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    plans.require(user.tenant, "mcp")
     rate_limit(request, f"mcp:{user.tenant_id}", 600)
     try:
         body = json.loads(await request.body())

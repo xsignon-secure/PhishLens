@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import audit, branding, mailer, models, pgp, schemas, webhooks
+from .. import audit, branding, mailer, models, pgp, plans, schemas, webhooks
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit, require_admin, require_step_up
 
@@ -24,6 +24,7 @@ EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}$")
 def create_api_key(payload: schemas.ApiKeyIn, request: Request,
                    db: Session = Depends(get_db),
                    user: models.User = Depends(require_step_up)):
+    plans.require(user.tenant, "api_keys")
     raw = "plk_" + secrets.token_urlsafe(32)
     key = models.ApiKey(
         tenant_id=user.tenant_id, user_id=user.id, name=payload.name.strip(),
@@ -76,6 +77,7 @@ def get_ruf_pgp(user: models.User = Depends(get_current_user)):
 @router.put("/ruf-pgp")
 def put_ruf_pgp(payload: PgpKeyIn, request: Request, db: Session = Depends(get_db),
                 user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "ruf")
     try:
         info = pgp.inspect(payload.key)
     except pgp.PgpError as exc:
@@ -119,6 +121,7 @@ def get_webhook(request: Request, db: Session = Depends(get_db),
 def set_webhook(payload: schemas.WebhookIn, request: Request,
                 db: Session = Depends(get_db),
                 user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "webhook")
     url = _validate_webhook_url(payload.url)
     user.tenant.webhook_url = url
     user.tenant.webhook_secret = payload.secret
@@ -140,6 +143,7 @@ def delete_webhook(request: Request, db: Session = Depends(get_db),
 @router.post("/webhook/test")
 def test_webhook(request: Request, db: Session = Depends(get_db),
                  user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "webhook")
     t = user.tenant
     if not t.webhook_url or not t.webhook_secret:
         raise HTTPException(status_code=400, detail="No webhook configured")
@@ -154,7 +158,8 @@ def test_webhook(request: Request, db: Session = Depends(get_db),
 def audit_log(request: Request, db: Session = Depends(get_db),
               user: models.User = Depends(require_admin), limit: int = 100):
     events = (db.query(models.AuditEvent)
-              .filter(models.AuditEvent.tenant_id == user.tenant_id)
+              .filter(models.AuditEvent.tenant_id == user.tenant_id,
+                      models.AuditEvent.created_at >= plans.since(user.tenant, "audit_days"))
               .order_by(models.AuditEvent.created_at.desc())
               .limit(max(1, min(limit, 500))).all())
     emails = dict(db.query(models.User.id, models.User.email).filter(models.User.tenant_id == user.tenant_id).all())
@@ -206,6 +211,8 @@ def get_report_schedule(user: models.User = Depends(get_current_user)):
 @router.put("/report-schedule")
 def set_report_schedule(payload: ReportScheduleIn, request: Request, db: Session = Depends(get_db),
                         user: models.User = Depends(require_admin)):
+    if payload.schedule != "off":  # turning it off is always allowed
+        plans.require(user.tenant, "scheduled_reports")
     user.tenant.report_schedule = payload.schedule
     db.commit()
     audit.log_request(db, request, "reports.schedule", user, {"schedule": payload.schedule})
@@ -215,6 +222,7 @@ def set_report_schedule(payload: ReportScheduleIn, request: Request, db: Session
 @router.post("/report-schedule/send-now")
 def send_report_now(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
     """Send the scheduled report right away (to check what it looks like)."""
+    plans.require(user.tenant, "scheduled_reports")
     from .. import scheduled_reports
     if not mailer.config_for(user.tenant):
         raise HTTPException(status_code=503, detail="Email is not set up on this server")
@@ -239,6 +247,9 @@ def get_branding(user: models.User = Depends(get_current_user)):
 @router.put("/branding")
 def set_branding(payload: schemas.BrandingIn, request: Request, db: Session = Depends(get_db),
                  user: models.User = Depends(require_admin)):
+    # Extra alert addresses are in every plan; your own name, colour and logo are MSP.
+    if payload.brand_name or payload.brand_color or payload.report_footer or payload.logo:
+        plans.require(user.tenant, "white_label")
     t = user.tenant
     try:
         t.brand_color = branding.clean_color(payload.brand_color)
@@ -348,3 +359,18 @@ def set_welcome_email(payload: WelcomeIn, request: Request, db: Session = Depend
     db.commit()
     audit.log_request(db, request, "smtp.welcome_email", user)
     return _smtp_out(user.tenant)
+
+
+# ------------------------------------------------------------------ plan
+@router.get("/plan")
+def get_plan(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """The company's plan, its limits and what is used, for the dashboard."""
+    from .users import _seats
+    usage = {
+        "monitors": db.query(models.Monitor).filter(models.Monitor.tenant_id == user.tenant_id,
+                                                    models.Monitor.is_active.is_(True)).count(),
+        "users": _seats(db, user.tenant_id),
+        "dmarc_domains": db.query(models.DmarcReport.domain)
+                           .filter(models.DmarcReport.tenant_id == user.tenant_id).distinct().count(),
+    }
+    return plans.summary(user.tenant, usage)

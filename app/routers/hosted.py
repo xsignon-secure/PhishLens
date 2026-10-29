@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import audit, crypto, dns_providers, hosted, models
+from .. import audit, crypto, dns_providers, hosted, models, plans
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit, require_admin
@@ -46,6 +46,7 @@ class HostedIn(BaseModel):
 @router.put("/api/hosted/{domain}/{kind}")
 def save_hosted(domain: str, kind: str, payload: HostedIn, request: Request,
                 db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "hosted")
     if not hosted.configured():
         raise HTTPException(status_code=503, detail="Hosted records aren't set up on this server")
     domain = normalize_domain(domain)
@@ -156,6 +157,7 @@ def dns_status(user: models.User = Depends(get_current_user)):
 @router.put("/api/team/dns")
 def set_dns(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
             user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "dns_fixes")
     token = payload.token.strip()
     try:
         ok = dns_providers.client(payload.provider, token).verify()
@@ -189,6 +191,7 @@ def cloudflare_status(user: models.User = Depends(get_current_user)):
 @router.put("/api/team/cloudflare")
 def set_cloudflare(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
                    user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "dns_fixes")
     payload.provider = "cloudflare"
     set_dns(payload, request, db, user)
     return {"connected": True}
@@ -220,6 +223,7 @@ def check_apply_allowed(name: str, rtype: str, value: str, domains: set[str]) ->
 @router.post("/api/dns/apply")
 def apply_record(payload: DnsApplyIn, request: Request, db: Session = Depends(get_db),
                  user: models.User = Depends(require_admin)):
+    plans.require(user.tenant, "dns_fixes")
     token = crypto.decrypt(user.tenant.dns_token)
     if not token:
         raise HTTPException(status_code=400, detail="Connect your DNS provider first")
@@ -261,6 +265,7 @@ def domain_connect_apply_url(payload: DnsApplyIn, request: Request, db: Session 
                              user: models.User = Depends(require_admin)):
     """A signed link that opens the DNS host's approval screen for one
     record. Nothing changes until the user approves it there."""
+    plans.require(user.tenant, "dns_fixes")
     from .. import domain_connect
 
     if not domain_connect.configured():

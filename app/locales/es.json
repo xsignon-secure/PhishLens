@@ -743,5 +743,7 @@
  "On. {0} recovery codes left.": "Activada. Quedan {0} códigos de recuperación.",
  "Confirm it's you": "Confirma que eres tú",
  "DNS &amp; hosting": "DNS y alojamiento",
- "Integrations": "Integraciones"
+ "Integrations": "Integraciones",
+ "{0} plan": "Plan {0}",
+ "Plan": "Plan"
 }
