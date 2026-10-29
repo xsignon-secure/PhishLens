@@ -723,5 +723,15 @@
  "{0} of {1} members have it on.": "{0} membre(s) sur {1} l'ont activée.",
  "· 2FA on": "· 2FA activée",
  "✓ New failure reports are encrypted to key {0}.": "✓ Les nouveaux rapports d'échec sont chiffrés avec la clé {0}.",
- "✓ On.": "✓ Activé."
+ "✓ On.": "✓ Activé.",
+ "Zammad URL": "URL Zammad",
+ "Access token": "Jeton d'accès",
+ "Group": "Groupe",
+ "Default customer email": "E-mail du client par défaut",
+ "Client label = customer email (one per line)": "Libellé client = e-mail du client (un par ligne)",
+ "GLPI URL": "URL GLPI",
+ "User API token": "Jeton d'API utilisateur",
+ "App token (optional)": "Jeton d'application (facultatif)",
+ "Default entity id (optional)": "ID d'entité par défaut (facultatif)",
+ "Client label = entity id (one per line)": "Libellé client = ID d'entité (un par ligne)"
 }

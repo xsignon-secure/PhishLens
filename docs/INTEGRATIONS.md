@@ -1,4 +1,4 @@
-# SIEM export, PSA tickets and test emails
+# SIEM export, PSA and helpdesk tickets, and test emails
 
 ## SIEM export
 
@@ -27,7 +27,7 @@ use sourcetype `phishlens:alert`.
 Microsoft Sentinel, Elastic, QRadar, Graylog and others take syslog. For an
 HTTP collector, the signed JSON **alert webhook** on the same page also works.
 
-## PSA tickets
+## PSA and helpdesk tickets
 
 One ticket per domain each time it alerts (several alerts from one check go in
 the same ticket), with the score and a link to the fixes. Pick the PSA and fill
@@ -37,21 +37,25 @@ in its fields:
 | --- | --- | --- |
 | ConnectWise Manage | Site URL (e.g. `https://api-na.myconnectwise.net`), login company id, an API member's public and private key, a `clientId` from the ConnectWise developer portal, service board name, default company identifier | `POST /v4_6_release/apis/3.0/service/tickets` |
 | HaloPSA | Halo URL, an API application's client id and secret (client credentials, scope `all`), tenant name for hosted Halo, optional ticket type id and default client id | `POST /api/tickets` |
+| Zammad (free, open source) | Zammad URL, an access token with the `ticket.agent` permission (Profile → Token Access), the group to file tickets in (default `Users`), a default customer email | `POST /api/v1/tickets`; the customer is found by email or created |
+| GLPI (free, open source) | GLPI URL, a user API token (My settings → Remote access keys), the app token if your API client has one, optional default entity id | Legacy REST API (`apirest.php`): Setup → General → API, turn on "Enable REST API" and "Enable login with external token" |
 | Autotask | Zone URL (e.g. `https://webservices5.autotask.net`), API user name, secret and integration code, default company id, optional queue id and priority (1 high, 2 medium, 3 low, 4 critical) | `POST /ATServicesRest/V1.0/Tickets`, status New |
 
 **Client mapping.** If your monitors carry client labels, map each label to
 the PSA's company id, one per line (`Acme = 12`). Unmapped domains go to the
-default company.
+default company. For Zammad map labels to customer emails
+(`Acme = it@acme.com`), for GLPI to entity ids (`Acme = 3`).
 
 **Send test** creates a real "PhishLens test ticket" so you can check the
 board, company and permissions; close it afterwards.
 
-These integrations follow each vendor's public API documentation but have not
-been tried against live ConnectWise, HaloPSA or Autotask accounts yet. If a
+The Zammad and GLPI integrations were tested against Zammad 6 and GLPI 12
+installs. ConnectWise, HaloPSA and Autotask follow each vendor's public API
+documentation but have not been tried against live accounts yet. If a
 test fails, the message on the page shows the PSA's answer; please open an
 issue with it.
 
-Secrets (private key, client secret, API secret, HEC token) are encrypted with
+Secrets (private key, client secret, API secret, access and API tokens, HEC token) are encrypted with
 a key derived from `SECRET_KEY` and never sent back to the browser. Rotating
 `SECRET_KEY` makes them unreadable: enter them again. Every destination must
 be a public host, and HTTP APIs must use https.
