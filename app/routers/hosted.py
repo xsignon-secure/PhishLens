@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import audit, crypto, dns_providers, hosted, models
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user, normalize_domain, rate_limit, require_owner
+from ..deps import get_current_user, normalize_domain, rate_limit, require_admin
 
 router = APIRouter(tags=["hosted"])
 
@@ -45,7 +45,7 @@ class HostedIn(BaseModel):
 
 @router.put("/api/hosted/{domain}/{kind}")
 def save_hosted(domain: str, kind: str, payload: HostedIn, request: Request,
-                db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+                db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
     if not hosted.configured():
         raise HTTPException(status_code=503, detail="Hosted records aren't set up on this server")
     domain = normalize_domain(domain)
@@ -111,7 +111,7 @@ def hosted_status(domain: str, kind: str, db: Session = Depends(get_db),
 
 @router.delete("/api/hosted/{domain}/{kind}")
 def delete_hosted(domain: str, kind: str, request: Request, db: Session = Depends(get_db),
-                  user: models.User = Depends(require_owner)):
+                  user: models.User = Depends(require_admin)):
     rec = (db.query(models.HostedRecord)
            .filter(models.HostedRecord.tenant_id == user.tenant_id,
                    models.HostedRecord.domain == normalize_domain(domain),
@@ -155,7 +155,7 @@ def dns_status(user: models.User = Depends(get_current_user)):
 
 @router.put("/api/team/dns")
 def set_dns(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
-            user: models.User = Depends(require_owner)):
+            user: models.User = Depends(require_admin)):
     token = payload.token.strip()
     try:
         ok = dns_providers.client(payload.provider, token).verify()
@@ -172,7 +172,7 @@ def set_dns(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db)
 
 @router.delete("/api/team/dns")
 def delete_dns(request: Request, db: Session = Depends(get_db),
-               user: models.User = Depends(require_owner)):
+               user: models.User = Depends(require_admin)):
     user.tenant.dns_provider = None
     user.tenant.dns_token = None
     db.commit()
@@ -188,7 +188,7 @@ def cloudflare_status(user: models.User = Depends(get_current_user)):
 
 @router.put("/api/team/cloudflare")
 def set_cloudflare(payload: DnsTokenIn, request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_owner)):
+                   user: models.User = Depends(require_admin)):
     payload.provider = "cloudflare"
     set_dns(payload, request, db, user)
     return {"connected": True}
@@ -196,7 +196,7 @@ def set_cloudflare(payload: DnsTokenIn, request: Request, db: Session = Depends(
 
 @router.delete("/api/team/cloudflare")
 def delete_cloudflare(request: Request, db: Session = Depends(get_db),
-                      user: models.User = Depends(require_owner)):
+                      user: models.User = Depends(require_admin)):
     return delete_dns(request, db, user)
 
 
@@ -219,7 +219,7 @@ def check_apply_allowed(name: str, rtype: str, value: str, domains: set[str]) ->
 
 @router.post("/api/dns/apply")
 def apply_record(payload: DnsApplyIn, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_owner)):
+                 user: models.User = Depends(require_admin)):
     token = crypto.decrypt(user.tenant.dns_token)
     if not token:
         raise HTTPException(status_code=400, detail="Connect your DNS provider first")
@@ -258,7 +258,7 @@ def domain_connect_status(domain: str, request: Request, db: Session = Depends(g
 
 @router.post("/api/dns/domain-connect/apply-url")
 def domain_connect_apply_url(payload: DnsApplyIn, request: Request, db: Session = Depends(get_db),
-                             user: models.User = Depends(require_owner)):
+                             user: models.User = Depends(require_admin)):
     """A signed link that opens the DNS host's approval screen for one
     record. Nothing changes until the user approves it there."""
     from .. import domain_connect

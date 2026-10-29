@@ -9,7 +9,7 @@ Target: $0/month. Pick one path, then work the checklist top to bottom.
 1. `fly launch` (or Render dashboard → New Web Service from this repo).
    Dockerfile is included; nothing to change.
 2. Set secrets (never in the repo):
-   - `ADMIN_PASSWORD` — the dashboard password (no user accounts); `ADMIN_EMAIL` for alert emails.
+   - `ADMIN_PASSWORD` — the platform admin password for `/platform` (creates companies and owners).
    - `SECRET_KEY` — generate: `python3 -c "import secrets; print(secrets.token_hex(32))"`
    - `DATABASE_URL` — free Postgres (Supabase/Neon/Supabase free tier);
      SQLite works but won't survive restarts on most free tiers.
@@ -17,7 +17,8 @@ Target: $0/month. Pick one path, then work the checklist top to bottom.
    - `SMTP_*` — optional; without it, alerts stay dashboard-only.
    - Leave `STRIPE_*` empty (billing intentionally unwired).
 3. Deploy. Hit `/api/health` → `{"ok":true}`.
-4. Open `/login` and enter `ADMIN_PASSWORD`.
+4. Open `/platform`, enter `ADMIN_PASSWORD`, create your company and owner, then sign in
+   at `/login` (see `docs/ACCOUNTS.md`).
 
 ## Path B — Single VPS (Oracle Cloud free tier)
 
@@ -43,7 +44,7 @@ The worker skips monitors checked in the last 20h (`--force` overrides).
 
 - [ ] `pytest tests/ -q` → all green
 - [ ] Public scan of your own domain returns a sane score
-- [ ] Log in with ADMIN_PASSWORD → add monitor → rescan → alert row appears
+- [ ] Create a company at /platform → sign in as its owner → set up authenticator → add monitor → rescan → alert row appears
 - [ ] Share link works signed-out; unshare revokes it
 - [ ] With SMTP set: trigger a score drop, confirm the email arrives
 - [ ] `curl -sI https://yourdomain/` shows `strict-transport-security`

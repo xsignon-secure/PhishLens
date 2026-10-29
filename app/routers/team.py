@@ -1,26 +1,29 @@
-"""Workspace settings: API keys, webhooks, audit log, data export, branding."""
+"""Company settings: API keys, webhooks, audit log, data export, branding,
+the company's own mail server."""
 import hashlib
+import re
 import secrets
 import urllib.parse
 from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .. import audit, branding, mailer, models, pgp, schemas, webhooks
 from ..database import get_db
-from ..deps import get_current_user, rate_limit, require_owner
+from ..deps import get_current_user, normalize_domain, rate_limit, require_admin, require_step_up
 
 router = APIRouter(prefix="/api/team", tags=["team"])
+EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[A-Za-z0-9.-]{1,253}\.[A-Za-z]{2,63}$")
 
 
 # ------------------------------------------------------------------ API keys
 @router.post("/keys", status_code=201)
 def create_api_key(payload: schemas.ApiKeyIn, request: Request,
                    db: Session = Depends(get_db),
-                   user: models.User = Depends(require_owner)):
+                   user: models.User = Depends(require_step_up)):
     raw = "plk_" + secrets.token_urlsafe(32)
     key = models.ApiKey(
         tenant_id=user.tenant_id, user_id=user.id, name=payload.name.strip(),
@@ -47,7 +50,7 @@ def list_api_keys(request: Request, db: Session = Depends(get_db),
 
 @router.delete("/keys/{key_id}")
 def revoke_api_key(key_id: str, request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_owner)):
+                   user: models.User = Depends(require_admin)):
     key = (db.query(models.ApiKey)
            .filter(models.ApiKey.id == key_id, models.ApiKey.tenant_id == user.tenant_id)
            .first())
@@ -72,7 +75,7 @@ def get_ruf_pgp(user: models.User = Depends(get_current_user)):
 
 @router.put("/ruf-pgp")
 def put_ruf_pgp(payload: PgpKeyIn, request: Request, db: Session = Depends(get_db),
-                user: models.User = Depends(require_owner)):
+                user: models.User = Depends(require_admin)):
     try:
         info = pgp.inspect(payload.key)
     except pgp.PgpError as exc:
@@ -84,7 +87,7 @@ def put_ruf_pgp(payload: PgpKeyIn, request: Request, db: Session = Depends(get_d
 
 
 @router.delete("/ruf-pgp")
-def delete_ruf_pgp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+def delete_ruf_pgp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
     user.tenant.ruf_pgp_key = user.tenant.ruf_pgp_fingerprint = None
     db.commit()
     audit.log_request(db, request, "ruf_pgp.delete", user)
@@ -115,7 +118,7 @@ def get_webhook(request: Request, db: Session = Depends(get_db),
 @router.put("/webhook")
 def set_webhook(payload: schemas.WebhookIn, request: Request,
                 db: Session = Depends(get_db),
-                user: models.User = Depends(require_owner)):
+                user: models.User = Depends(require_admin)):
     url = _validate_webhook_url(payload.url)
     user.tenant.webhook_url = url
     user.tenant.webhook_secret = payload.secret
@@ -126,7 +129,7 @@ def set_webhook(payload: schemas.WebhookIn, request: Request,
 
 @router.delete("/webhook")
 def delete_webhook(request: Request, db: Session = Depends(get_db),
-                   user: models.User = Depends(require_owner)):
+                   user: models.User = Depends(require_admin)):
     user.tenant.webhook_url = None
     user.tenant.webhook_secret = None
     db.commit()
@@ -136,7 +139,7 @@ def delete_webhook(request: Request, db: Session = Depends(get_db),
 
 @router.post("/webhook/test")
 def test_webhook(request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_owner)):
+                 user: models.User = Depends(require_admin)):
     t = user.tenant
     if not t.webhook_url or not t.webhook_secret:
         raise HTTPException(status_code=400, detail="No webhook configured")
@@ -149,22 +152,25 @@ def test_webhook(request: Request, db: Session = Depends(get_db),
 # ------------------------------------------------------------------ audit + export
 @router.get("/audit")
 def audit_log(request: Request, db: Session = Depends(get_db),
-              user: models.User = Depends(require_owner), limit: int = 100):
+              user: models.User = Depends(require_admin), limit: int = 100):
     events = (db.query(models.AuditEvent)
               .filter(models.AuditEvent.tenant_id == user.tenant_id)
               .order_by(models.AuditEvent.created_at.desc())
               .limit(max(1, min(limit, 500))).all())
+    emails = dict(db.query(models.User.id, models.User.email).filter(models.User.tenant_id == user.tenant_id).all())
     return [{"id": e.id, "action": e.action, "detail": e.detail, "ip": e.ip,
-             "user_id": e.user_id,
+             "user_id": e.user_id, "user": emails.get(e.user_id),
              "created_at": e.created_at.isoformat() + "Z"} for e in events]
 
 
 @router.get("/export")
 def export_data(request: Request, db: Session = Depends(get_db),
-                user: models.User = Depends(require_owner)):
+                user: models.User = Depends(require_step_up)):
     tid = user.tenant_id
     data = {
         "tenant": {"id": tid, "name": user.tenant.name},
+        "users": [{"email": u.email, "name": u.full_name, "role": u.role, "status": u.status} for u in
+                  db.query(models.User).filter(models.User.tenant_id == tid).all() if mailer.real_email(u.email)],
         "monitors": [{"domain": m.domain, "last_score": m.last_score,
                       "is_active": m.is_active} for m in
                      db.query(models.Monitor).filter(models.Monitor.tenant_id == tid).all()],
@@ -189,7 +195,7 @@ class ReportScheduleIn(BaseModel):
 def _schedule_out(t: models.Tenant) -> dict:
     return {"schedule": t.report_schedule or "off",
             "last_sent": t.report_sent_at.isoformat() + "Z" if t.report_sent_at else None,
-            "email_configured": mailer.is_configured()}
+            "email_configured": bool(mailer.config_for(t))}
 
 
 @router.get("/report-schedule")
@@ -199,7 +205,7 @@ def get_report_schedule(user: models.User = Depends(get_current_user)):
 
 @router.put("/report-schedule")
 def set_report_schedule(payload: ReportScheduleIn, request: Request, db: Session = Depends(get_db),
-                        user: models.User = Depends(require_owner)):
+                        user: models.User = Depends(require_admin)):
     user.tenant.report_schedule = payload.schedule
     db.commit()
     audit.log_request(db, request, "reports.schedule", user, {"schedule": payload.schedule})
@@ -207,10 +213,10 @@ def set_report_schedule(payload: ReportScheduleIn, request: Request, db: Session
 
 
 @router.post("/report-schedule/send-now")
-def send_report_now(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_owner)):
+def send_report_now(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
     """Send the scheduled report right away (to check what it looks like)."""
     from .. import scheduled_reports
-    if not mailer.is_configured():
+    if not mailer.config_for(user.tenant):
         raise HTTPException(status_code=503, detail="Email is not set up on this server")
     rate_limit(request, f"report-now:{user.tenant_id}", 5)
     if not db.query(models.Monitor).filter(models.Monitor.tenant_id == user.tenant_id,
@@ -232,7 +238,7 @@ def get_branding(user: models.User = Depends(get_current_user)):
 
 @router.put("/branding")
 def set_branding(payload: schemas.BrandingIn, request: Request, db: Session = Depends(get_db),
-                 user: models.User = Depends(require_owner)):
+                 user: models.User = Depends(require_admin)):
     t = user.tenant
     try:
         t.brand_color = branding.clean_color(payload.brand_color)
@@ -247,3 +253,98 @@ def set_branding(payload: schemas.BrandingIn, request: Request, db: Session = De
     audit.log_request(db, request, "branding.update", user,
                       {"brand_name": t.brand_name, "alert_emails": len(t.alert_emails)})
     return get_branding(user)
+
+
+# ------------------------------------------------------------------ the company's own mail server
+class SmtpIn(BaseModel):
+    host: str = Field(min_length=1, max_length=253)
+    port: int
+    security: Literal["starttls", "ssl"] = "starttls"
+    username: str = Field(default="", max_length=320)
+    # Blank keeps the saved password: the form never gets it back.
+    password: str = Field(default="", max_length=500)
+    from_address: str = Field(min_length=3, max_length=320)
+    from_name: str = Field(default="", max_length=100)
+
+    model_config = {"extra": "forbid"}
+
+
+def _smtp_out(t: models.Tenant) -> dict:
+    c = t.smtp or {}
+    return {"configured": bool(c.get("host")), "host": c.get("host"), "port": c.get("port"),
+            "security": c.get("security", "starttls"), "username": c.get("username") or "",
+            "has_password": bool(c.get("password")), "from_address": c.get("from_address"),
+            "from_name": c.get("from_name") or "", "server_fallback": mailer.is_configured(),
+            "welcome_subject": t.welcome_subject or "", "welcome_message": t.welcome_message or ""}
+
+
+@router.get("/smtp")
+def get_smtp(user: models.User = Depends(require_admin)):
+    return _smtp_out(user.tenant)
+
+
+@router.put("/smtp")
+def set_smtp(payload: SmtpIn, request: Request, db: Session = Depends(get_db),
+             user: models.User = Depends(require_step_up)):
+    from .. import crypto
+    host = normalize_domain(payload.host)
+    if payload.port not in mailer.SMTP_PORTS:
+        raise HTTPException(status_code=400, detail="Use port 587, 465, 25 or 2525")
+    sender = payload.from_address.strip().lower()
+    if not EMAIL_RE.match(sender):
+        raise HTTPException(status_code=400, detail="Enter a valid from address")
+    old = user.tenant.smtp or {}
+    password = crypto.encrypt(payload.password) if payload.password else (
+        old.get("password") if old.get("host") == host and old.get("username") == payload.username.strip() else None)
+    user.tenant.smtp = {"host": host, "port": payload.port, "security": payload.security,
+                        "username": payload.username.strip(), "password": password,
+                        "from_address": sender, "from_name": payload.from_name.strip() or None}
+    db.commit()
+    audit.log_request(db, request, "smtp.update", user, {"host": host, "from": sender, "severity": "high"})
+    return _smtp_out(user.tenant)
+
+
+@router.delete("/smtp")
+def delete_smtp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_step_up)):
+    user.tenant.smtp = None
+    db.commit()
+    audit.log_request(db, request, "smtp.delete", user, {"severity": "high"})
+    return _smtp_out(user.tenant)
+
+
+@router.post("/smtp/test")
+def test_smtp(request: Request, db: Session = Depends(get_db), user: models.User = Depends(require_admin)):
+    """Send a test email to yourself through the company's mail server."""
+    cfg = mailer.tenant_config(user.tenant)
+    if not cfg:
+        raise HTTPException(status_code=400, detail="Save your mail server first")
+    rate_limit(request, f"smtp-test:{user.tenant_id}", 10)
+    try:
+        mailer.deliver(cfg, mailer.build_message(
+            cfg, [user.email], "Test email",
+            f"This test came from {cfg['from_address']} through {cfg['host']}.\n"
+            f"Login details for new users will be sent the same way.\n"))
+    except mailer.SmtpError as exc:
+        audit.log_request(db, request, "smtp.test_failed", user, {"error": str(exc)[:200]})
+        raise HTTPException(status_code=502, detail=str(exc))
+    audit.log_request(db, request, "smtp.test", user)
+    return {"ok": True, "to": user.email}
+
+
+class WelcomeIn(BaseModel):
+    subject: str = Field(default="", max_length=200)
+    message: str = Field(default="", max_length=2000)
+
+    model_config = {"extra": "forbid"}
+
+
+@router.put("/welcome-email")
+def set_welcome_email(payload: WelcomeIn, request: Request, db: Session = Depends(get_db),
+                      user: models.User = Depends(require_admin)):
+    """Wording for the login-details email. Plain text; the login link,
+    email and temporary password are always added by PhishLens."""
+    user.tenant.welcome_subject = payload.subject.replace("\r", " ").replace("\n", " ").strip() or None
+    user.tenant.welcome_message = payload.message.strip() or None
+    db.commit()
+    audit.log_request(db, request, "smtp.welcome_email", user)
+    return _smtp_out(user.tenant)

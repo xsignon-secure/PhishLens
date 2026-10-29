@@ -11,9 +11,7 @@ services:
       - key: SECRET_KEY
         generateValue: true          # Render generates a long random value
       - key: ADMIN_PASSWORD
-        sync: false                  # the dashboard password; Render asks during setup
-      - key: ADMIN_EMAIL
-        sync: false                  # where alert and report emails go (optional)
+        sync: false                  # platform admin password for /platform; Render asks during setup
       - key: DATABASE_URL
         fromDatabase:
           name: phishlens-db

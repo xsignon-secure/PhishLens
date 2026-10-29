@@ -56,7 +56,7 @@
       <p id="dmarc-msg" class="muted small"></p>
       <div id="dmarc-summary"></div>
       <div id="ruf-list"></div>
-      <details class="owner-only hidden" id="pgp-box" style="margin-top:12px">
+      <details class="admin-only hidden" id="pgp-box" style="margin-top:12px">
         <summary class="small">{{ _("Encrypt failure reports with your PGP key") }}</summary>
         <p class="muted small">{{ _("Failure reports can show who your mail was spoofed to and the message subject. With a PGP public key, PhishLens keeps those details only encrypted to it; you download and decrypt them yourself.") }}</p>
         <p id="pgp-status" class="muted small"></p>
@@ -80,7 +80,7 @@
     <div class="panel">
       <h2><span class="dot"></span>{{ _("API keys") }}</h2>
       <div id="apikeys"></div>
-      <form id="apikey-form" class="scanbox small owner-only hidden">
+      <form id="apikey-form" class="scanbox small admin-only hidden">
         <input id="apikey-name" type="text" placeholder="{{ _("Key name, e.g. SIEM") }}" required maxlength="100">
         <button class="btn" type="submit">{{ _("Create") }}</button>
       </form>
@@ -88,7 +88,7 @@
     </div>
     <div class="panel">
       <h2><span class="dot"></span>{{ _("Alert webhook") }}</h2>
-      <form id="webhook-form" class="owner-only hidden">
+      <form id="webhook-form" class="admin-only hidden">
         <label>URL<input id="webhook-url" type="url" placeholder="https://…"></label>
         <label>{{ _("Secret (min 16 chars)") }}<input id="webhook-secret" type="password" autocomplete="new-password"></label>
         <button class="btn" type="submit">{{ _("Save") }}</button>
@@ -104,18 +104,18 @@
       <h2><span class="dot"></span>{{ _("DNS provider (one-click fixes)") }}</h2>
       <p class="muted small">{{ _("Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.") }}</p>
       <div id="cf-status" class="muted small"></div>
-      <form id="cf-form" class="scanbox small owner-only hidden">
+      <form id="cf-form" class="scanbox small admin-only hidden">
         <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option><option value="godaddy">GoDaddy</option><option value="route53">Amazon Route 53</option></select>
         <input id="cf-token" type="password" placeholder="{{ _("API token") }}" autocomplete="off">
         <button class="btn" type="submit">{{ _("Connect") }}</button>
       </form>
-      <button id="cf-del" class="btn tiny ghost owner-only hidden">{{ _("Disconnect") }}</button>
+      <button id="cf-del" class="btn tiny ghost admin-only hidden">{{ _("Disconnect") }}</button>
   </div>
   <div class="panel" id="hosted-panel">
     <h2><span class="dot"></span>{{ _("Hosted DMARC, SPF, MTA-STS, TLS-RPT &amp; BIMI") }}</h2>
     <p class="muted small">{{ _("Point your DNS at PhishLens once, then change policies here instead of editing DNS. Hosted SPF is flattened to IP addresses, so you never hit the 10-lookup limit.") }}</p>
     <div id="hosted-off" class="muted small hidden">{{ _("Hosted records aren't set up on this server yet (see docs/HOSTED-RECORDS.md).") }}</div>
-    <form id="hosted-form" class="owner-only hidden">
+    <form id="hosted-form" class="admin-only hidden">
       <div class="scanbox small">
         <select id="hosted-domain" aria-label="Domain"></select>
         <select id="hosted-kind" aria-label="Record">
@@ -128,16 +128,81 @@
     </form>
     <div id="hosted-list"></div>
   </div>
+  <div class="panel admin-only hidden" id="users-panel">
+    <h2><span class="dot"></span>{{ _("Users") }}</h2>
+    <p class="muted small">{{ _("Only admins create accounts: there is no signup and no invitation link. New users get a temporary password by email from your mail server, and must choose their own password at first sign-in.") }}</p>
+    <div id="users-list"></div>
+    <form id="user-form" class="form-grid">
+      <label>{{ _("Email") }}<input name="email" type="email" required></label>
+      <label>{{ _("Name") }}<input name="full_name" maxlength="200"></label>
+      <label>{{ _("Role") }}<select name="role" id="user-role">
+        <option value="member">{{ _("Member: uses the dashboard") }}</option>
+        <option value="admin">{{ _("Admin: also manages members and settings") }}</option>
+      </select></label>
+      <label class="check-inline"><input name="send_email" type="checkbox" checked> {{ _("Email the login details") }}</label>
+      <button class="btn" type="submit">{{ _("Create account") }}</button>
+    </form>
+    <p id="user-msg" class="muted small" aria-live="polite"></p>
+    <details>
+      <summary>{{ _("Create many accounts from a CSV") }}</summary>
+      <p class="muted small">{{ _("One account per line: email, name, role (admin or member). A header row is optional.") }}</p>
+      <textarea id="import-csv" placeholder="email,name,role&#10;jane@example.com,Jane Doe,member"></textarea>
+      <label class="check-inline"><input id="import-send" type="checkbox" checked> {{ _("Email the login details") }}</label>
+      <button id="import-btn" class="btn tiny" type="button">{{ _("Import") }}</button>
+      <div id="import-result"></div>
+    </details>
+  </div>
+  <div class="panel admin-only hidden" id="smtp-panel">
+    <h2><span class="dot"></span>{{ _("Email server") }}</h2>
+    <p class="muted small">{{ _("Login details and alerts go out from your company's own mail server, e.g. it-support@yourcompany.com. The password is stored encrypted and is never shown again.") }}</p>
+    <p id="smtp-status" class="muted small"></p>
+    <form id="smtp-form" class="form-grid">
+      <label>{{ _("SMTP server") }}<input name="host" placeholder="smtp.office365.com" required></label>
+      <label>{{ _("Port") }}<select name="port"><option>587</option><option>465</option><option>2525</option><option>25</option></select></label>
+      <label>{{ _("Encryption") }}<select name="security"><option value="starttls">STARTTLS</option><option value="ssl">SSL/TLS</option></select></label>
+      <label>{{ _("Username") }}<input name="username" autocomplete="off"></label>
+      <label>{{ _("Password") }}<input name="password" type="password" autocomplete="new-password" id="smtp-password"></label>
+      <label>{{ _("From address") }}<input name="from_address" type="email" placeholder="it-support@yourcompany.com" required></label>
+      <label>{{ _("From name") }}<input name="from_name" placeholder="Acme IT"></label>
+      <div><button class="btn" type="submit">{{ _("Save") }}</button>
+        <button id="smtp-test" class="btn ghost" type="button">{{ _("Send test") }}</button>
+        <button id="smtp-del" class="btn ghost" type="button">{{ _("Remove") }}</button></div>
+    </form>
+    <details>
+      <summary>{{ _("Wording of the login-details email") }}</summary>
+      <form id="welcome-form">
+        <label>{{ _("Subject") }}<input name="subject" maxlength="200"></label>
+        <label>{{ _("Message") }}<textarea name="message" maxlength="2000"></textarea></label>
+        <p class="muted small">{{ _("Plain text. The sign-in link, the email address and the temporary password are always added below it.") }}</p>
+        <button class="btn tiny" type="submit">{{ _("Save") }}</button>
+      </form>
+    </details>
+  </div>
   <div class="dash-grid">
     <div class="panel" id="security-panel">
       <h2><span class="dot"></span>{{ _("Security") }}</h2>
-      <p class="muted small">{{ _("There are no user accounts: the dashboard opens with the ADMIN_PASSWORD set on the server. Changing it there signs every browser out.") }}</p>
-      <p><button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost owner-only hidden">{{ _("Export my data") }}</button></p>
+      <p id="me-line" class="muted small"></p>
+      <h3>{{ _("Authenticator app") }}</h3>
+      <p id="mfa-status" class="muted small"></p>
+      <p><button id="mfa-setup-btn" class="btn tiny hidden">{{ _("Set up") }}</button>
+        <button id="mfa-codes-btn" class="btn tiny ghost hidden">{{ _("New recovery codes") }}</button>
+        <button id="mfa-off-btn" class="btn tiny ghost hidden">{{ _("Turn off") }}</button></p>
+      <details>
+        <summary>{{ _("Change password") }}</summary>
+        <form id="pw-change-form">
+          <label>{{ _("Current password") }}<input name="current_password" type="password" autocomplete="current-password" required></label>
+          <label>{{ _("New password") }}<input name="new_password" type="password" autocomplete="new-password" minlength="12" required></label>
+          <button class="btn tiny" type="submit">{{ _("Save password") }}</button>
+        </form>
+      </details>
+      <h3>{{ _("Where you're signed in") }}</h3>
+      <div id="sessions-list"></div>
+      <p><button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost admin-only hidden">{{ _("Export my data") }}</button></p>
     </div>
     <div class="panel" id="brand-panel">
       <h2><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
       <p class="muted small">{{ _("Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).") }}</p>
-      <form id="brand-form" class="owner-only hidden">
+      <form id="brand-form" class="admin-only hidden">
         <label>{{ _("Brand name") }}<input id="brand-name" type="text" maxlength="100" placeholder="{{ _("Acme IT Services") }}"></label>
         <label>{{ _("Colour") }}<input id="brand-color" type="text" maxlength="7" placeholder="#4f46e5"></label>
         <label>{{ _("Report footer") }}<input id="brand-footer" type="text" maxlength="300" placeholder="Questions? support@acme-it.com"></label>
@@ -149,7 +214,7 @@
       <p id="brand-msg" class="muted small"></p>
       <h3 style="margin:18px 0 6px;font-size:15px">{{ _("Scheduled reports") }}</h3>
       <p class="muted small">{{ _("Email the latest PDF report for each monitored domain to the team's owners and the extra alert addresses above.") }}</p>
-      <div class="scanbox small owner-only hidden" id="sched-form">
+      <div class="scanbox small admin-only hidden" id="sched-form">
         <select id="sched-select" aria-label="Schedule">
           <option value="off">{{ _("Off") }}</option><option value="weekly">{{ _("Weekly") }}</option><option value="monthly">{{ _("Monthly") }}</option>
         </select>
@@ -158,7 +223,7 @@
       <p id="sched-msg" class="muted small"></p>
     </div>
   </div>
-  <div class="panel owner-only hidden" id="integrations-panel">
+  <div class="panel admin-only hidden" id="integrations-panel">
     <h2><span class="dot"></span>{{ _("SIEM and PSA") }}</h2>
     <p class="muted small">{{ _("Send monitor alerts to your SIEM as syslog or to Splunk, and open a ticket in your PSA for each domain that alerts. Secrets are stored encrypted and never shown again.") }}</p>
     <div class="dash-grid">
@@ -180,7 +245,7 @@
       </form>
     </div>
   </div>
-  <div class="panel owner-only hidden" id="audit-panel">
+  <div class="panel admin-only hidden" id="audit-panel">
     <h2><span class="dot"></span>{{ _("Audit log") }}</h2>
     <div id="audit"><p class="muted">{{ _("Loading…") }}</p></div>
   </div>
@@ -194,13 +259,88 @@ function getCookie(name) {
   const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
   return m ? decodeURIComponent(m[1]) : '';
 }
-async function api(path, opts = {}) {
+async function api(path, opts = {}, retried = false) {
   opts.headers = Object.assign({'X-CSRF-Token': getCookie('csrf_token')}, opts.headers || {});
   const r = await fetch(path, opts);
   if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
   const d = await r.json().catch(() => ({}));
+  // Sensitive changes ask for a fresh authenticator code, then go ahead.
+  if (r.status === 403 && d.detail === 'step_up_required' && !retried) {
+    await stepUp();
+    return api(path, opts, true);
+  }
+  if (r.status === 403 && d.detail === 'mfa_setup_required') { showMfaSetup(true); throw new Error('auth'); }
   if (!r.ok) throw new Error(d.detail || _t('Request failed'));
   return d;
+}
+
+/* A small modal; resolves with the typed value, or null when cancelled. */
+function askModal(title, text, {input = true, okLabel = _t('Continue'), html = ''} = {}) {
+  return new Promise(resolve => {
+    const root = document.createElement('div');
+    root.innerHTML = `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true">
+      <h2>${escapeHtml(title)}</h2><p>${escapeHtml(text)}</p>${html}
+      ${input ? '<input id="ask-input" inputmode="numeric" autocomplete="one-time-code">' : ''}
+      <p class="error" id="ask-err"></p>
+      <div class="actions"><button class="btn" id="ask-ok">${escapeHtml(okLabel)}</button>
+      <button class="btn ghost" id="ask-cancel">${_t('Cancel')}</button></div></div></div>`;
+    document.body.appendChild(root);
+    const field = root.querySelector('#ask-input');
+    if (field) field.focus();
+    const done = v => { root.remove(); resolve(v); };
+    root.querySelector('#ask-ok').onclick = () => done(field ? field.value.trim() : true);
+    root.querySelector('#ask-cancel').onclick = () => done(null);
+    if (field) field.onkeydown = e => { if (e.key === 'Enter') done(field.value.trim()); };
+  });
+}
+
+async function stepUp() {
+  for (;;) {
+    const code = await askModal(_t('Confirm it\'s you'), _t('Enter the 6-digit code from your authenticator app to make this change.'));
+    if (code === null) throw new Error(_t('Cancelled'));
+    const r = await fetch('/api/auth/step-up', {method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': getCookie('csrf_token')},
+      body: JSON.stringify({code})});
+    if (r.ok) return;
+    toast(_t('Invalid code — try again'));
+  }
+}
+
+function showRecoveryCodes(codes) {
+  return askModal(_t('Save your recovery codes'),
+    _t('Each code works once if you lose your phone. Keep them somewhere safe, like a password manager. They are not shown again.'),
+    {input: false, okLabel: _t('I saved them'), html: `<div class="codes">${codes.map(c => `<span>${escapeHtml(c)}</span>`).join('')}</div>`});
+}
+
+/* Owners and admins must set up an authenticator app before anything else. */
+let mfaSetupOpen = false;
+async function showMfaSetup(required) {
+  if (mfaSetupOpen) return;
+  mfaSetupOpen = true;
+  try {
+    for (;;) {
+      const r = await fetch('/api/auth/mfa/setup', {method: 'POST', headers: {'X-CSRF-Token': getCookie('csrf_token')}});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(d.detail || _t('Request failed')); return; }
+      const code = await askModal(_t('Set up your authenticator app'),
+        required ? _t('Owners and admins need an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…). Scan the code, then enter the 6 digits it shows.')
+                 : _t('Scan the code with your authenticator app, then enter the 6 digits it shows.'),
+        {html: `<div class="qr">${d.qr_svg}</div><p class="muted small">${_t('Or type this key:')} <code>${escapeHtml(d.secret)}</code></p>`,
+         okLabel: _t('Turn on')});
+      if (code === null) { if (required) { location.href = '/login'; } return; }
+      try {
+        const on = await api('/api/auth/mfa/enable', {method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({code})});
+        await showRecoveryCodes(on.recovery_codes);
+        if (required) location.reload(); else loadEnterprise();
+        return;
+      } catch (err) { toast(err.message); }
+    }
+  } finally { mfaSetupOpen = false; }
+}
+
+function tempPasswordNote(email, d) {
+  return _t('Temporary password for {0}: {1} (shown once).', {0: email, 1: d.temporary_password});
 }
 
 const ALERT_LEVELS = [
@@ -361,8 +501,10 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
 async function loadEnterprise() {
   const me = await api('/api/auth/me');
   dashData.me = me;
-  const isOwner = me.role === 'owner';
-  document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
+  const isOwner = me.role === 'owner' || me.role === 'admin';  // company admins
+  document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isOwner));
+  renderSecurity(me);
+  if (isOwner) { loadUsers().catch(() => {}); loadSmtp().catch(() => {}); }
   if (isOwner) loadPgp().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
@@ -444,6 +586,190 @@ document.getElementById('export-btn').onclick = async () => {
   a.download = 'phishlens-export.json';
   a.click();
   toast(_t('✓ Export downloaded'));
+};
+
+/* ---------------- security: authenticator, password, sessions ---------------- */
+const ROLE_WORDS = {owner: N_('Owner'), admin: N_('Admin'), member: N_('Member')};
+const STATUS_WORDS = {active: N_('Active'), pending: N_('Waiting for first sign-in'), suspended: N_('Suspended')};
+function renderSecurity(me) {
+  document.getElementById('me-line').textContent = _t('Signed in as {0} ({1}) at {2}.',
+    {0: me.email, 1: _t(ROLE_WORDS[me.role] || me.role), 2: me.company || ''});
+  document.getElementById('mfa-status').textContent = me.mfa_enabled
+    ? _t('On. {0} recovery codes left.', {0: me.recovery_codes_left})
+    : (me.mfa_required ? _t('Required for owners and admins.') : _t('Off. Turn it on so a stolen password alone can\'t open your account.'));
+  document.getElementById('mfa-setup-btn').classList.toggle('hidden', me.mfa_enabled);
+  document.getElementById('mfa-codes-btn').classList.toggle('hidden', !me.mfa_enabled);
+  document.getElementById('mfa-off-btn').classList.toggle('hidden', !me.mfa_enabled || me.mfa_required);
+  if (me.mfa_required && !me.mfa_enabled) showMfaSetup(true);
+  loadSessions().catch(() => {});
+}
+async function loadSessions() {
+  const rows = await api('/api/auth/sessions');
+  const el = document.getElementById('sessions-list');
+  el.innerHTML = rows.map(r => `<div class="mon"><span>${escapeHtml((r.device || _t('Unknown device')).slice(0, 60))}</span>
+    <span class="muted small">${escapeHtml(r.ip || '')} · ${escapeHtml(new Date(r.last_used_at).toLocaleString())}</span>
+    <span class="row-actions">${r.current ? `<span class="pill ok">${_t('This browser')}</span>` : `<button class="btn tiny ghost" data-endsession="${r.id}">${_t('Sign out')}</button>`}</span></div>`).join('');
+  el.querySelectorAll('[data-endsession]').forEach(b => b.onclick = async () => {
+    try { await api('/api/auth/sessions/' + b.dataset.endsession, {method: 'DELETE'}); loadSessions(); }
+    catch (err) { if (err.message !== 'auth') toast(err.message); }
+  });
+}
+document.getElementById('mfa-setup-btn').onclick = () => showMfaSetup(false);
+document.getElementById('mfa-codes-btn').onclick = async () => {
+  const code = await askModal(_t('New recovery codes'), _t('Enter a code from your authenticator app. Your old recovery codes stop working.'));
+  if (code === null) return;
+  try {
+    const d = await api('/api/auth/mfa/recovery-codes', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code})});
+    await showRecoveryCodes(d.recovery_codes);
+    loadEnterprise();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('mfa-off-btn').onclick = async () => {
+  const code = await askModal(_t('Turn off the authenticator app'), _t('Enter a code from your authenticator app or a recovery code.'));
+  if (code === null) return;
+  try {
+    await api('/api/auth/mfa/disable', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code})});
+    loadEnterprise();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('pw-change-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const d = await api('/api/auth/password', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({current_password: fd.get('current_password'), new_password: fd.get('new_password')})});
+    e.target.reset();
+    toast(_t('Password changed. Other devices were signed out ({0}).', {0: d.other_sessions_ended}));
+    loadSessions();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+
+/* ---------------- users (owners and admins) ---------------- */
+const CRED_WORDS = {sent: N_('Login details emailed'), sending: N_('Sending login details…'),
+  failed: N_('Login email failed'), manual: N_('Give the password yourself')};
+function userActions(u) {
+  const me = dashData.me || {};
+  const mine = me.role === 'owner' ? ['admin', 'member'] : ['member'];
+  if (u.id === me.id || !mine.includes(u.role)) return '';
+  const b = (act, label) => `<button class="btn tiny ghost" data-uact="${act}" data-uid="${u.id}" data-email="${escapeHtml(u.email)}">${label}</button>`;
+  return [
+    u.status === 'suspended' ? b('reactivate', _t('Reactivate')) : b('resend', _t('New login details')),
+    u.status !== 'suspended' ? b('suspend', _t('Suspend')) : '',
+    me.role === 'owner' ? b('role', u.role === 'admin' ? _t('Make member') : _t('Make admin')) : '',
+    u.mfa_enabled ? b('reset-mfa', _t('Reset authenticator')) : '',
+    b('delete', _t('Delete')),
+  ].join(' ');
+}
+async function loadUsers() {
+  const users = await api('/api/users');
+  const me = dashData.me || {};
+  document.querySelector('#user-role option[value=admin]').disabled = me.role !== 'owner';
+  const pill = u => u.status === 'active' ? 'ok' : u.status === 'pending' ? 'warn' : 'bad';
+  document.getElementById('users-list').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>${_t('User')}</th><th>${_t('Role')}</th><th>${_t('Status')}</th><th>${_t('Last sign-in')}</th><th></th></tr></thead>
+    <tbody>${users.map(u => `<tr>
+      <td><strong>${escapeHtml(u.full_name || '')}</strong> ${escapeHtml(u.email)}</td>
+      <td>${escapeHtml(_t(ROLE_WORDS[u.role] || u.role))}${u.mfa_enabled ? ' 🔐' : ''}</td>
+      <td><span class="pill ${pill(u)}">${escapeHtml(_t(STATUS_WORDS[u.status] || u.status))}</span>
+        ${u.credentials_status && u.status === 'pending' ? `<br><span class="muted small">${escapeHtml(_t(CRED_WORDS[u.credentials_status] || ''))}${u.credentials_error ? ': ' + escapeHtml(u.credentials_error) : ''}</span>` : ''}</td>
+      <td class="muted small">${u.last_login_at ? escapeHtml(new Date(u.last_login_at).toLocaleString()) : '—'}</td>
+      <td>${userActions(u)}</td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('[data-uact]').forEach(btn => btn.onclick = () => userAction(btn.dataset.uact, btn.dataset.uid, btn.dataset.email, users));
+  // A login email that is still on its way: look again shortly.
+  if (users.some(u => u.credentials_status === 'sending')) setTimeout(() => loadUsers().catch(() => {}), 4000);
+}
+async function userAction(act, id, email, users) {
+  const u = users.find(x => x.id === id);
+  const sure = {
+    resend: _t('Send new login details to {0}? Their current password stops working.', {0: email}),
+    suspend: _t('Suspend {0}? They are signed out everywhere and can\'t sign in until reactivated.', {0: email}),
+    'reset-mfa': _t('Reset the authenticator app for {0}? They set up a new one at their next sign-in.', {0: email}),
+    delete: _t('Delete the account of {0}? This can\'t be undone.', {0: email}),
+  }[act];
+  if (sure && !confirm(sure)) return;
+  try {
+    let d;
+    if (act === 'delete') d = await api('/api/users/' + id, {method: 'DELETE'});
+    else if (act === 'role') d = await api('/api/users/' + id, {method: 'PATCH', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({role: u.role === 'admin' ? 'member' : 'admin'})});
+    else d = await api(`/api/users/${id}/${act}`, {method: 'POST'});
+    if (d && d.temporary_password) document.getElementById('user-msg').innerHTML = escapeHtml(tempPasswordNote(email, d)).replace(d.temporary_password, `<span class="temp-pw">${d.temporary_password}</span>`);
+    loadUsers();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+}
+document.getElementById('user-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const msg = document.getElementById('user-msg');
+  try {
+    const d = await api('/api/users', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: fd.get('email'), full_name: fd.get('full_name'), role: fd.get('role'), send_email: !!fd.get('send_email')})});
+    const sent = d.credentials_status === 'sending' ? _t('Account created. The login details are on their way to {0}.', {0: d.email})
+                                                    : _t('Give the password yourself');
+    msg.innerHTML = escapeHtml(sent) + ' '
+      + escapeHtml(tempPasswordNote(d.email, d)).replace(d.temporary_password, `<span class="temp-pw">${d.temporary_password}</span>`);
+    e.target.reset();
+    loadUsers();
+  } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
+};
+document.getElementById('import-btn').onclick = async () => {
+  const out = document.getElementById('import-result');
+  try {
+    const d = await api('/api/users/import', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({csv: document.getElementById('import-csv').value, send_email: document.getElementById('import-send').checked})});
+    out.innerHTML = `<p>${_t('{0} created, {1} failed.', {0: d.created, 1: d.failed})}</p>` + d.rows.map(r =>
+      `<div class="mon"><span>${_t('Line {0}', {0: r.row})}: ${escapeHtml(r.email)}</span><span class="${r.ok ? 'muted' : 'error'} small">${r.ok ? (r.temporary_password ? `<span class="temp-pw">${escapeHtml(r.temporary_password)}</span>` : '✓') : escapeHtml(r.error)}</span></div>`).join('');
+    loadUsers();
+  } catch (err) { if (err.message !== 'auth') out.textContent = err.message; }
+};
+
+/* ---------------- the company's mail server ---------------- */
+async function loadSmtp() {
+  const c = await api('/api/team/smtp');
+  const f = document.getElementById('smtp-form');
+  for (const k of ['host', 'username', 'from_address', 'from_name']) f.elements[k].value = c[k] || '';
+  f.elements.port.value = String(c.port || 587);
+  f.elements.security.value = c.security || 'starttls';
+  f.elements.password.value = '';
+  f.elements.password.placeholder = c.has_password ? _t('Saved. Leave blank to keep it') : '';
+  document.getElementById('smtp-status').textContent = c.configured
+    ? _t('✓ Mail goes out through {0} as {1}.', {0: c.host, 1: c.from_address})
+    : (c.server_fallback ? _t('Not set: mail goes out through this server\'s default mail settings.')
+                         : _t('Not set: login details can\'t be emailed yet, you\'ll see each temporary password to hand over yourself.'));
+  const w = document.getElementById('welcome-form');
+  w.elements.subject.value = c.welcome_subject;
+  w.elements.message.value = c.welcome_message;
+}
+document.getElementById('smtp-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  try {
+    await api('/api/team/smtp', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      host: f.host.value.trim(), port: Number(f.port.value), security: f.security.value, username: f.username.value.trim(),
+      password: f.password.value, from_address: f.from_address.value.trim(), from_name: f.from_name.value.trim()})});
+    toast(_t('Saved'));
+    loadSmtp();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('smtp-test').onclick = async (e) => {
+  e.target.disabled = true;
+  try { const d = await api('/api/team/smtp/test', {method: 'POST'}); toast(_t('✓ Test email sent to {0}', {0: d.to})); }
+  catch (err) { if (err.message !== 'auth') document.getElementById('smtp-status').textContent = err.message; }
+  e.target.disabled = false;
+};
+document.getElementById('smtp-del').onclick = async () => {
+  if (!confirm(_t('Remove your mail server settings?'))) return;
+  try { await api('/api/team/smtp', {method: 'DELETE'}); loadSmtp(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('welcome-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target.elements;
+  try {
+    await api('/api/team/welcome-email', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject: f.subject.value, message: f.message.value})});
+    toast(_t('Saved'));
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
 };
 
 /* ---------------- guided onboarding ---------------- */
@@ -707,7 +1033,7 @@ const dcCache = {};
 async function domainConnectFor(domain) {
   // Without a connected DNS token, owners can still publish in one click when
   // the domain's DNS host supports Domain Connect.
-  if (dashData.cfConnected || !dashData.me || dashData.me.role !== 'owner') return null;
+  if (dashData.cfConnected || !dashData.me || !['owner', 'admin'].includes(dashData.me.role)) return null;
   if (!(domain in dcCache)) {
     try { const r = await api('/api/dns/domain-connect?domain=' + encodeURIComponent(domain)); dcCache[domain] = r.supported ? r : null; }
     catch (err) { dcCache[domain] = null; }
@@ -820,7 +1146,7 @@ async function loadHosted() {
   document.getElementById('hosted-list').innerHTML = h.records.map(r => `<div class="dm-row" data-hosted="${escapeHtml(r.domain)}|${r.kind}">
     <div class="top"><strong>${escapeHtml(r.domain)} · ${labels[r.kind]}</strong>
       <button class="btn tiny" data-hcheck>${_t('Check DNS')}</button>
-      <button class="btn tiny ghost owner-only" data-hdel>${_t('Stop hosting')}</button></div>
+      <button class="btn tiny ghost admin-only" data-hdel>${_t('Stop hosting')}</button></div>
     <div class="meta">${_t('Publish once in your DNS:')}</div>
     ${r.customer_records.map(c => `<div class="meta fix"><code>${escapeHtml(c.name)}  ${c.type}  ${escapeHtml(c.value)}</code>
       <button class="copy-btn" data-copy="${escapeHtml(c.value)}">${_t('Copy')}</button>
@@ -829,8 +1155,8 @@ async function loadHosted() {
     <div class="meta" data-hstatus></div></div>`).join('');
   const list = document.getElementById('hosted-list');
   bindReportInteractions(list);
-  const isOwner = dashData.me && dashData.me.role === 'owner';
-  list.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
+  const isOwner = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  list.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isOwner));
   list.querySelectorAll('[data-happly]').forEach(b => b.onclick = () => {
     const c = JSON.parse(b.dataset.happly); window.applyDnsFix(c.name, c.type, c.value, b);
   });

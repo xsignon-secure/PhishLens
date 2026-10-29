@@ -54,7 +54,8 @@ def test_mcp_handshake_tools_and_auth(client, db):
 
     # A browser cookie alone is refused.
     assert client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "ping"}).status_code == 401
-    client.post("/api/auth/login", json={"password": "test-admin-password"})
+    from tests.conftest import admin_login
+    admin_login(client, keep_cookies=True)
     assert client.cookies.get("access_token")
     assert client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "ping"}).status_code == 401
     assert _rpc(client, {"Authorization": "Bearer plk_wrong"}, "ping").status_code == 401

@@ -63,8 +63,13 @@ def headers_tool(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
-    from .. import workspace
-    return templates.TemplateResponse(request, "login.html", {"request": request, "enabled": workspace.enabled()})
+    return templates.TemplateResponse(request, "login.html", {"request": request})
+
+
+@router.get("/platform", response_class=HTMLResponse)
+def platform_page(request: Request):
+    return templates.TemplateResponse(request, "platform.html",
+                                      {"request": request, "enabled": bool(settings.ADMIN_PASSWORD)})
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

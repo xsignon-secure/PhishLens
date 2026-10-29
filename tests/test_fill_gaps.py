@@ -325,7 +325,7 @@ def test_branding_on_pdf_shared_report_and_alerts(client, db, monkeypatch):
     page = client.get(f"/r/{scan['id']}").text
     assert "Prepared by Acme IT" in page and "Call 555-0100" in page
     sent = {}
-    monkeypatch.setattr(mailer, "send_email", lambda to, subject, body: sent.update(to=to, subject=subject, body=body) or True)
+    monkeypatch.setattr(mailer, "send_email", lambda to, subject, body, **k: sent.update(to=to, subject=subject, body=body) or True)
     t = _tenant(db, "msp@acme-it.com")
     mon = models.Monitor(tenant_id=t.id, domain="client.com", client="Client Co")
     db.add(mon)
