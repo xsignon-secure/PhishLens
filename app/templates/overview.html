@@ -32,7 +32,7 @@ async function api(path) {
   const r = await fetch(path, {headers: {'X-CSRF-Token': getCookie('csrf_token')}});
   if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
   return d;
 }
 const ALERT_KINDS = {

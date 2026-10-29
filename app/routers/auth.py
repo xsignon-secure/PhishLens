@@ -40,13 +40,13 @@ class FirstPasswordIn(BaseModel):
 
 class MfaIn(BaseModel):
     step_token: str = Field(min_length=10, max_length=2000)
-    code: str = Field(min_length=6, max_length=20)
+    code: str = Field(max_length=20)
 
     model_config = {"extra": "forbid"}
 
 
 class CodeIn(BaseModel):
-    code: str = Field(min_length=6, max_length=20)
+    code: str = Field(max_length=20)
 
     model_config = {"extra": "forbid"}
 

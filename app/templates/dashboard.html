@@ -270,7 +270,7 @@ async function api(path, opts = {}, retried = false) {
     return api(path, opts, true);
   }
   if (r.status === 403 && d.detail === 'mfa_setup_required') { showMfaSetup(true); throw new Error('auth'); }
-  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
   return d;
 }
 
@@ -322,7 +322,7 @@ async function showMfaSetup(required) {
     // the one the phone already scanned.
     const r = await fetch('/api/auth/mfa/setup', {method: 'POST', headers: {'X-CSRF-Token': getCookie('csrf_token')}});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) { toast(d.detail || _t('Request failed')); return; }
+    if (!r.ok) { toast(errorText(d, _t('Request failed'))); return; }
     let error = '';
     for (;;) {
       const code = await askModal(_t('Set up your authenticator app'),
@@ -1270,7 +1270,7 @@ function intRender(form) {
     try {
       const d = await api(`/api/team/integrations/${which}/test`, {method: 'POST'});
       msg.textContent = d.ok ? (which === 'psa' ? _t('Test ticket {0} created ✓', {0: d.detail}) : _t('Test delivered ✓'))
-                             : (_t('Test failed:') + ' ' + (d.detail || _t('no response')));
+                             : (_t('Test failed:') + ' ' + (errorText(d, _t('no response'))));
     } catch (err) { msg.textContent = err.message; }
   };
 }

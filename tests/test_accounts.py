@@ -352,6 +352,9 @@ def test_authenticator_setup_keeps_its_key_until_confirmed(client, db):
     first = client.post("/api/auth/mfa/setup", headers=h).json()
     # A reload or a mistyped code must not swap the key the phone scanned.
     assert client.post("/api/auth/mfa/enable", json={"code": "000000"}, headers=h).status_code == 400
+    # An empty or short code gets a sentence back, not a list of field errors.
+    empty = client.post("/api/auth/mfa/enable", json={"code": ""}, headers=h)
+    assert empty.status_code == 400 and isinstance(empty.json()["detail"], str)
     again = client.post("/api/auth/mfa/setup", headers=h).json()
     assert again["secret"] == first["secret"]
     code = pyotp.TOTP(first["secret"]).now()

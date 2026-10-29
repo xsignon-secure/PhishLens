@@ -33,7 +33,7 @@ const show = id => ['login-form', 'pw-form', 'mfa-form'].forEach(f => document.g
 async function post(path, body) {
   const r = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || _t('Login failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Login failed')));
   return d;
 }
 

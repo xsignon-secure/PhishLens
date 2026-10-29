@@ -20,7 +20,7 @@ async function api(path, opts = {}) {
   const r = await fetch(path, opts);
   if (r.status === 401) { location.href = '/login'; throw new Error('auth'); }
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.detail || _t('Request failed'));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
   return d;
 }
 const json = body => ({method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
