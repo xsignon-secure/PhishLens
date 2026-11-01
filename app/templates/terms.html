@@ -3,15 +3,20 @@
 {% block content %}
 <section class="legal">
   <h1>Terms of Service</h1>
-  <p class="muted">Last updated: October 2026</p>
+  <p class="muted">Last updated: November 2026</p>
   <h2>1. The service</h2>
   <p>PhishLens provides automated email-security posture scanning of domains you submit. Scan results are informational estimates based on publicly observable DNS, TLS, and HTTP signals — not a guarantee of security.</p>
   <h2>2. Acceptable use</h2>
   <p>Scan only domains you own or are authorized to assess. Do not use the service to probe systems without authorization, and do not abuse rate limits or attempt to disrupt the service.</p>
   <h2>3. Dashboard access</h2>
   <p>There is no self-signup. Whoever runs this server creates each company and its owner; owners and admins create their own users and are responsible for who has access. Keep your password and authenticator app private.</p>
-  <h2>4. Free and open source</h2>
-  <p>PhishLens is free, open-source software under the MIT License. There are no paid plans. The operator of this instance may apply rate limits to prevent abuse. You can run your own copy from the <a href="{{ source_url }}">source code</a>.</p>
+  <h2>4. Open source and plans</h2>
+  <p>PhishLens is open-source software under the MIT License. You can run your own copy, with every feature, from the <a href="{{ source_url }}">source code</a>. The operator of this instance may apply rate limits to prevent abuse.</p>
+  {% if plans_on() %}
+  <p>On this hosted service each company is on a Free, Pro or MSP plan, which sets its limits and features. Plans are arranged with the operator and billed by invoice. A downgrade never deletes your data or stops hosted DNS records from being served.</p>
+  {% else %}
+  <p>This instance has no paid plans.</p>
+  {% endif %}
   <h2>5. Liability</h2>
   <p>The service is provided "as is" without warranties. To the maximum extent permitted by law, we are not liable for decisions you make based on scan results.</p>
   <h2>6. Changes</h2>

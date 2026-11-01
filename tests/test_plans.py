@@ -147,3 +147,11 @@ def test_rescans_follow_the_plan(db, plans_on, monkeypatch):
     _set_plan(db, owner, "pro")
     rescan.run(min_age_hours=1)
     assert seen == [("a.com", True)]  # Pro: daily, with lookalike watch
+
+
+def test_terms_and_footer_follow_plans_setting(client, monkeypatch):
+    t = client.get("/terms").text
+    assert "no paid plans" in t and "free and open source" in t
+    monkeypatch.setattr(settings, "PLANS_ENABLED", True)
+    t = client.get("/terms").text
+    assert "Free, Pro or MSP plan" in t and "with hosted plans" in t
