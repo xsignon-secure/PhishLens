@@ -32,6 +32,7 @@ def _asset_version() -> str:
 
 
 templates.env.globals["asset_v"] = _asset_version()
+templates.env.globals["plans_on"] = lambda: settings.PLANS_ENABLED
 
 
 def _user_or_none(request: Request, db: Session):

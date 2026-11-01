@@ -30,7 +30,11 @@
   <p>
     <a href="/help">{{ _("Help") }}</a> · <a href="/terms">{{ _("Terms") }}</a> · <a href="/privacy">{{ _("Privacy") }}</a> · <a href="/api/health">{{ _("Status") }}</a> · <a href="{{ source_url }}">{{ _("Source code") }}</a>
   </p>
+  {% if plans_on() %}
+  <p>{{ _("PhishLens — open source (MIT), with hosted plans. Know where your domain stands.") }}</p>
+  {% else %}
   <p>{{ _("PhishLens — free and open source (MIT). Know where your domain stands.") }}</p>
+  {% endif %}
   <p><select id="lang-pick" aria-label="Language" class="small">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == current_lang() %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></p>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
