@@ -127,7 +127,6 @@
  "Configured:": "設定済み:",
  "Confirm it's you": "本人確認",
  "Connect": "接続",
- "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.": "DNS プロバイダーを接続すると、ワンクリックでレコードを修正できます。レポートの各レコードの横に <b>適用</b> ボタンが表示されます。必要なトークン: Cloudflare は <i>Zone → DNS → Edit</i>、DigitalOcean は読み書き可能な API トークン、deSEC はアカウントページのトークン、GoDaddy は <code>KEY:SECRET</code> (GoDaddy の API は 10 ドメイン以上のアカウント限定)、Route 53 はレコードセットを変更できる IAM ユーザーの <code>ACCESS_KEY_ID:SECRET</code>。",
  "Continue": "続ける",
  "Copied": "コピーしました",
  "Copied to clipboard ✓": "クリップボードにコピーしました ✓",
@@ -808,5 +807,6 @@
  "Show all": "すべて表示",
  "Suspicious": "不審",
  "auto-approved": "自動承認",
- "confidence {0}": "信頼度 {0}"
+ "confidence {0}": "信頼度 {0}",
+ "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets; Hetzner a Console project token (read & write); Porkbun <code>API_KEY:SECRET_KEY</code> with API access on for the domain; Vultr an API key; Linode a personal access token with Domains read/write; Gandi a personal access token that can manage DNS.": "DNS プロバイダーを接続すると、ワンクリックでレコードを修正できます。レポートの各レコードの横に <b>適用</b> ボタンが表示されます。必要なトークン: Cloudflare は <i>Zone → DNS → Edit</i>、DigitalOcean は読み書き可能な API トークン、deSEC はアカウントページのトークン、GoDaddy は <code>KEY:SECRET</code> (GoDaddy の API は 10 ドメイン以上のアカウント限定)、Route 53 はレコードセットを変更できる IAM ユーザーの <code>ACCESS_KEY_ID:SECRET</code>、Hetzner は Console プロジェクトトークン（読み書き）、Porkbun はドメインで API アクセスを有効にした <code>API_KEY:SECRET_KEY</code>、Vultr は API キー、Linode は Domains 読み書き権限の個人アクセストークン、Gandi は DNS を管理できる個人アクセストークン。"
 }

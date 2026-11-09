@@ -75,7 +75,6 @@
  "Sign out other devices": "Sair dos outros dispositivos",
  "Export my data": "Exportar meus dados",
  "DNS provider (one-click fixes)": "Provedor DNS (correções com um clique)",
- "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.": "Conecte seu provedor DNS e corrija registros com um clique: um botão <b>Aplicar</b> aparece ao lado de cada registro nos seus relatórios. Token necessário: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean, um token de API de leitura e gravação; deSEC, um token da página da sua conta; GoDaddy <code>KEY:SECRET</code> (a GoDaddy limita a API a contas com 10 domínios ou mais); Route 53 <code>ACCESS_KEY_ID:SECRET</code> de um usuário IAM que possa alterar conjuntos de registros.",
  "API token": "Token de API",
  "Connect": "Conectar",
  "Disconnect": "Desconectar",
@@ -808,5 +807,6 @@
  "Show all": "Mostrar tudo",
  "Suspicious": "Suspeito",
  "auto-approved": "aprovado automaticamente",
- "confidence {0}": "confiança {0}"
+ "confidence {0}": "confiança {0}",
+ "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets; Hetzner a Console project token (read & write); Porkbun <code>API_KEY:SECRET_KEY</code> with API access on for the domain; Vultr an API key; Linode a personal access token with Domains read/write; Gandi a personal access token that can manage DNS.": "Conecte seu provedor DNS e corrija registros com um clique: um botão <b>Aplicar</b> aparece ao lado de cada registro nos seus relatórios. Token necessário: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean, um token de API de leitura e gravação; deSEC, um token da página da sua conta; GoDaddy <code>KEY:SECRET</code> (a GoDaddy limita a API a contas com 10 domínios ou mais); Route 53 <code>ACCESS_KEY_ID:SECRET</code> de um usuário IAM que possa alterar conjuntos de registros; Hetzner, um token de projeto do Console (leitura e gravação); Porkbun <code>API_KEY:SECRET_KEY</code> com o acesso à API ativado para o domínio; Vultr, uma chave de API; Linode, um token de acesso pessoal com Domains de leitura/gravação; Gandi, um token de acesso pessoal que possa gerenciar o DNS."
 }

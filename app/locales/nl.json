@@ -127,7 +127,6 @@
  "Configured:": "Ingesteld:",
  "Confirm it's you": "Bevestig dat jij het bent",
  "Connect": "Koppelen",
- "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.": "Koppel je DNS-provider en herstel records met één klik: naast elk record in je rapporten verschijnt een knop <b>Toepassen</b>. Benodigd token: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean een lees/schrijf-API-token; deSEC een token van je accountpagina; GoDaddy <code>KEY:SECRET</code> (GoDaddy beperkt zijn API tot accounts met 10+ domeinen); Route 53 <code>ACCESS_KEY_ID:SECRET</code> voor een IAM-gebruiker die record sets mag wijzigen.",
  "Continue": "Doorgaan",
  "Copied": "Gekopieerd",
  "Copied to clipboard ✓": "Naar klembord gekopieerd ✓",
@@ -808,5 +807,6 @@
  "Show all": "Alles tonen",
  "Suspicious": "Verdacht",
  "auto-approved": "automatisch goedgekeurd",
- "confidence {0}": "betrouwbaarheid {0}"
+ "confidence {0}": "betrouwbaarheid {0}",
+ "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets; Hetzner a Console project token (read & write); Porkbun <code>API_KEY:SECRET_KEY</code> with API access on for the domain; Vultr an API key; Linode a personal access token with Domains read/write; Gandi a personal access token that can manage DNS.": "Koppel je DNS-provider en herstel records met één klik: naast elk record in je rapporten verschijnt een knop <b>Toepassen</b>. Benodigd token: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean een lees/schrijf-API-token; deSEC een token van je accountpagina; GoDaddy <code>KEY:SECRET</code> (GoDaddy beperkt zijn API tot accounts met 10+ domeinen); Route 53 <code>ACCESS_KEY_ID:SECRET</code> voor een IAM-gebruiker die record sets mag wijzigen; Hetzner een Console-projecttoken (lezen en schrijven); Porkbun <code>API_KEY:SECRET_KEY</code> met API-toegang aan voor het domein; Vultr een API-sleutel; Linode een persoonlijk toegangstoken met Domains lezen/schrijven; Gandi een persoonlijk toegangstoken dat DNS mag beheren."
 }

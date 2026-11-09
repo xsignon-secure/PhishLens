@@ -132,7 +132,7 @@ def delete_hosted(domain: str, kind: str, request: Request, db: Session = Depend
 
 # ------------------------------------------------------------------ one-click fixes
 class DnsTokenIn(BaseModel):
-    provider: str = Field(default="cloudflare", pattern="^(cloudflare|digitalocean|desec|godaddy|route53)$")
+    provider: str = Field(default="cloudflare", pattern="^(cloudflare|digitalocean|desec|godaddy|route53|hetzner|porkbun|vultr|linode|gandi)$")
     token: str = Field(min_length=20, max_length=200)
 
 

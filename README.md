@@ -78,8 +78,8 @@ for your DNS provider.
 
 - Hosted DMARC, SPF (with flattening), MTA-STS, TLS-RPT and BIMI records
   ([docs/HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md)).
-- One-click DNS fixes on Cloudflare, DigitalOcean, deSEC, GoDaddy and Amazon
-  Route 53, plus Domain Connect ([docs/DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md)).
+- One-click DNS fixes (with undo) on Cloudflare, DigitalOcean, deSEC, GoDaddy,
+  Amazon Route 53, Hetzner, Porkbun, Vultr, Linode (Akamai) and Gandi, plus Domain Connect ([docs/DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md)).
 - A guided `/setup` flow: domain, DMARC policy, publishing and alerts.
 
 ### Free public tools

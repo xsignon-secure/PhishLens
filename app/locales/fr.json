@@ -75,7 +75,6 @@
  "Sign out other devices": "Déconnecter les autres appareils",
  "Export my data": "Exporter mes données",
  "DNS provider (one-click fixes)": "Fournisseur DNS (corrections en un clic)",
- "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.": "Connectez votre fournisseur DNS et corrigez les enregistrements en un clic : un bouton <b>Appliquer</b> apparaît à côté de chaque enregistrement de vos rapports. Jeton nécessaire : Cloudflare <i>Zone → DNS → Edit</i> ; DigitalOcean, un jeton d'API en lecture-écriture ; deSEC, un jeton depuis la page de votre compte ; GoDaddy <code>KEY:SECRET</code> (GoDaddy réserve son API aux comptes de 10 domaines ou plus) ; Route 53 <code>ACCESS_KEY_ID:SECRET</code> d'un utilisateur IAM autorisé à modifier les jeux d'enregistrements.",
  "API token": "Jeton d'API",
  "Connect": "Connecter",
  "Disconnect": "Déconnecter",
@@ -808,5 +807,6 @@
  "Show all": "Tout afficher",
  "Suspicious": "Suspect",
  "auto-approved": "approuvé automatiquement",
- "confidence {0}": "confiance {0}"
+ "confidence {0}": "confiance {0}",
+ "Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets; Hetzner a Console project token (read & write); Porkbun <code>API_KEY:SECRET_KEY</code> with API access on for the domain; Vultr an API key; Linode a personal access token with Domains read/write; Gandi a personal access token that can manage DNS.": "Connectez votre fournisseur DNS et corrigez les enregistrements en un clic : un bouton <b>Appliquer</b> apparaît à côté de chaque enregistrement de vos rapports. Jeton nécessaire : Cloudflare <i>Zone → DNS → Edit</i> ; DigitalOcean, un jeton d'API en lecture-écriture ; deSEC, un jeton depuis la page de votre compte ; GoDaddy <code>KEY:SECRET</code> (GoDaddy réserve son API aux comptes de 10 domaines ou plus) ; Route 53 <code>ACCESS_KEY_ID:SECRET</code> d'un utilisateur IAM autorisé à modifier les jeux d'enregistrements ; Hetzner, un jeton de projet Console (lecture et écriture) ; Porkbun <code>API_KEY:SECRET_KEY</code> avec l'accès API activé pour le domaine ; Vultr, une clé API ; Linode, un jeton d'accès personnel avec Domains en lecture/écriture ; Gandi, un jeton d'accès personnel autorisé à gérer le DNS."
 }

@@ -110,10 +110,10 @@
   <div data-section="dns" class="hidden">
   <div class="panel" id="cloudflare-panel">
       <h2 data-feature="dns_fixes"><span class="dot"></span>{{ _("DNS provider (one-click fixes)") }}</h2>
-      <p class="muted small">{{ _("Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets.") }}</p>
+      <p class="muted small">{{ _("Connect your DNS provider and fix records with one click: an <b>Apply</b> button appears next to each record in your reports. Token needed: Cloudflare <i>Zone → DNS → Edit</i>; DigitalOcean a read/write API token; deSEC a token from your account page; GoDaddy <code>KEY:SECRET</code> (GoDaddy limits its API to accounts with 10+ domains); Route 53 <code>ACCESS_KEY_ID:SECRET</code> for an IAM user that can change record sets; Hetzner a Console project token (read & write); Porkbun <code>API_KEY:SECRET_KEY</code> with API access on for the domain; Vultr an API key; Linode a personal access token with Domains read/write; Gandi a personal access token that can manage DNS.") }}</p>
       <div id="cf-status" class="muted small"></div>
       <form id="cf-form" class="scanbox small admin-only hidden">
-        <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option><option value="godaddy">GoDaddy</option><option value="route53">Amazon Route 53</option></select>
+        <select id="cf-provider" aria-label="DNS provider"><option value="cloudflare">Cloudflare</option><option value="digitalocean">DigitalOcean</option><option value="desec">deSEC</option><option value="godaddy">GoDaddy</option><option value="route53">Amazon Route 53</option><option value="hetzner">Hetzner</option><option value="porkbun">Porkbun</option><option value="vultr">Vultr</option><option value="linode">Linode (Akamai)</option><option value="gandi">Gandi</option></select>
         <input id="cf-token" type="password" placeholder="{{ _("API token") }}" autocomplete="off">
         <button class="btn" type="submit">{{ _("Connect") }}</button>
       </form>
