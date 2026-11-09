@@ -162,19 +162,24 @@
   <div class="panel" id="assistant-panel">
     <h2><span class="dot"></span>{{ _("AI assistant") }}</h2>
     <p class="muted small">{{ _("Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.") }}</p>
-    <div id="assistant-off" class="muted small hidden">{{ _("The assistant is off. An owner or admin can add an Anthropic API key below.") }}</div>
+    <div id="assistant-off" class="muted small hidden">{{ _("The assistant is off. An owner or admin can choose an AI provider and add its API key below.") }}</div>
+    <p id="assistant-using" class="muted small hidden"></p>
     <div id="assistant-log" class="assistant-log" aria-live="polite"></div>
     <form id="assistant-form" class="assistant-form">
       <textarea id="assistant-input" rows="2" maxlength="8000" placeholder="{{ _("e.g. Is it safe to move example.com to p=reject?") }}" aria-label="{{ _("Your question") }}"></textarea>
       <button class="btn" type="submit">{{ _("Ask") }}</button>
     </form>
-    <details class="admin-only hidden" style="margin-top:14px"><summary class="small">{{ _("Use your own Anthropic API key") }}</summary>
-      <p class="muted small">{{ _("Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.") }}</p>
-      <form id="assistant-key-form" class="scanbox small">
-        <input id="assistant-key" type="password" placeholder="sk-ant-…" autocomplete="off" aria-label="{{ _("Anthropic API key") }}">
-        <button class="btn" type="submit">{{ _("Save key") }}</button>
-        <button class="btn tiny ghost hidden" type="button" id="assistant-key-del">{{ _("Remove key") }}</button>
+    <details class="admin-only hidden" id="assistant-key-box" style="margin-top:14px"><summary class="small">{{ _("Choose the AI provider and your own API key") }}</summary>
+      <p class="muted small">{{ _("Pick any provider. Questions and the data the assistant looks up are sent to that provider with your key and billed to your account there. The key is stored encrypted and never shown again.") }}</p>
+      <form id="assistant-key-form" class="scanbox small" style="flex-wrap:wrap">
+        <select id="assistant-provider" aria-label="{{ _("AI provider") }}"></select>
+        <input id="assistant-model" type="text" maxlength="200" autocomplete="off" spellcheck="false" aria-label="{{ _("Model") }}" placeholder="{{ _("Model") }}">
+        <input id="assistant-base" type="url" maxlength="500" autocomplete="off" spellcheck="false" class="hidden" aria-label="{{ _("Endpoint URL") }}">
+        <input id="assistant-key" type="password" maxlength="500" autocomplete="off" aria-label="{{ _("API key") }}" placeholder="{{ _("API key") }}">
+        <button class="btn" type="submit">{{ _("Save") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="assistant-key-del">{{ _("Remove") }}</button>
       </form>
+      <p id="assistant-provider-help" class="muted small"></p>
     </details>
   </div>
   </div>
@@ -699,12 +704,40 @@ function renderAssistant(pending) {
     + (pending ? `<div class="bubble assistant muted">${_t('Thinking…')}</div>` : '');
   log.scrollTop = log.scrollHeight;
 }
+let aiProviders = [], aiStatus = null;
+function aiProvider(id) { return aiProviders.find(p => p.id === id) || aiProviders[0]; }
+function showProviderFields(keepModel) {
+  const p = aiProvider(document.getElementById('assistant-provider').value);
+  const own = aiStatus && aiStatus.own_key && aiStatus.provider === p.id;
+  const model = document.getElementById('assistant-model'), base = document.getElementById('assistant-base');
+  if (!keepModel) model.value = own ? (aiStatus.model || '') : '';
+  model.placeholder = p.model ? _t('Model, e.g. {0}', {0: p.model}) : _t('Model');
+  base.classList.toggle('hidden', !p.needs_base_url);
+  base.placeholder = p.base_hint || 'https://…';
+  if (own && p.needs_base_url) base.value = aiStatus.base_url || '';
+  document.getElementById('assistant-key').placeholder = own ? _t('Saved key (leave empty to keep it)')
+    : (p.key_optional ? _t('API key (optional)') : _t('API key'));
+  const help = [];
+  if (p.keys_url) help.push(`<a href="${escapeHtml(p.keys_url)}" target="_blank" rel="noopener noreferrer">${_t('Get a {0} API key', {0: escapeHtml(p.label)})}</a>`);
+  if (p.id === 'custom') help.push(escapeHtml(_t('Works with any OpenAI-compatible API (LiteLLM, vLLM, LM Studio, a company AI gateway). The endpoint must be public https unless the server allows private endpoints.')));
+  help.push(escapeHtml(_t('The model must support tool calling, so the assistant can look up your domains.')));
+  document.getElementById('assistant-provider-help').innerHTML = help.join(' ');
+}
 async function loadAssistant() {
-  const st = await api('/api/assistant');
+  const st = aiStatus = await api('/api/assistant');
+  aiProviders = st.providers || [];
   document.getElementById('assistant-off').classList.toggle('hidden', st.enabled);
   document.getElementById('assistant-form').classList.toggle('hidden', !st.enabled);
   document.getElementById('assistant-key-del').classList.toggle('hidden', !st.own_key);
+  const using = document.getElementById('assistant-using');
+  using.classList.toggle('hidden', !st.own_key);
+  if (st.own_key) using.textContent = _t('Using {0} · {1}', {0: aiProvider(st.provider).label, 1: st.model});
+  const sel = document.getElementById('assistant-provider');
+  sel.innerHTML = aiProviders.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.id === 'custom' ? _t('Other (any OpenAI-compatible endpoint)') : p.label)}</option>`).join('');
+  sel.value = st.own_key && st.provider ? st.provider : 'anthropic';
+  showProviderFields(false);
 }
+document.getElementById('assistant-provider').addEventListener('change', () => showProviderFields(false));
 document.getElementById('assistant-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const input = document.getElementById('assistant-input'), q = input.value.trim();
@@ -730,13 +763,16 @@ document.getElementById('assistant-key-form').addEventListener('submit', async (
   e.preventDefault();
   const el = document.getElementById('assistant-key');
   try {
-    await api('/api/team/assistant-key', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key: el.value.trim()})});
-    el.value = ''; toast(_t('✓ Key saved'));
+    const p = aiProvider(document.getElementById('assistant-provider').value);
+    await api('/api/team/assistant-key', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      provider: p.id, key: el.value.trim(), model: document.getElementById('assistant-model').value.trim() || null,
+      base_url: p.needs_base_url ? document.getElementById('assistant-base').value.trim() : null})});
+    el.value = ''; toast(_t('✓ Saved'));
   } catch (err) { if (err.message !== 'auth') toast(err.message); }
   loadAssistant();
 });
 document.getElementById('assistant-key-del').addEventListener('click', async () => {
-  if (!confirm(_t('Remove your Anthropic API key?'))) return;
+  if (!confirm(_t('Remove your AI provider and API key?'))) return;
   await api('/api/team/assistant-key', {method: 'DELETE'});
   loadAssistant();
 });

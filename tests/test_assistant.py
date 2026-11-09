@@ -59,7 +59,8 @@ def setup(db, monkeypatch):
 def test_off_without_a_key(setup, monkeypatch):
     owner, c, h = setup
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
-    assert c.get("/api/assistant", headers=h).json() == {"enabled": False, "own_key": False}
+    st = c.get("/api/assistant", headers=h).json()
+    assert st["enabled"] is False and st["own_key"] is False and len(st["providers"]) >= 10
     r = c.post("/api/assistant/chat", headers=h, json={"messages": [{"role": "user", "content": "hi"}]})
     assert r.status_code == 503
 
@@ -131,4 +132,77 @@ def test_own_key_is_encrypted_and_preferred(setup, db, monkeypatch):
     member = make_user(db, "m@acme.com", role="member", tenant=t, mfa=False)
     mh = {"Authorization": f"Bearer {login_as(c, member, keep_cookies=False)['access_token']}"}
     assert c.delete("/api/team/assistant-key", headers=mh).status_code == 403
-    assert c.delete("/api/team/assistant-key", headers=h).json() == {"enabled": True, "own_key": False}
+    r = c.delete("/api/team/assistant-key", headers=h).json()
+    assert r["enabled"] is True and r["own_key"] is False
+
+
+def _openai_reply(content=None, tool_calls=None):
+    msg = {"role": "assistant", "content": content}
+    if tool_calls:
+        msg["tool_calls"] = tool_calls
+    return httpx.Response(200, json={"choices": [{"message": msg, "finish_reason": "tool_calls" if tool_calls else "stop"}]})
+
+
+def test_any_openai_compatible_provider(setup, db, monkeypatch):
+    owner, c, h = setup
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
+    r = c.put("/api/team/assistant-key", headers=h,
+              json={"provider": "mistral", "key": "mistral-key-123456", "model": "mistral-small-latest"})
+    assert r.status_code == 200, r.text
+    st = r.json()
+    assert st["own_key"] and st["provider"] == "mistral" and st["model"] == "mistral-small-latest"
+    sent = []
+    script = [_openai_reply(tool_calls=[{"id": "c1", "type": "function",
+                                         "function": {"name": "list_monitors", "arguments": "{}"}}]),
+              _openai_reply("You monitor acme.com.")]
+    monkeypatch.setattr(assistant, "_post", lambda url, headers, payload: sent.append((url, headers, payload)) or script.pop(0))
+    r = c.post("/api/assistant/chat", headers=h, json={"messages": [{"role": "user", "content": "What do we monitor?"}]})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"reply": "You monitor acme.com.", "tools_used": ["list_monitors"]}
+    url, headers, payload = sent[0]
+    assert url == "https://api.mistral.ai/v1/chat/completions" and headers["Authorization"] == "Bearer mistral-key-123456"
+    assert payload["model"] == "mistral-small-latest" and payload["messages"][0]["role"] == "system"
+    assert {t["function"]["name"] for t in payload["tools"]} >= {"scan_domain", "list_monitors"}
+    tool_msg = sent[1][2]["messages"][-1]
+    assert tool_msg["role"] == "tool" and "acme.com" in tool_msg["content"] and "secret-other.com" not in tool_msg["content"]
+    # A refused key is reported clearly.
+    monkeypatch.setattr(assistant, "_post", lambda *a: httpx.Response(401, json={"error": {"message": "bad"}}))
+    r = c.post("/api/assistant/chat", headers=h, json={"messages": [{"role": "user", "content": "x"}]})
+    assert r.status_code == 502 and "refused the API key" in r.json()["detail"]
+
+
+def test_switching_provider_needs_a_new_key(setup, db, monkeypatch):
+    owner, c, h = setup
+    assert c.put("/api/team/assistant-key", headers=h, json={"provider": "openai", "key": "sk-openai-123456"}).status_code == 200
+    # Changing only the model keeps the key.
+    r = c.put("/api/team/assistant-key", headers=h, json={"provider": "openai", "model": "gpt-4.1-mini"})
+    assert r.status_code == 200 and r.json()["model"] == "gpt-4.1-mini"
+    # Another provider without a key is refused: the OpenAI key is never sent to it.
+    assert c.put("/api/team/assistant-key", headers=h, json={"provider": "gemini"}).status_code == 422
+    assert c.put("/api/team/assistant-key", headers=h, json={"provider": "nope", "key": "x" * 20}).status_code == 422
+    assert c.put("/api/team/assistant-key", headers=h, json={"provider": "anthropic", "key": "sk-openai-123456"}).status_code == 422
+
+
+def test_custom_endpoint_must_be_public_https(setup, db, monkeypatch):
+    owner, c, h = setup
+    for bad in ("http://llm.example.com/v1", "https://127.0.0.1/v1", "https://user:pw@llm.example.com/v1", ""):
+        r = c.put("/api/team/assistant-key", headers=h, json={"provider": "custom", "model": "llama3", "base_url": bad})
+        assert r.status_code == 422, bad
+    monkeypatch.setattr("app.scanner.net.is_public_host", lambda host: host == "llm.example.com")
+    r = c.put("/api/team/assistant-key", headers=h,
+              json={"provider": "custom", "model": "llama3", "base_url": "https://llm.example.com/v1/"})
+    assert r.status_code == 200 and r.json()["base_url"] == "https://llm.example.com/v1" and r.json()["enabled"]
+    # Self-hosters can allow a private endpoint (e.g. Ollama on their network).
+    monkeypatch.setattr(settings, "AI_ALLOW_PRIVATE_ENDPOINTS", True)
+    r = c.put("/api/team/assistant-key", headers=h,
+              json={"provider": "custom", "model": "llama3", "base_url": "http://192.168.1.5:11434/v1"})
+    assert r.status_code == 200
+
+
+def test_server_wide_provider_setting(setup, monkeypatch):
+    owner, c, h = setup
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
+    monkeypatch.setattr(settings, "AI_PROVIDER", "groq")
+    monkeypatch.setattr(settings, "AI_API_KEY", "gsk-server-123456")
+    cfg = assistant.config(owner.tenant)
+    assert cfg["provider"] == "groq" and cfg["model"] == "llama-3.3-70b-versatile" and not cfg["own"]
