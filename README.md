@@ -65,6 +65,10 @@ for your DNS provider.
 - Certificate Transparency watch (crt.sh, daily with scheduled rescans): alerts
   when a certificate authority you've never used issues a certificate for your
   domain, or when a registered lookalike gets a TLS certificate.
+- Phishing report inbox: staff upload a suspicious email (.eml) and PhishLens
+  checks its sender authentication and every link against the blocklists. Only
+  headers and links are kept. Admins can draft a takedown request to the
+  registrar and hosting provider (abuse contacts found through RDAP).
 - Scheduled weekly or monthly PDF reports; a multi-domain overview for MSPs.
 
 ### DMARC and TLS reporting
