@@ -797,5 +797,16 @@
  "Require SSO for members and admins (owners can still use a password)": "Exiger le SSO pour les membres et les admins (les propriétaires peuvent toujours utiliser un mot de passe)",
  "Sign in with SSO": "Se connecter avec le SSO",
  "Single sign-on": "Authentification unique",
- "leave blank to keep": "laisser vide pour conserver"
+ "leave blank to keep": "laisser vide pour conserver",
+ "Approve": "Approuver",
+ "Approved": "Approuvé",
+ "Authorized": "Autorisé",
+ "Auto-approve senders that are clearly yours (confidence 90 or more)": "Approuver automatiquement les expéditeurs qui sont clairement les vôtres (confiance 90 ou plus)",
+ "Needs a fix": "À corriger",
+ "Not ours": "Pas à nous",
+ "Reset": "Réinitialiser",
+ "Show all": "Tout afficher",
+ "Suspicious": "Suspect",
+ "auto-approved": "approuvé automatiquement",
+ "confidence {0}": "confiance {0}"
 }

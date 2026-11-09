@@ -80,7 +80,8 @@ def _call(name: str, args: dict, request: Request, db: Session, user: models.Use
         reports = (db.query(models.DmarcReport)
                    .filter(models.DmarcReport.tenant_id == user.tenant_id, models.DmarcReport.domain == domain,
                            models.DmarcReport.date_begin >= datetime.utcnow() - timedelta(days=days)).all())
-        s = dmarc_reports.summarize(reports, domain, days)
+        from .dmarc import sender_rules
+        s = dmarc_reports.summarize(reports, domain, days, sender_rules(db, user.tenant_id, domain))
         for row in s["senders"]:
             row.pop("sample_ips", None)
         s.pop("ips", None)

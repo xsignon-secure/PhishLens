@@ -186,7 +186,48 @@ def identify_sender(record: dict, own_domain: str) -> str:
     return "Unknown sender"
 
 
-def summarize(reports: list, domain: str, days: int) -> dict:
+_KNOWN_LABELS = {label for _, label in _KNOWN_SENDERS}
+AUTO_APPROVE_AT = 90
+
+
+def classify(row: dict, rules: dict | None = None) -> dict:
+    """Sort one sender into approved / authorized / needs_fix / suspicious /
+    blocked, with a 0-100 confidence that the mail really comes from you.
+
+    Evidence: a recognised email service or your own servers, how much of
+    its mail is aligned (DKIM/SPF for your domain), volume, and how many
+    days and reporters it showed up on. The company's own decision (`rules`:
+    sender -> approved|blocked) always wins."""
+    name = row["sender"]
+    if name in _KNOWN_LABELS:
+        base, why = 40, "a recognised email service"
+    elif name.endswith("(own servers)"):
+        base, why = 35, "your own mail servers"
+    elif name.startswith("Unknown"):
+        base, why = 0, "no identifying domain"
+    else:
+        base, why = 10, f"an unrecognised domain ({name})"
+    score = base + 40 * row["pass_rate"] / 100
+    score += 10 if row["messages"] >= 100 else 5 if row["messages"] >= 10 else 0
+    score += 10 if row.get("days_seen", 0) >= 3 else 5 if row.get("days_seen", 0) >= 2 else 0
+    score = int(min(100, round(score)))
+    rule = (rules or {}).get(name)
+    if rule:
+        category = rule["verdict"]
+    elif row["status"] == "pass":
+        category = "authorized"
+    elif base >= 35:
+        category = "needs_fix"
+    else:
+        category = "suspicious"
+    reasons = [f"Identified as {why}", f"{row['pass_rate']}% of its mail is aligned with your domain",
+               f"Seen on {row.get('days_seen', 0)} day(s) by {row.get('reporter_count', 0)} reporter(s)"]
+    return {**row, "category": category, "confidence": score, "reasons": reasons,
+            "rule_source": rule["source"] if rule else None,
+            "auto_approvable": not rule and category == "authorized" and score >= AUTO_APPROVE_AT}
+
+
+def summarize(reports: list, domain: str, days: int, rules: dict | None = None) -> dict:
     """Roll stored reports up into per-sender results and a policy verdict.
 
     `reports` are DmarcReport rows (or anything with .records / .policy /
@@ -219,7 +260,10 @@ def summarize(reports: list, domain: str, days: int) -> dict:
             name = identify_sender(rec, domain)
             s = senders.setdefault(name, {"sender": name, "messages": 0, "passed": 0,
                                           "dkim_aligned": 0, "spf_aligned": 0,
-                                          "ips": set(), "quarantined": 0, "rejected": 0})
+                                          "ips": set(), "quarantined": 0, "rejected": 0,
+                                          "days": set(), "reporters": set()})
+            s["days"].add(day)
+            s["reporters"].add(rep.org_name)
             s["messages"] += n
             s["passed"] += n if ok else 0
             s["dkim_aligned"] += n if rec.get("dkim") == "pass" else 0
@@ -254,7 +298,17 @@ def summarize(reports: list, domain: str, days: int) -> dict:
             "ip_count": len(s["ips"]), "sample_ips": sorted(i for i in s["ips"] if i)[:5],
             "quarantined": s["quarantined"], "rejected": s["rejected"],
             "status": status, "fix": fix,
+            "days_seen": len(s["days"]), "reporter_count": len(s["reporters"]),
         })
+    rows = [classify(r, rules) for r in rows]
+    for r in rows:
+        if r["category"] == "blocked":
+            r["fix"] = (f"You marked {r['sender']} as not yours. Once your policy is p=reject, "
+                        "receivers block this mail.")
+        elif r["category"] == "suspicious" and r["fix"]:
+            r["fix"] = (f"Probably spoofing: {r['sender']} isn't a service PhishLens recognises and its mail "
+                        f"isn't aligned with {domain}. If you do use it, approve it and turn on DKIM for "
+                        f"{domain} in its settings.")
     rows.sort(key=lambda r: -r["messages"])
 
     pass_rate = round(100 * passed / total, 1) if total else None
@@ -341,7 +395,7 @@ def _verdict(policy, pass_rate, span_days, rows, domain) -> dict:
     if pass_rate is None:
         return {"level": "info", "message": "No report data yet for this period."}
     failing_legit = [r for r in rows if r["status"] != "pass" and r["messages"] >= 10
-                     and not r["sender"].startswith("Unknown")]
+                     and r.get("category", "needs_fix") in ("needs_fix", "approved")]
     if p == "reject":
         return {"level": "pass", "message": "You're at p=reject: spoofed mail is blocked. "
                 "Keep watching for new senders that fail."}

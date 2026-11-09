@@ -797,5 +797,16 @@
  "Require SSO for members and admins (owners can still use a password)": "SSO für Mitglieder und Admins vorschreiben (Inhaber können weiterhin ein Passwort verwenden)",
  "Sign in with SSO": "Mit SSO anmelden",
  "Single sign-on": "Single Sign-on",
- "leave blank to keep": "leer lassen, um beizubehalten"
+ "leave blank to keep": "leer lassen, um beizubehalten",
+ "Approve": "Freigeben",
+ "Approved": "Freigegeben",
+ "Authorized": "Autorisiert",
+ "Auto-approve senders that are clearly yours (confidence 90 or more)": "Absender automatisch freigeben, die eindeutig Ihnen gehören (Konfidenz 90 oder mehr)",
+ "Needs a fix": "Muss behoben werden",
+ "Not ours": "Nicht von uns",
+ "Reset": "Zurücksetzen",
+ "Show all": "Alle anzeigen",
+ "Suspicious": "Verdächtig",
+ "auto-approved": "automatisch freigegeben",
+ "confidence {0}": "Konfidenz {0}"
 }

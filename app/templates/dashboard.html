@@ -1042,13 +1042,36 @@ function showDmarcView(view) {
         + groupTable(s.by_country, _t('Country'), top, r => r.country ? flag(r.country) + ' ' + escapeHtml(r.country) : '<span class="muted">' + _t('(unknown)') + '</span>');
     return;
   }
-  el.innerHTML = s.senders.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
-      ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span></div>
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  const cats = s.categories || {};
+  const filter = dashData.senderFilter || '';
+  const rows = s.senders.filter(r => !filter || r.category === filter);
+  el.innerHTML = `<div class="sender-cats">${SENDER_CATS.map(([k, label]) => `<button class="chip${filter === k ? ' on' : ''}" data-cat="${k}"><span class="cat-dot ${k}"></span>${_t(label)} <b>${cats[k] || 0}</b></button>`).join('')}
+      ${filter ? `<button class="chip" data-cat="">${_t('Show all')}</button>` : ''}</div>
+    ${admin ? `<label class="small muted"><input type="checkbox" id="auto-approve"${s.auto_approve ? ' checked' : ''}> ${_t('Auto-approve senders that are clearly yours (confidence 90 or more)')}</label>` : ''}`
+    + rows.map(r => `<div class="dm-row"><div class="top"><strong>${escapeHtml(r.sender)}</strong>
+      <span class="cat-badge ${r.category}">${_t(SENDER_CAT_WORDS[r.category] || r.category)}</span>
+      ${statusBadge(r.status)} <span class="muted">${r.pass_rate}%</span>
+      <span class="muted small" title="${escapeHtml((r.reasons || []).join('. '))}">${_t('confidence {0}', {0: r.confidence})}${r.rule_source === 'auto' ? ' · ' + _t('auto-approved') : ''}</span>
+      ${admin ? `<span class="sender-acts">${r.category !== 'approved' ? `<button class="btn tiny ghost" data-sender="${escapeHtml(r.sender)}" data-verdict="approved">${_t('Approve')}</button>` : ''}${r.category !== 'blocked' ? `<button class="btn tiny ghost" data-sender="${escapeHtml(r.sender)}" data-verdict="blocked">${_t('Not ours')}</button>` : ''}${r.rule_source ? `<button class="btn tiny ghost" data-sender="${escapeHtml(r.sender)}" data-verdict="">${_t('Reset')}</button>` : ''}</span>` : ''}</div>
       <div class="meta">${_t('{0} messages from {1} IP(s) · DKIM aligned {2} · SPF aligned {3}', {0: r.messages.toLocaleString(), 1: r.ip_count, 2: r.dkim_aligned.toLocaleString(), 3: r.spf_aligned.toLocaleString()})}</div>
       ${r.hint ? `<div class="meta">${escapeHtml(r.hint)}</div>` : ''}
       ${(r.sources || []).length ? `<div class="meta muted">${r.sources.map(x => escapeHtml(x.ip + (x.ptr ? ' (' + x.ptr + ')' : '') + (x.country ? ' ' + x.country : ''))).join(' · ')}</div>` : ''}
       ${r.fix ? `<div class="meta fix">${escapeHtml(r.fix)}</div>` : ''}</div>`).join('');
+  el.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { dashData.senderFilter = b.dataset.cat; showDmarcView('senders'); });
+  const auto = document.getElementById('auto-approve');
+  if (auto) auto.onchange = async () => {
+    await api('/api/dmarc/auto-approve', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({enabled: auto.checked})});
+    loadDmarc(s.domain);
+  };
+  el.querySelectorAll('[data-verdict]').forEach(b => b.onclick = async () => {
+    await api('/api/dmarc/senders/' + encodeURIComponent(s.domain), {method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({sender: b.dataset.sender, verdict: b.dataset.verdict || null})});
+    loadDmarc(s.domain);
+  });
 }
+const SENDER_CATS = [['approved', N_('Approved')], ['authorized', N_('Authorized')], ['needs_fix', N_('Needs a fix')], ['suspicious', N_('Suspicious')], ['blocked', N_('Not ours')]];
+const SENDER_CAT_WORDS = Object.fromEntries(SENDER_CATS);
 const KEY_SEV = {fail: 'high', warn: 'medium', pass: 'ok'};
 async function loadDkimHealth(domain) {
   const d = await api('/api/dmarc/dkim/' + encodeURIComponent(domain) + '?days=180');

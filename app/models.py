@@ -68,6 +68,8 @@ class Tenant(Base):
     welcome_message = Column(Text, nullable=True)
     # Hosted plan: free | pro | msp. Only enforced when PLANS_ENABLED is on.
     plan = Column(String(10), nullable=False, default="free", server_default="free")
+    # Approve DMARC senders that are clearly yours (high confidence) on their own.
+    auto_approve_senders = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
@@ -277,6 +279,22 @@ class DmarcReport(Base):
     records = Column(JSON, nullable=False)
     message_count = Column(Integer, nullable=False, default=0)
     pass_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SenderRule(Base):
+    """A company's decision about one sending service for one domain, from
+    DMARC reports: approved (it's ours) or blocked (not ours: spoofing).
+    source is manual or auto (auto-approve)."""
+    __tablename__ = "sender_rules"
+    __table_args__ = (UniqueConstraint("tenant_id", "domain", "sender", name="uq_sender_rule"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False)
+    sender = Column(String(300), nullable=False)
+    verdict = Column(String(10), nullable=False)  # approved | blocked
+    source = Column(String(10), nullable=False, default="manual")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
