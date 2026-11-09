@@ -1,6 +1,7 @@
 """DNS provider API clients for one-click fixes: Cloudflare, DigitalOcean,
-deSEC, GoDaddy and Amazon Route 53. Each needs only a credential that can edit
-DNS records (GoDaddy and Route 53 take "KEY:SECRET").
+deSEC, GoDaddy, Amazon Route 53, Hetzner, Porkbun, Vultr, Linode (Akamai) and
+Gandi. Each needs only a credential that can edit DNS records (GoDaddy, Route 53
+and Porkbun take "KEY:SECRET").
 
 Providers share the record-matching logic in `Provider.upsert`: for TXT, only
 the record that starts like the new value (e.g. "v=DMARC1") is replaced, so
@@ -13,9 +14,11 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-PROVIDERS = ("cloudflare", "digitalocean", "desec", "godaddy", "route53")
+PROVIDERS = ("cloudflare", "digitalocean", "desec", "godaddy", "route53",
+             "hetzner", "porkbun", "vultr", "linode", "gandi")
 LABELS = {"cloudflare": "Cloudflare", "digitalocean": "DigitalOcean", "desec": "deSEC",
-          "godaddy": "GoDaddy", "route53": "Amazon Route 53"}
+          "godaddy": "GoDaddy", "route53": "Amazon Route 53", "hetzner": "Hetzner",
+          "porkbun": "Porkbun", "vultr": "Vultr", "linode": "Linode (Akamai)", "gandi": "Gandi"}
 
 
 class DnsProviderError(Exception):
@@ -23,7 +26,11 @@ class DnsProviderError(Exception):
 
 
 def _txt_content(value: str) -> str:
-    return value.strip().strip('"')
+    value = value.strip()
+    # A long TXT value split into several quoted strings: "abc" "def" -> abcdef
+    if value.startswith('"') and value.endswith('"') and '" "' in value:
+        return "".join(value[1:-1].split('" "'))
+    return value.strip('"')
 
 
 def txt_prefix(content: str) -> str:
@@ -410,9 +417,251 @@ class Route53(RRsetProvider):
         self._xml("POST", f"/hostedzone/{zone}/rrset", body=ET.tostring(req, xml_declaration=True, encoding="UTF-8"))
 
 
+class _RelativeName:
+    @staticmethod
+    def _rel(zone, name, apex="@"):
+        name = name.rstrip(".").lower()
+        return apex if name == zone else name[: -len(zone) - 1]
+
+
+class Hetzner(RRsetProvider, _RelativeName):
+    """Hetzner DNS through the Hetzner Console (Cloud) API: a project API token
+    with read & write access."""
+    name = "Hetzner"
+    api = "https://api.hetzner.cloud/v1"
+
+    def verify(self) -> bool:
+        self._call("GET", "/zones", params={"per_page": 1})
+        return True
+
+    def _check(self, r, body) -> None:
+        if r.status_code >= 400:
+            err = body.get("error") if isinstance(body, dict) else None
+            raise DnsProviderError(f"Hetzner: {(err or {}).get('message') or f'HTTP {r.status_code}'}")
+
+    def zone_for(self, name):
+        def exists(candidate):
+            zones = self._call("GET", "/zones", params={"name": candidate}).get("zones") or []
+            return str(zones[0]["id"]) if zones else None
+        zone_id, zone = self._zone_walk(name, exists)
+        self._zones = getattr(self, "_zones", {})
+        self._zones[zone_id] = zone
+        return zone_id, zone
+
+    def _zone_name(self, zone_id):
+        return getattr(self, "_zones", {}).get(zone_id) or self._call("GET", f"/zones/{zone_id}")["zone"]["name"]
+
+    def _path(self, zone_id, name, rtype):
+        return f"/zones/{zone_id}/rrsets/{quote(self._rel(self._zone_name(zone_id), name), safe='@')}/{rtype}"
+
+    def _rrset(self, zone, name, rtype):
+        r = self._client.request("GET", self._path(zone, name, rtype))
+        if r.status_code == 404:
+            return []
+        body = r.json() if r.content else {}
+        self._check(r, body)
+        return [rec.get("value", "") for rec in (body.get("rrset") or {}).get("records") or []]
+
+    def _put(self, zone, name, rtype, values):
+        path = self._path(zone, name, rtype)
+        if not values:
+            self._call("DELETE", path)
+        elif self._client.request("GET", path).status_code == 404:
+            self._call("POST", f"/zones/{zone}/rrsets", json={
+                "name": self._rel(self._zone_name(zone), name), "type": rtype, "ttl": 3600,
+                "records": [{"value": v} for v in values]})
+        else:
+            self._call("POST", path + "/actions/set_records", json={"records": [{"value": v} for v in values]})
+
+
+class Porkbun(Provider, _RelativeName):
+    """Porkbun. Credential is "API_KEY:SECRET_KEY", and API access must be
+    switched on for the domain in Porkbun's domain settings."""
+    name = "Porkbun"
+    api = "https://api.porkbun.com/api/json/v3"
+
+    def __init__(self, token, transport=None):
+        key, _, secret = token.partition(":")
+        if not key or not secret:
+            raise DnsProviderError("Porkbun needs API_KEY:SECRET_KEY")
+        self._auth = {"apikey": key, "secretapikey": secret}
+        super().__init__(token, transport)
+
+    def _headers(self, token):
+        return {}
+
+    def _check(self, r, body) -> None:
+        if r.status_code >= 400 or (isinstance(body, dict) and body.get("status") != "SUCCESS"):
+            msg = body.get("message") if isinstance(body, dict) else None
+            raise DnsProviderError(f"Porkbun: {msg or f'HTTP {r.status_code}'}")
+
+    def _post(self, path, **fields):
+        return self._call("POST", path, json={**self._auth, **fields})
+
+    def verify(self) -> bool:
+        self._post("/ping")
+        return True
+
+    def zone_for(self, name):
+        def exists(candidate):
+            try:
+                self._post(f"/dns/retrieve/{candidate}")
+                return candidate
+            except DnsProviderError:
+                return None
+        return self._zone_walk(name, exists)
+
+    def records(self, zone_id, name, rtype):
+        sub = self._rel(zone_id, name, "")
+        recs = self._post(f"/dns/retrieveByNameType/{zone_id}/{rtype}/{sub}".rstrip("/")).get("records") or []
+        return [{"id": r["id"], "content": r.get("content", "")} for r in recs]
+
+    def _fields(self, zone_id, name, rtype, content):
+        return {"name": self._rel(zone_id, name, ""), "type": rtype, "ttl": "600",
+                "content": content if rtype == "TXT" else content.rstrip(".")}
+
+    def _create(self, zone_id, name, rtype, content):
+        self._post(f"/dns/create/{zone_id}", **self._fields(zone_id, name, rtype, content))
+
+    def _update(self, zone_id, rec, name, rtype, content):
+        self._post(f"/dns/edit/{zone_id}/{rec['id']}", **self._fields(zone_id, name, rtype, content))
+
+    def _delete(self, zone_id, rec, name, rtype):
+        self._post(f"/dns/delete/{zone_id}/{rec['id']}")
+
+
+class Vultr(Provider, _RelativeName):
+    """Vultr DNS (API key from Account → API)."""
+    name = "Vultr"
+    api = "https://api.vultr.com/v2"
+
+    def _check(self, r, body) -> None:
+        if r.status_code >= 400:
+            msg = body.get("error") if isinstance(body, dict) else None
+            raise DnsProviderError(f"Vultr: {msg or f'HTTP {r.status_code}'}")
+
+    def verify(self) -> bool:
+        self._call("GET", "/account")
+        return True
+
+    def zone_for(self, name):
+        def exists(candidate):
+            try:
+                self._call("GET", f"/domains/{candidate}")
+                return candidate
+            except DnsProviderError:
+                return None
+        return self._zone_walk(name, exists)
+
+    def records(self, zone_id, name, rtype):
+        sub = self._rel(zone_id, name, "")
+        recs = self._call("GET", f"/domains/{zone_id}/records", params={"per_page": 500}).get("records") or []
+        return [{"id": r["id"], "content": r.get("data", "")} for r in recs
+                if r.get("type") == rtype and (r.get("name") or "") == sub]
+
+    @staticmethod
+    def _data(rtype, content):
+        return f'"{content}"' if rtype == "TXT" else content.rstrip(".")
+
+    def _create(self, zone_id, name, rtype, content):
+        self._call("POST", f"/domains/{zone_id}/records", json={
+            "name": self._rel(zone_id, name, ""), "type": rtype, "data": self._data(rtype, content), "ttl": 300})
+
+    def _update(self, zone_id, rec, name, rtype, content):
+        self._call("PATCH", f"/domains/{zone_id}/records/{rec['id']}", json={
+            "name": self._rel(zone_id, name, ""), "data": self._data(rtype, content), "ttl": 300})
+
+    def _delete(self, zone_id, rec, name, rtype):
+        self._call("DELETE", f"/domains/{zone_id}/records/{rec['id']}")
+
+
+class Linode(Provider, _RelativeName):
+    """Linode / Akamai Cloud DNS Manager (personal access token with
+    Domains: read/write)."""
+    name = "Linode"
+    api = "https://api.linode.com/v4"
+
+    def _check(self, r, body) -> None:
+        if r.status_code >= 400:
+            errs = body.get("errors") if isinstance(body, dict) else None
+            msg = "; ".join(str(e.get("reason")) for e in errs or []) or f"HTTP {r.status_code}"
+            raise DnsProviderError(f"Linode: {msg}")
+
+    def verify(self) -> bool:
+        self._call("GET", "/profile")
+        return True
+
+    def zone_for(self, name):
+        def exists(candidate):
+            rows = self._call("GET", "/domains", headers={"X-Filter": f'{{"domain": "{candidate}"}}'}).get("data") or []
+            return str(rows[0]["id"]) if rows else None
+        zone_id, zone = self._zone_walk(name, exists)
+        self._zones = {**getattr(self, "_zones", {}), zone_id: zone}
+        return zone_id, zone
+
+    def _zone_name(self, zone_id):
+        return getattr(self, "_zones", {}).get(zone_id) or self._call("GET", f"/domains/{zone_id}")["domain"]
+
+    def records(self, zone_id, name, rtype):
+        sub = self._rel(self._zone_name(zone_id), name, "")
+        out, page = [], 1
+        while True:
+            body = self._call("GET", f"/domains/{zone_id}/records", params={"page": page, "page_size": 500})
+            out += [{"id": r["id"], "content": r.get("target", "")} for r in body.get("data") or []
+                    if r.get("type") == rtype and (r.get("name") or "") == sub]
+            if page >= int(body.get("pages") or 1):
+                return out
+            page += 1
+
+    def _body(self, zone_id, name, rtype, content):
+        return {"type": rtype, "name": self._rel(self._zone_name(zone_id), name, ""),
+                "target": content if rtype == "TXT" else content.rstrip("."), "ttl_sec": 300}
+
+    def _create(self, zone_id, name, rtype, content):
+        self._call("POST", f"/domains/{zone_id}/records", json=self._body(zone_id, name, rtype, content))
+
+    def _update(self, zone_id, rec, name, rtype, content):
+        self._call("PUT", f"/domains/{zone_id}/records/{rec['id']}", json=self._body(zone_id, name, rtype, content))
+
+    def _delete(self, zone_id, rec, name, rtype):
+        self._call("DELETE", f"/domains/{zone_id}/records/{rec['id']}")
+
+
+class Gandi(RRsetProvider, _RelativeName):
+    """Gandi LiveDNS (personal access token with "Manage domain technical
+    configurations")."""
+    name = "Gandi"
+    api = "https://api.gandi.net/v5/livedns"
+
+    def verify(self) -> bool:
+        self._call("GET", "/domains", params={"per_page": 1})
+        return True
+
+    def zone_for(self, name):
+        return self._zone_walk(name, self._domain_exists("/domains/{}"))
+
+    def _path(self, zone, name, rtype):
+        return f"/domains/{zone}/records/{quote(self._rel(zone, name), safe='@')}/{rtype}"
+
+    def _rrset(self, zone, name, rtype):
+        r = self._client.request("GET", self._path(zone, name, rtype))
+        if r.status_code == 404:
+            return []
+        body = r.json() if r.content else {}
+        self._check(r, body)
+        return body.get("rrset_values") or []
+
+    def _put(self, zone, name, rtype, values):
+        if not values:
+            self._call("DELETE", self._path(zone, name, rtype))
+        else:
+            self._call("PUT", self._path(zone, name, rtype), json={"rrset_values": values, "rrset_ttl": 3600})
+
+
 def client(provider: str, token: str, transport: httpx.BaseTransport | None = None) -> Provider:
     cls = {"cloudflare": Cloudflare, "digitalocean": DigitalOcean, "desec": Desec,
-           "godaddy": GoDaddy, "route53": Route53}.get(provider)
+           "godaddy": GoDaddy, "route53": Route53, "hetzner": Hetzner, "porkbun": Porkbun,
+           "vultr": Vultr, "linode": Linode, "gandi": Gandi}.get(provider)
     if not cls:
         raise DnsProviderError(f"Unsupported DNS provider: {provider}")
     return cls(token, transport)

@@ -40,6 +40,12 @@ NS_HOSTS = [
     ("ui-dns.", "ionos", "IONOS"),
     ("desec.io", "desec", "deSEC"),
     ("desec.org", "desec", "deSEC"),
+    ("ns.hetzner.", "hetzner", "Hetzner"),
+    ("hetzner.com", "hetzner", "Hetzner"),
+    ("porkbun.com", "porkbun", "Porkbun"),
+    ("vultr.com", "vultr", "Vultr"),
+    ("linode.com", "linode", "Linode (Akamai)"),
+    ("gandi.net", "gandi", "Gandi"),
 ]
 
 # Mail provider (from MX hosts) -> the SPF include that authorizes it.
