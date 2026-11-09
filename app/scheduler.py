@@ -82,6 +82,11 @@ def _autopilot() -> None:
             log.info("dmarc autopilot %s", stats)
     except Exception:
         log.exception("dmarc autopilot failed")
+    try:
+        from . import tasks
+        tasks.remind_overdue(db)
+    except Exception:
+        log.exception("overdue task reminders failed")
     finally:
         db.close()
 

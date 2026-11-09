@@ -69,6 +69,9 @@ for your DNS provider.
   checks its sender authentication and every link against the blocklists. Only
   headers and links are kept. Admins can draft a takedown request to the
   registrar and hosting provider (abuse contacts found through RDAP).
+- Remediation tasks: assign a finding to a person with a due date. A task
+  closes itself when a later scan shows the check passing; overdue tasks email
+  the assignee once, and MSPs see open and overdue counts per client.
 - Scheduled weekly or monthly PDF reports; a multi-domain overview for MSPs.
 
 ### DMARC and TLS reporting

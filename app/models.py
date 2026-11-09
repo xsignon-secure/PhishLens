@@ -7,7 +7,7 @@ another tenant's rows.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -338,6 +338,29 @@ class PhishReport(Base):
     links = Column(JSON, nullable=True)
     status = Column(String(20), nullable=False, default="new")  # new | confirmed | false_positive
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class RemediationTask(Base):
+    """A finding someone is assigned to fix, with a due date. Closed by hand
+    or automatically when a later scan shows the check passing."""
+    __tablename__ = "remediation_tasks"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False)
+    check_key = Column(String(40), nullable=True)  # scan check key; NULL for a free-form task
+    title = Column(String(300), nullable=False)
+    note = Column(Text, nullable=True)
+    assignee_id = Column(String(32), ForeignKey("users.id"), nullable=True, index=True)
+    due_date = Column(Date, nullable=True)
+    status = Column(String(20), nullable=False, default="open")  # open | done
+    created_by = Column(String(320), nullable=True)
+    closed_by = Column(String(320), nullable=True)  # an email, or "scan" when a rescan verified it
+    closed_at = Column(DateTime, nullable=True)
+    reminded_at = Column(DateTime, nullable=True)  # overdue email sent
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    assignee = relationship("User")
 
 
 class ForensicReport(Base):

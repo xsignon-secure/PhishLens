@@ -10,6 +10,7 @@
       <a href="#reports" data-nav="reports" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 15v-3M12 15V9M16 15v-5"/></svg><span>{{ _("DMARC reports") }}</span></a>
       <a href="#dns" data-nav="dns" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg><span>{{ _("DNS &amp; hosting") }}</span></a>
       <a href="#assistant" data-nav="assistant" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg><span>{{ _("Assistant") }}</span></a>
+      <a href="#tasks" data-nav="tasks" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l1.5 1.5L12 7M8 14l1.5 1.5L12 13M14.5 8.5H17M14.5 14.5H17"/></svg><span>{{ _("Tasks") }}</span><span id="tasks-badge" class="badge fail hidden" style="margin-left:auto"></span></a>
       <a href="#integrations" data-nav="integrations" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg><span>{{ _("Integrations") }}</span></a>
       <a href="#users" data-nav="users" class="side-link admin-only hidden"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg><span>{{ _("Users") }}</span></a>
       <a href="#security" data-nav="security" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>{{ _("Security") }}</span></a>
@@ -176,6 +177,34 @@
       </form>
     </details>
   </div>
+  </div>
+
+  <div data-section="tasks" class="hidden">
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Remediation tasks") }}</h2>
+      <p class="muted small">{{ _("Assign a finding to someone with a due date. A task closes by itself when the next scan shows that check passing, and the assignee gets one email if it goes overdue.") }}</p>
+      <div id="tasks-summary" class="small"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+        <select id="tasks-filter" aria-label="{{ _("Show") }}">
+          <option value="open">{{ _("Open") }}</option>
+          <option value="mine">{{ _("Assigned to me") }}</option>
+          <option value="done">{{ _("Done") }}</option>
+        </select>
+      </div>
+      <div id="tasks-list"></div>
+    </div>
+    <div class="panel admin-only hidden">
+      <h2><span class="dot"></span>{{ _("New task") }}</h2>
+      <form id="task-form" class="scanbox small" style="flex-wrap:wrap">
+        <select id="task-domain" aria-label="{{ _("Domain") }}" required></select>
+        <select id="task-check" aria-label="{{ _("Finding") }}"></select>
+        <input id="task-title" type="text" maxlength="300" placeholder="{{ _("Or describe the task") }}" aria-label="{{ _("Task") }}">
+        <select id="task-assignee" aria-label="{{ _("Assign to") }}"></select>
+        <input id="task-due" type="date" aria-label="{{ _("Due date") }}">
+        <button class="btn tiny" type="submit">{{ _("Add task") }}</button>
+      </form>
+      <p id="task-msg" class="muted small"></p>
+    </div>
   </div>
 
   <div data-section="integrations" class="hidden">
@@ -475,7 +504,7 @@ function showSection(name) {
   document.querySelectorAll('[data-nav]').forEach(a => {
     const on = a.dataset.nav === name;
     a.classList.toggle('active', on);
-    if (on) document.getElementById('section-title').textContent = a.textContent.trim();
+    if (on) document.getElementById('section-title').textContent = (a.querySelector('span') || a).textContent.trim();
   });
 }
 // Anything that jumps to an element (checklist, tour, reports) opens its section first.
@@ -712,6 +741,82 @@ document.getElementById('assistant-key-del').addEventListener('click', async () 
   loadAssistant();
 });
 
+/* ---------------- remediation tasks ---------------- */
+let taskPeople = [];
+async function loadTasks() {
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  const filter = document.getElementById('tasks-filter').value;
+  const [rows, sum] = await Promise.all([
+    api('/api/tasks?' + (filter === 'mine' ? 'mine=true' : 'status=' + filter)), api('/api/tasks/summary')]);
+  const badge = document.getElementById('tasks-badge');
+  badge.textContent = sum.overdue;
+  badge.classList.toggle('hidden', !sum.overdue);
+  document.getElementById('tasks-summary').innerHTML =
+    `<p>${_t('{0} open · {1} overdue · {2} assigned to you', {0: sum.open, 1: sum.overdue, 2: sum.mine})}</p>` +
+    (sum.by_client.some(c => c.client) ? '<p class="muted">' + sum.by_client.map(c =>
+      `${escapeHtml(c.client || _t('No client'))}: ${c.open}${c.overdue ? ' <span class="badge fail">' + _t('{0} overdue', {0: c.overdue}) + '</span>' : ''}`).join(' · ') + '</p>' : '');
+  const me = dashData.me || {};
+  document.getElementById('tasks-list').innerHTML = rows.length ? rows.map(t => `<div class="dm-row" data-task="${escapeHtml(t.id)}">
+    <div class="top"><strong>${escapeHtml(t.title)}</strong> <span class="badge">${escapeHtml(t.domain)}</span>
+      ${t.client ? `<span class="badge">${escapeHtml(t.client)}</span>` : ''}
+      ${t.status === 'done' ? `<span class="badge pass">${t.closed_by === 'scan' ? _t('Verified by scan') : _t('Done')}</span>`
+        : t.overdue ? `<span class="badge fail">${_t('Overdue')}</span>` : ''}
+      <span class="sender-acts">
+      ${t.status === 'open' && (admin || t.assignee_id === me.id) ? `<button class="btn tiny ghost" data-tstatus="done">${_t('Mark done')}</button>` : ''}
+      ${t.status === 'done' && (admin || t.assignee_id === me.id) ? `<button class="btn tiny ghost" data-tstatus="open">${_t('Reopen')}</button>` : ''}
+      ${admin ? `<button class="btn tiny ghost" data-tdel>${_t('Delete')}</button>` : ''}</span></div>
+    <div class="meta">${t.assignee ? _t('Assigned to {0}', {0: escapeHtml(t.assignee)}) : _t('Unassigned')}
+      ${t.due_date ? ' · ' + _t('Due {0}', {0: escapeHtml(t.due_date)}) : ''}
+      ${t.closed_at ? ' · ' + _t('Closed {0}', {0: escapeHtml(t.closed_at.slice(0, 10))}) : ''}</div>
+    ${t.note ? `<div class="meta muted">${escapeHtml(t.note)}</div>` : ''}</div>`).join('')
+    : '<p class="muted">' + _t('No tasks here.') + '</p>';
+  document.querySelectorAll('#tasks-list [data-tstatus]').forEach(b => b.onclick = async () => {
+    await api('/api/tasks/' + b.closest('[data-task]').dataset.task, {method: 'PATCH',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: b.dataset.tstatus})});
+    loadTasks();
+  });
+  document.querySelectorAll('#tasks-list [data-tdel]').forEach(b => b.onclick = async () => {
+    if (!confirm(_t('Delete this task?'))) return;
+    await api('/api/tasks/' + b.closest('[data-task]').dataset.task, {method: 'DELETE'});
+    loadTasks();
+  });
+  if (admin) await fillTaskForm();
+}
+async function fillTaskForm() {
+  const dom = document.getElementById('task-domain');
+  const current = dom.value;
+  const mons = dashData.monitors.length ? dashData.monitors : await api('/api/monitors');
+  dom.innerHTML = mons.map(m => `<option>${escapeHtml(m.domain)}</option>`).join('');
+  if (current) dom.value = current;
+  if (!taskPeople.length) taskPeople = await api('/api/users').catch(() => []);
+  document.getElementById('task-assignee').innerHTML = `<option value="">${_t('Unassigned')}</option>` +
+    taskPeople.filter(u => u.status !== 'suspended').map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.full_name || u.email)}</option>`).join('');
+  await fillTaskChecks();
+}
+async function fillTaskChecks() {
+  const d = document.getElementById('task-domain').value;
+  const list = d ? await api('/api/tasks/findings?domain=' + encodeURIComponent(d)) : [];
+  document.getElementById('task-check').innerHTML = `<option value="">${_t('Free-form task')}</option>` +
+    list.filter(f => !f.has_task).map(f => `<option value="${escapeHtml(f.key)}">${escapeHtml(f.title)} (${f.status === 'fail' ? _t('Fail') : _t('Warning')})</option>`).join('');
+}
+document.getElementById('tasks-filter').addEventListener('change', () => loadTasks().catch(() => {}));
+document.getElementById('task-domain').addEventListener('change', () => fillTaskChecks().catch(() => {}));
+document.getElementById('task-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('task-msg');
+  const body = {domain: document.getElementById('task-domain').value,
+    check_key: document.getElementById('task-check').value || null,
+    title: document.getElementById('task-title').value.trim() || null,
+    assignee_id: document.getElementById('task-assignee').value || null,
+    due_date: document.getElementById('task-due').value || null};
+  try {
+    await api('/api/tasks', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    msg.textContent = _t('Task added.');
+    document.getElementById('task-title').value = '';
+    loadTasks();
+  } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
+});
+
 /* ---------------- reported phishing + takedowns ---------------- */
 const PHISH_VERDICT = {clean: ['pass', N_('Looks clean')], suspicious: ['warn', N_('Suspicious')],
   'likely phishing': ['fail', N_('Likely phishing')], dangerous: ['fail', N_('Dangerous')]};
@@ -786,6 +891,7 @@ async function loadEnterprise() {
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});
   loadPhish().catch(() => {});
+  loadTasks().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length

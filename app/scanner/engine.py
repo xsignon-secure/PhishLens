@@ -63,6 +63,12 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
     db.add(scan)
     db.commit()
     db.refresh(scan)
+    if tenant_id:
+        from .. import tasks
+        try:
+            tasks.verify(db, scan)  # a passing check closes its remediation task
+        except Exception:
+            db.rollback()
     return scan
 
 
