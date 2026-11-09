@@ -20,6 +20,7 @@ EMAIL_CHECKS = [
     mail_checks.check_ptr,
     mail_checks.check_ipv6,
     mail_checks.check_rpki,
+    mail_checks.check_parked,
 ]
 WEB_CHECKS = [
     web_checks.check_tls_cert,

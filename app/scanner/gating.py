@@ -30,6 +30,9 @@ def findings_only(result: dict | None) -> dict | None:
     if not result:
         return result
     out = copy.deepcopy(result)
+    if "compliance" not in out:
+        from . import compliance
+        compliance.attach(out)
     checks = out.get("checks") or []
     out["locked_fixes"] = sum(1 for c in checks if fixable(c))
     out["checks"] = [lock_check(c) for c in checks]

@@ -390,6 +390,7 @@ const CHECK_IMPACT = {
   dnsbl: N_('Mail from your domain or servers is likely to be rejected or marked as spam.'),
   'tls-cert': N_('Visitors may see certificate warnings, or the site may stop working when it expires.'),
   'sec-headers': N_('Your website is easier to attack with clickjacking and content injection.'),
+  parked: N_('Attackers can send mail that appears to come from this unused domain.'),
 };
 const LOW_SEVERITY = ['bimi', 'caa', 'ipv6', 'sec-headers', 'rpki', 'ptr', 'dane', 'tls-rpt'];
 
@@ -430,6 +431,22 @@ function observationsTable(checks, locked) {
     </table></div></div>`;
 }
 
+/* Gmail / Yahoo / Microsoft sender requirements, from compliance.py. */
+function complianceCard(list) {
+  if (!list || !list.length) return '';
+  const icon = {pass: '✓', fail: '✗', warn: '!', manual: '?'};
+  const label = {pass: _t('Meets'), fail: _t('Fails'), warn: _t('Partly')};
+  return `<div class="compliance"><h3>${_t('Mailbox provider requirements')}</h3>
+    <div class="compliance-grid">${list.map(p => `
+      <details class="compliance-col ${p.status}">
+        <summary><strong>${escapeHtml(p.name)}</strong>
+          <span class="badge ${p.status}">${label[p.status] || ''}</span>
+          <span class="muted small">${_t('{0}/{1} checked rules pass', {0: p.passed, 1: p.checked})}</span></summary>
+        <p class="muted small">${escapeHtml(p.note)}</p>
+        <ul>${p.rules.map(r => `<li class="rule ${r.status}"><span class="ri">${icon[r.status]}</span> ${escapeHtml(r.label)}${r.status === 'manual' ? ` <span class="muted small">(${_t('not visible in DNS: check it yourself')})</span>` : ''}</li>`).join('')}</ul>
+      </details>`).join('')}</div></div>`;
+}
+
 function dnssecParts(checks) {
   const c = checks.find(x => x.key === 'dnssec');
   if (!c || c.signed_at_nameservers === undefined) return '';
@@ -446,8 +463,14 @@ function lockedGuideCard(r, opts) {
   return `<div class="locked-guide" id="fix-guide-locked">
     <h3>${_t('🔒 Step-by-step fix guide')}</h3>
     <p>${_t('The exact DNS records and steps to fix {0} issue(s) are in the fix guide, free for registered users.', {0: r.locked_fixes})}</p>
+    ${window.SIGNUP_ON && opts.scanId ? `<form class="guide-mail" data-scan="${escapeHtml(opts.scanId)}">
+      <input name="email" type="email" required placeholder="${_t('Work email')}" aria-label="${_t('Work email')}">
+      <input name="company" type="text" required maxlength="200" placeholder="${_t('Company or organization')}" aria-label="${_t('Company or organization')}">
+      <button class="btn" type="submit">${_t('Email me the fix guide')}</button>
+      <p class="muted small">${_t('Creates your free account. By continuing you accept the Terms and Privacy notice.')}</p>
+    </form>` : ''}
     <p class="locked-actions">
-      ${window.SIGNUP_ON ? `<a class="btn" href="/signup${next}">${_t('Create a free account')}</a>` : ''}
+      ${window.SIGNUP_ON && !opts.scanId ? `<a class="btn" href="/signup${next}">${_t('Create a free account')}</a>` : ''}
       <a class="btn ghost" href="/login${next}">${_t('Log in')}</a></p>
   </div>`;
 }
@@ -528,6 +551,7 @@ function renderReport(scan, isPublic, opts = {}) {
       </div>
     </div>
     ${observationsTable(checks, locked)}
+    ${complianceCard(r.compliance)}
     ${planHtml}
     ${recHtml}
     <h3 class="findings-title">${_t('Findings')}</h3>
@@ -569,6 +593,19 @@ function bindReportInteractions(container) {
     });
   }
   bindFixCards(container);
+  container.querySelectorAll('form.guide-mail').forEach(f => f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = f.querySelector('button');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/auth/signup', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: f.email.value.trim(), company: f.company.value.trim(), accept_terms: true,
+                              scan_id: f.dataset.scan})});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(errorText(d, _t('Sign-up failed')));
+      f.innerHTML = `<p class="sub">${_t('Check your inbox: the fix guide and your login details are on the way.')}</p>`;
+    } catch (err) { toast(err.message); btn.disabled = false; }
+  }));
   container.querySelectorAll('.ring-wrap').forEach(ring => {
     const fg = ring.querySelector('.ring-fg');
     const num = ring.querySelector('.ring-num');

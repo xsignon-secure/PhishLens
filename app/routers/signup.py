@@ -44,6 +44,9 @@ class SignupIn(BaseModel):
     accept_terms: bool = False
     # Honeypot: hidden in the form, so only bots fill it in.
     website: str = Field(default="", max_length=200)
+    # "Email me the fix guide" on a free report: the guide for this landing-
+    # page scan goes to the new account's address with the login details.
+    scan_id: str | None = Field(default=None, max_length=64)
     model_config = {"extra": "forbid"}
 
 
@@ -86,5 +89,31 @@ def signup(payload: SignupIn, request: Request, background: BackgroundTasks, db:
     owner, temp = _create(db, _Platform(tenant.id), email, payload.full_name, "owner")
     _queue_credentials(request, background, owner, temp, True, db)
     audit.log(db, "signup", owner, tenant_id=tenant.id, ip=client_ip(request),
-              detail={"owner": email})
+              detail={"owner": email, "with_guide": bool(payload.scan_id)})
+    if payload.scan_id:
+        scan = db.query(models.Scan).filter(models.Scan.id == payload.scan_id,
+                                            models.Scan.tenant_id.is_(None)).first()
+        if scan:
+            background.add_task(send_fix_guide, scan.id, email)
     return DONE
+
+
+def send_fix_guide(scan_id: str, email: str) -> None:
+    """Email the fix guide PDF for an anonymous scan to a newly signed-up
+    address (the address is the account's, so this sends nothing to anyone
+    who didn't ask for an account)."""
+    from ..database import SessionLocal
+    from .scans import _pdf_bytes
+    db = SessionLocal()
+    try:
+        scan = db.get(models.Scan, scan_id)
+        if not scan:
+            return
+        pdf, filename = _pdf_bytes(scan, db, kind="guide")
+        body = (f"Here is the step-by-step fix guide for {scan.domain}.\n\n"
+                f"Your login details are in a separate email. Sign in to see the fixes for every scan, "
+                f"publish records in one click and get alerts: {settings.APP_URL}/login\n")
+        mailer.send_email([email], f"Fix guide for {scan.domain}", body,
+                          attachments=[(filename, pdf, "application/pdf")])
+    finally:
+        db.close()

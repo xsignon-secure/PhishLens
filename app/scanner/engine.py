@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .. import deps, models
-from . import dns_snapshot, gating, guides, recommendations, reputation, scoring
+from . import compliance, dns_snapshot, gating, guides, recommendations, reputation, scoring
 
 HISTORY_POINTS = 12
 TREND_WINDOW_DAYS = 30
@@ -52,6 +52,7 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
     # of JSON columns, so mutating after commit would be silently lost.
     recommendations.attach(result)
     guides.attach(result)
+    compliance.attach(result)
     scan = models.Scan(
         tenant_id=tenant_id,
         domain=domain,
@@ -84,11 +85,20 @@ def scan_to_dict(scan: models.Scan, db: Session | None = None, solutions: bool =
 
 
 def with_guides(result: dict | None) -> dict | None:
-    """Scans saved before fix guides existed get them when they're read."""
-    if not result or any("guide" in c for c in result.get("checks") or []):
+    """Scans saved before fix guides (or the provider checklist) existed get
+    them when they're read."""
+    if not result:
+        return result
+    has_guides = any("guide" in c for c in result.get("checks") or [])
+    if has_guides and "compliance" in result:
         return result
     import copy
-    return guides.attach(copy.deepcopy(result))
+    result = copy.deepcopy(result)
+    if not has_guides:
+        guides.attach(result)
+    if "compliance" not in result:
+        compliance.attach(result)
+    return result
 
 
 def score_history(db: Session, tenant_id: str, domain: str,

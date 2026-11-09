@@ -82,7 +82,7 @@ def test_anonymous_landing_scan_has_no_fixes_in_json_or_pdf(client):
     pdf = client.get(f"/api/scans/public/{body['id']}/pdf")
     assert pdf.status_code == 200
     text = _pdf_text(pdf.content)
-    assert "No DMARC record found" in text and "p=none" not in text
+    assert "No DMARC record found" in text and "rua=mailto:dmarc@acme.example" not in text
     assert "fix guide" in text.lower()
 
     assert client.get(f"/api/scans/public/{body['id']}/guide.pdf").status_code == 401
@@ -98,7 +98,7 @@ def test_shared_report_link_hides_fixes_from_anonymous_viewers(client, db):
     _no_solutions(anon.get(f"/api/scans/shared/{scan_id}").json())
     page = anon.get(f"/r/{scan_id}")
     assert page.status_code == 200 and FIX not in page.text
-    assert "p=none" not in _pdf_text(anon.get(f"/api/scans/shared/{scan_id}/pdf").content)
+    assert "rua=mailto:dmarc@acme.example" not in _pdf_text(anon.get(f"/api/scans/shared/{scan_id}/pdf").content)
     assert anon.get(f"/api/scans/shared/{scan_id}/guide.pdf").status_code == 401
     # Signed in, the same link shows the fixes.
     assert FIX in str(client.get(f"/api/scans/shared/{scan_id}").json())
