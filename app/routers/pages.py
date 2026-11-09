@@ -120,6 +120,20 @@ def terms_page(request: Request):
     return templates.TemplateResponse(request, "terms.html", {"request": request})
 
 
+@router.get("/benchmark", response_class=HTMLResponse)
+def benchmark_page(request: Request, db: Session = Depends(get_db)):
+    from .. import benchmark
+    return templates.TemplateResponse(request, "benchmark.html", {
+        "request": request, "user": _user_or_none(request, db), "data": benchmark.cached(db)})
+
+
+@router.get("/api/benchmark")
+def benchmark_api(db: Session = Depends(get_db)):
+    """The same aggregate numbers as /benchmark, as JSON (CC BY 4.0)."""
+    from .. import benchmark
+    return benchmark.cached(db)
+
+
 @router.get("/privacy", response_class=HTMLResponse)
 def privacy_page(request: Request):
     return templates.TemplateResponse(request, "privacy.html", {"request": request})

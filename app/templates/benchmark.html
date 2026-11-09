@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ _("State of email security") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="tool">
+  <span class="eyebrow">{{ _("Live benchmark · updated hourly") }}</span>
+  <h1>{{ _("State of email security") }}</h1>
+  <p class="sub">{{ _("How well domains protect their email against spoofing, from every domain scanned on PhishLens in the last {0} days.") | replace("{0}", data.window_days|string) }}
+    {{ _("Only totals are shown: no domain names, and no group smaller than {0} domains.") | replace("{0}", data.min_group|string) }}</p>
+
+  {% if not data.enough_data %}
+  <div class="panel"><p class="muted">{{ _("Not enough recent scans yet to publish fair numbers. Check back soon, or") }} <a href="/">{{ _("scan your domain") }}</a>.</p></div>
+  {% else %}
+  {% set o = data.overall %}
+  {% set measures = [("spf", _("Publish SPF")), ("dkim", _("DKIM key found")), ("dmarc", _("Publish DMARC")),
+      ("enforced", _("DMARC at enforcement (quarantine or reject)")), ("reject", _("DMARC p=reject")),
+      ("mta_sts", _("MTA-STS enforced")), ("tls_rpt", _("TLS reporting (TLS-RPT)")), ("bimi", _("BIMI logo")),
+      ("dnssec", _("DNSSEC signed"))] %}
+  <div class="kpi-row">
+    <div class="kpi kpi-blue"><div class="kpi-num">{{ o.domains }}</div><div class="kpi-label">{{ _("Domains") }}</div></div>
+    <div class="kpi kpi-violet"><div class="kpi-num">{{ o.avg_score }}/100</div><div class="kpi-label">{{ _("Average score") }}</div></div>
+    <div class="kpi kpi-green"><div class="kpi-num">{{ o.adoption.enforced }}%</div><div class="kpi-label">{{ _("DMARC at enforcement") }}</div></div>
+    <div class="kpi kpi-amber"><div class="kpi-num">{{ o.grades.A }}%</div><div class="kpi-label">{{ _("Grade A") }}</div></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="dot"></span>{{ _("Adoption") }}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>{{ _("Protection") }}</th><th>{{ _("Share of domains") }}</th></tr></thead>
+      <tbody>
+      {% for key, label in measures %}
+        <tr><td>{{ label }}</td>
+          <td><div class="bench-bar" role="img" aria-label="{{ o.adoption[key] }}%"><span style="width:{{ o.adoption[key] }}%"></span></div> {{ o.adoption[key] }}%</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="dot"></span>{{ _("Grades") }}</h2>
+    <div class="table-wrap"><table>
+      <thead><tr>{% for g in ["A","B","C","D","F"] %}<th>{{ g }}</th>{% endfor %}</tr></thead>
+      <tbody><tr>{% for g in ["A","B","C","D","F"] %}<td>{{ o.grades[g] }}%</td>{% endfor %}</tr></tbody>
+    </table></div>
+  </div>
+
+  {% if data.by_tld %}
+  <div class="panel">
+    <h2><span class="dot"></span>{{ _("By top-level domain") }}</h2>
+    <p class="muted small">{{ _("Country domains (.de, .in, .uk…) give a rough view by country.") }}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>TLD</th><th>{{ _("Domains") }}</th><th>{{ _("Average score") }}</th><th>{{ _("Publish DMARC") }}</th><th>{{ _("DMARC at enforcement") }}</th><th>{{ _("MTA-STS enforced") }}</th></tr></thead>
+      <tbody>
+      {% for r in data.by_tld %}
+        <tr><td>.{{ r.tld }}</td><td>{{ r.domains }}</td><td>{{ r.avg_score }}</td><td>{{ r.adoption.dmarc }}%</td><td>{{ r.adoption.enforced }}%</td><td>{{ r.adoption.mta_sts }}%</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <p class="muted small">{{ _("Free to quote and reuse with a link back (CC BY 4.0). Raw numbers:") }} <a href="/api/benchmark">/api/benchmark</a>.
+    {{ _("Scans are of domains people chose to check, so they are not a random sample.") }}</p>
+  <p><a class="btn" href="/">{{ _("See how your domain compares") }}</a></p>
+</section>
+{% endblock %}
