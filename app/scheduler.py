@@ -61,12 +61,29 @@ def _loop(interval_hours: float) -> None:
             if acquire_lease("rescan", int(interval_hours * 3600) - 60):
                 stats = rescan.run(min_age_hours=max(interval_hours - 1, 1))
                 log.info("scheduled rescan %s", stats)
+                _autopilot()
             else:
                 log.info("scheduled rescan skipped: another worker holds the lease")
         except Exception:
             log.exception("scheduled rescan failed")
         if _stop.wait(interval_hours * 3600):
             return
+
+
+def _autopilot() -> None:
+    """DMARC enforcement autopilot: runs after each scheduled rescan."""
+    from . import autopilot
+    from .database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        stats = autopilot.run_all(db)
+        if stats["checked"]:
+            log.info("dmarc autopilot %s", stats)
+    except Exception:
+        log.exception("dmarc autopilot failed")
+    finally:
+        db.close()
 
 
 def _fetch_loop(minutes: float) -> None:
