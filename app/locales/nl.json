@@ -843,5 +843,6 @@
  "Use your own Anthropic API key": "Uw eigen Anthropic-API-sleutel gebruiken",
  "Your question": "Uw vraag",
  "e.g. Is it safe to move example.com to p=reject?": "bijv. Is het veilig om example.com naar p=reject te zetten?",
- "✓ Key saved": "✓ Sleutel opgeslagen"
+ "✓ Key saved": "✓ Sleutel opgeslagen",
+ "New certificate in CT logs": "Nieuw certificaat in CT-logs"
 }

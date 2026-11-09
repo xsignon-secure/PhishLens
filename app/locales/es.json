@@ -843,5 +843,6 @@
  "Use your own Anthropic API key": "Usar su propia clave API de Anthropic",
  "Your question": "Su pregunta",
  "e.g. Is it safe to move example.com to p=reject?": "p. ej. ¿Es seguro pasar example.com a p=reject?",
- "✓ Key saved": "✓ Clave guardada"
+ "✓ Key saved": "✓ Clave guardada",
+ "New certificate in CT logs": "Nuevo certificado en los registros CT"
 }

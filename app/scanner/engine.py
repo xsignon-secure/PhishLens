@@ -154,7 +154,19 @@ def check_monitor_lookalikes(monitor: models.Monitor) -> list[models.Alert]:
     )]
 
 
-def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool = False) -> dict:
+def check_monitor_ct(monitor: models.Monitor) -> list[models.Alert]:
+    """New certificates in CT logs for the domain (unexpected CA) or for its
+    registered lookalikes."""
+    from . import ct
+
+    state, messages = ct.check(monitor.domain, monitor.ct_state, monitor.lookalikes)
+    monitor.ct_state = state
+    return [models.Alert(tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="ct_certificate", message=m)
+            for m in messages]
+
+
+def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool = False,
+                   check_ct: bool = False) -> dict:
     """Re-scan a monitored domain, record drift alerts, email owners.
 
     Shared by the API endpoint and the scheduled worker so both behave
@@ -221,6 +233,13 @@ def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool 
                 alerts.extend(found)
         except Exception:
             pass  # informational: a DNS hiccup must not fail the rescan
+    if check_ct:
+        try:
+            found = check_monitor_ct(monitor)
+            if level in ("balanced", "comprehensive"):
+                alerts.extend(found)
+        except Exception:
+            pass  # crt.sh is often slow or down: never fail the rescan over it
     for alert in alerts:
         db.add(alert)
     monitor.last_score = scan.score

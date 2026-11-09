@@ -1539,7 +1539,7 @@ const INT_FIELDS = {
          ['companies', N_('Client label = entity id (one per line)'), 'map', 'Acme = 3']],
 };
 const INT_KINDS = {score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
-                   lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring')};
+                   lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs')};
 function intFieldsHtml(kind, cfg) {
   if (!kind) return '';
   const val = n => cfg && cfg.kind === kind && cfg[n] != null ? cfg[n] : '';

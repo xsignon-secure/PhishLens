@@ -25,7 +25,8 @@ from .scanner import net
 
 log = logging.getLogger("phishlens.integrations")
 TIMEOUT = 10
-ALERT_KINDS = ("score_drop", "check_failed", "dns_changed", "lookalike_registered", "cert_expiring")
+ALERT_KINDS = ("score_drop", "check_failed", "dns_changed", "lookalike_registered", "cert_expiring",
+               "ct_certificate")
 _HOST_RE = re.compile(r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$")
 
 # Secret fields: stored encrypted under "<name>_enc", never returned.

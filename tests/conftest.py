@@ -38,6 +38,14 @@ def _reset_module_state():
 
 
 @pytest.fixture(autouse=True)
+def _no_crt_sh(monkeypatch):
+    # Certificate Transparency checks query crt.sh; tests pass a fake transport.
+    from app.scanner import ct
+    real = ct.fetch
+    monkeypatch.setattr(ct, "fetch", lambda query, transport=None: real(query, transport) if transport else [])
+
+
+@pytest.fixture(autouse=True)
 def _no_dns_snapshots(monkeypatch):
     # Team scans snapshot DNS records for change monitoring; not in tests.
     monkeypatch.setattr("app.scanner.dns_snapshot.snapshot", lambda domain, selector=None: None)

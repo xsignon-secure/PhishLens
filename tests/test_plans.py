@@ -137,7 +137,7 @@ def test_rescans_follow_the_plan(db, plans_on, monkeypatch):
     owner = make_user(db)
     seen = []
     monkeypatch.setattr("app.scanner.engine.rescan_monitor",
-                        lambda db, m, check_lookalikes: seen.append((m.domain, check_lookalikes)) or
+                        lambda db, m, check_lookalikes, check_ct=False: seen.append((m.domain, check_lookalikes, check_ct)) or
                         {"alerts": [], "scan": type("S", (), {"score": 90})(), "emailed": False})
     db.add(models.Monitor(tenant_id=owner.tenant_id, domain="a.com",
                           last_checked_at=datetime.utcnow() - timedelta(hours=30)))
@@ -146,7 +146,7 @@ def test_rescans_follow_the_plan(db, plans_on, monkeypatch):
     assert seen == []  # Free: weekly
     _set_plan(db, owner, "pro")
     rescan.run(min_age_hours=1)
-    assert seen == [("a.com", True)]  # Pro: daily, with lookalike watch
+    assert seen == [("a.com", True, True)]  # Pro: daily, with lookalike and CT watch
 
 
 def test_terms_and_footer_follow_plans_setting(client, monkeypatch):

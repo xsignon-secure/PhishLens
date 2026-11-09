@@ -62,6 +62,9 @@ for your DNS provider.
 - Email, Slack, Microsoft Teams, Discord and signed webhooks.
 - Lookalike-domain watch: typo, homoglyph, keyword and TLD variants ranked by
   risk.
+- Certificate Transparency watch (crt.sh, daily with scheduled rescans): alerts
+  when a certificate authority you've never used issues a certificate for your
+  domain, or when a registered lookalike gets a TLS certificate.
 - Scheduled weekly or monthly PDF reports; a multi-domain overview for MSPs.
 
 ### DMARC and TLS reporting
