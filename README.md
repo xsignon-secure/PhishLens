@@ -115,8 +115,14 @@ address that shows SPF, DKIM, DMARC alignment and the delivery path.
   read reports ([docs/MCP.md](docs/MCP.md)).
 - **Built-in AI assistant** (Dashboard → Assistant): ask about your domains in
   plain words; it reads your company's scans, monitors, alerts and DMARC data
-  before answering. Uses Claude with the company's own Anthropic API key, or
-  the server's `ANTHROPIC_API_KEY`; off when neither is set.
+  before answering. Each company picks its AI provider from a dropdown
+  (Anthropic, OpenAI, Google Gemini, Azure OpenAI, Mistral, DeepSeek, xAI,
+  Groq, Cohere, Together, Fireworks, Perplexity, OpenRouter, or any
+  OpenAI-compatible endpoint), its model, and brings its own API key. A server
+  can set a default with `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` (and
+  `AI_BASE_URL`), or just `ANTHROPIC_API_KEY`; off when nothing is set.
+  Self-hosters can allow private endpoints such as Ollama with
+  `AI_ALLOW_PRIVATE_ENDPOINTS=true`.
 - REST API with API keys, and a Prometheus `/api/metrics` endpoint for Grafana.
 - **White-label:** your name, colour, logo and footer on shared reports, PDFs
   and alert emails.

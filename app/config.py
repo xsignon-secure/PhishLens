@@ -92,6 +92,15 @@ class Settings(BaseSettings):
     # also bring their own key in the dashboard, which is used instead.
     ANTHROPIC_API_KEY: str = ""
     ASSISTANT_MODEL: str = "claude-opus-5-5"
+    # Or a server-wide key for any other provider (see app/ai_providers.py):
+    # AI_PROVIDER=openai AI_API_KEY=... AI_MODEL=... (AI_BASE_URL for custom/azure).
+    AI_PROVIDER: str = ""
+    AI_API_KEY: str = ""
+    AI_MODEL: str = ""
+    AI_BASE_URL: str = ""
+    # Self-hosted only: let companies point the assistant at a private or
+    # http endpoint (e.g. Ollama on the local network). Keep off when hosted.
+    AI_ALLOW_PRIVATE_ENDPOINTS: bool = False
     APP_URL: str = "http://localhost:8000"
     # None = auto: Secure cookies when APP_URL is https
     COOKIE_SECURE: bool | None = None
