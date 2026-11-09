@@ -34,6 +34,13 @@ class MonitorIn(BaseModel):
     alert_level: AlertLevel = "balanced"
 
 
+class MonitorBulkIn(BaseModel):
+    # Domains separated by new lines, commas or spaces (a registrar export pasted in).
+    domains: str = Field(min_length=1, max_length=30000)
+    client: str | None = Field(default=None, max_length=100)
+    alert_level: AlertLevel = "balanced"
+
+
 class MonitorUpdateIn(BaseModel):
     client: str | None = Field(default=None, max_length=100)
     alert_level: AlertLevel | None = None

@@ -15,6 +15,7 @@ IMPACT = {
     "dnsbl": "Mail from your domain or servers is likely to be rejected or marked as spam.",
     "tls-cert": "Visitors may see certificate warnings, or the site may stop working when it expires.",
     "sec-headers": "Your website is easier to attack with clickjacking and content injection.",
+    "parked": "Attackers can send mail that appears to come from this unused domain.",
 }
 LOW_SEVERITY = {"bimi", "caa", "ipv6", "sec-headers", "rpki", "ptr", "dane", "tls-rpt"}
 RANK = {"High": 0, "Medium": 1, "Low": 2}

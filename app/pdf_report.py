@@ -262,6 +262,27 @@ def _report_story(r: dict, checks: list, plan: list, recs: list) -> list:
         ]))
         story += [table, Spacer(1, 6)]
 
+    comp = r.get("compliance")
+    if comp is None:
+        from .scanner import compliance
+        comp = compliance.build(checks)
+    if comp:
+        story.append(Paragraph("Mailbox provider requirements", S["h2"]))
+        marks = {"pass": ("Meets", "#16a34a"), "fail": ("Fails", "#dc2626"), "warn": ("Partly", "#d97706")}
+        rows = []
+        for p in comp:
+            word, color = marks.get(p["status"], ("", "#64748b"))
+            missing = [x["label"] for x in p["rules"] if x["status"] in ("fail", "warn")]
+            rows.append([_p(p["name"]),
+                         Paragraph(f'<font color="{color}"><b>{word}</b></font>', S["body"]),
+                         _p(("Missing: " + "; ".join(missing)) if missing else
+                            f"{p['passed']}/{p['checked']} checked rules pass", "muted")])
+        table = Table(rows, colWidths=[40 * mm, 18 * mm, None])
+        table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                   ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0"))]))
+        story += [table, _p("Unsubscribe handling, spam rate and alignment aren't visible in DNS; check them "
+                            "in your sending platform and DMARC reports.", "muted"), Spacer(1, 6)]
+
     story.append(Paragraph("Fix these first", S["h2"]))
     if plan:
         for n, item in enumerate(plan, 1):

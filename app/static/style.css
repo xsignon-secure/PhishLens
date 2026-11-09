@@ -832,3 +832,22 @@ details > summary:hover { color: #fff; }
 .auth .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .auth .check-line { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
 .auth .check-line input { width: auto; margin-top: 3px; }
+
+/* ---- mailbox provider requirements */
+.compliance { margin: 18px 0; }
+.compliance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.compliance-col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.compliance-col summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; list-style: none; }
+.compliance-col ul { list-style: none; padding: 0; margin: 8px 0 0; font-size: 14px; }
+.compliance-col li { padding: 4px 0; color: var(--ink-dim); }
+.compliance-col .ri { display: inline-block; width: 18px; font-weight: 700; }
+.rule.pass .ri { color: var(--green); } .rule.fail .ri { color: var(--red); }
+.rule.warn .ri { color: var(--amber); } .rule.manual .ri { color: var(--ink-faint); }
+.bulk-add { margin: 8px 0; }
+.bulk-add textarea { width: 100%; margin: 8px 0; padding: 8px 10px; font-family: var(--mono); font-size: 13px;
+  background: var(--bg1); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+.small-h { margin: 18px 0 4px; font-size: 15px; color: #fff; }
+.guide-mail { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.guide-mail input { flex: 1 1 180px; padding: 9px 11px; font-size: 14px; background: var(--bg1); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; }
+.guide-mail p { flex-basis: 100%; margin: 0 !important; }

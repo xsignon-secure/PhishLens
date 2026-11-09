@@ -51,7 +51,7 @@ function showReport(data) {
   const box = document.getElementById('scan-result');
   // ?scan=<id> brings a visitor back to this report after logging in.
   box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf',
-    guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/?scan=' + data.id});
+    guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/?scan=' + data.id, scanId: data.id});
   bindReportInteractions(box);
   box.scrollIntoView({behavior: 'smooth', block: 'start'});
 }

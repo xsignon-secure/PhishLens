@@ -46,6 +46,14 @@
         <input id="monitor-client" type="text" placeholder="{{ _("Client (optional)") }}" maxlength="100" style="max-width:170px">
         <button class="btn" type="submit">{{ _("Add") }}</button>
       </form>
+      <details class="bulk-add">
+        <summary class="muted small">{{ _("Add many domains at once") }}</summary>
+        <form id="bulk-form">
+          <textarea id="bulk-domains" rows="5" placeholder="example.com&#10;example.org&#10;example.net" spellcheck="false"></textarea>
+          <button class="btn tiny" type="submit">{{ _("Add all") }}</button>
+          <span class="muted small">{{ _("Paste a list or a registrar export (up to 200). Unused domains get the parked-domain check.") }}</span>
+        </form>
+      </details>
       <p class="muted small"><a href="/setup">{{ _("New to DMARC? Use the guided setup →") }}</a></p>
       <p id="monitor-err" class="error"></p>
       <div id="monitors"></div>
@@ -110,6 +118,9 @@
         <button class="btn" type="submit">{{ _("Connect") }}</button>
       </form>
       <button id="cf-del" class="btn tiny ghost admin-only hidden">{{ _("Disconnect") }}</button>
+      <h3 class="small-h">{{ _("Changes made by PhishLens") }}</h3>
+      <p class="muted small">{{ _("Every record published with an Apply button, with what was there before. Undo puts the old record back.") }}</p>
+      <div id="dns-applied" class="muted small"></div>
   </div>
   <div class="panel" id="hosted-panel">
     <h2 data-feature="hosted"><span class="dot"></span>{{ _("Hosted DMARC, SPF, MTA-STS, TLS-RPT &amp; BIMI") }}</h2>
@@ -547,6 +558,20 @@ document.getElementById('monitor-form').addEventListener('submit', async (e) => 
     document.getElementById('monitor-client').value = '';
     document.getElementById('monitor-err').textContent = '';
     toast((_t('✓ Now monitoring') + ' ') + domain);
+    loadDashboard();
+  } catch (err) { document.getElementById('monitor-err').textContent = err.message; }
+});
+document.getElementById('bulk-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domains = document.getElementById('bulk-domains').value;
+  if (!domains.trim()) return;
+  try {
+    const r = await api('/api/monitors/bulk', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domains, client: document.getElementById('monitor-client').value.trim() || null})});
+    document.getElementById('bulk-domains').value = '';
+    document.getElementById('monitor-err').textContent = r.skipped.length
+      ? _t('Skipped: {0}', {0: r.skipped.map(x => x.domain + ' (' + x.reason + ')').join(', ')}) : '';
+    toast(_t('✓ Added {0} domain(s). First scans run in the background.', {0: r.added.length}));
     loadDashboard();
   } catch (err) { document.getElementById('monitor-err').textContent = err.message; }
 });
@@ -1110,6 +1135,26 @@ async function loadCloudflare() {
   window.DNS_LABEL = dashData.dnsLabel;
   document.getElementById('cf-status').textContent = c.connected ? _t('✓ {0} connected.', {0: c.label}) : _t('Not connected.');
   document.getElementById('cf-del').style.display = c.connected ? '' : 'none';
+  loadApplied();
+}
+async function loadApplied() {
+  const box = document.getElementById('dns-applied');
+  let rows;
+  try { rows = await api('/api/dns/applied'); } catch (err) { return; }
+  if (!rows.length) { box.textContent = _t('No changes yet.'); return; }
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  box.innerHTML = `<div class="table-wrap"><table><thead><tr><th>${_t('When')}</th><th>${_t('Record')}</th><th>${_t('Before')}</th><th>${_t('After')}</th><th></th></tr></thead><tbody>${rows.map(r => `<tr>
+    <td>${escapeHtml(r.created_at.slice(0, 16).replace('T', ' '))}</td>
+    <td><code>${escapeHtml(r.name)}</code> ${escapeHtml(r.type)}</td>
+    <td><code>${escapeHtml(r.previous.join(' | ') || _t('(none)'))}</code></td>
+    <td><code>${escapeHtml(r.value)}</code></td>
+    <td>${r.rolled_back_at ? _t('Undone') : admin ? `<button class="btn tiny ghost" data-undo="${escapeHtml(r.id)}">${_t('Undo')}</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+  box.querySelectorAll('[data-undo]').forEach(b => b.onclick = async () => {
+    if (!confirm(_t('Put the previous record back in your DNS?'))) return;
+    b.disabled = true;
+    try { await api('/api/dns/applied/' + b.dataset.undo + '/rollback', {method: 'POST'}); toast(_t('✓ Change undone. Rescan in a few minutes.')); loadApplied(); }
+    catch (err) { if (err.message !== 'auth') toast(err.message); b.disabled = false; }
+  });
 }
 const dcCache = {};
 async function domainConnectFor(domain) {
@@ -1146,6 +1191,7 @@ window.applyDnsFix = async (name, type, value, btn) => {
       body: JSON.stringify({name, type, value})});
     toast(r.result === 'unchanged' ? _t('Already published.') : _t('✓ Record {0} in {1}. Rescan in a few minutes.', {0: r.result, 1: dashData.dnsLabel}));
     if (btn) btn.textContent = _t('Applied ✓');
+    loadApplied();
   } catch (err) { if (err.message !== 'auth') toast((_t('Could not apply:') + ' ') + err.message); if (btn) btn.disabled = false; }
 };
 document.getElementById('cf-form').addEventListener('submit', async (e) => {

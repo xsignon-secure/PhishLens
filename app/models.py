@@ -200,6 +200,23 @@ class DnsChange(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
+class DnsApplied(Base):
+    """A record PhishLens published through a connected DNS provider, with
+    what was there before, so the change can be undone."""
+    __tablename__ = "dns_applied"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    user_id = Column(String(32), ForeignKey("users.id"), nullable=True)
+    provider = Column(String(20), nullable=False)
+    name = Column(String(253), nullable=False)
+    rtype = Column(String(10), nullable=False)
+    value = Column(Text, nullable=False)
+    previous = Column(JSON, nullable=False)  # matching values before the change ([] = none)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    rolled_back_at = Column(DateTime, nullable=True)
+
+
 class ApiKey(Base):
     """Tenant-scoped keys for automation/SIEM integrations. Only the hash is stored."""
     __tablename__ = "api_keys"

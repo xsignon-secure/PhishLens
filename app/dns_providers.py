@@ -26,6 +26,11 @@ def _txt_content(value: str) -> str:
     return value.strip().strip('"')
 
 
+def txt_prefix(content: str) -> str:
+    """The kind of a TXT record: "v=spf1", "v=dmarc1", ..."""
+    return _txt_content(content).split(";")[0].split()[0].lower()
+
+
 def _same(rtype: str, current: str, content: str) -> bool:
     if rtype == "TXT":
         return _txt_content(current) == content
@@ -77,15 +82,22 @@ class Provider:
                 return zone_id, candidate
         raise DnsProviderError(f"No zone for {name} in this {self.name} account (or the token can't see it)")
 
+    def matching(self, zone_id: str, name: str, rtype: str, content: str,
+                 match_prefix: str | None = None) -> list[dict]:
+        """The records an upsert of `content` would replace: for TXT, those of
+        the same kind (v=spf1, v=DMARC1, ...), never unrelated TXT records."""
+        existing = self.records(zone_id, name, rtype)
+        if rtype == "TXT":
+            prefix = (match_prefix or txt_prefix(content)).lower()
+            existing = [r for r in existing if _txt_content(r.get("content", "")).lower().startswith(prefix)]
+        return existing
+
     def upsert(self, zone_id: str, name: str, rtype: str, content: str,
                match_prefix: str | None = None) -> str:
         """Create or replace one record. Returns "created", "updated" or "unchanged"."""
         if rtype == "TXT":
             content = _txt_content(content)
-        existing = self.records(zone_id, name, rtype)
-        if rtype == "TXT":
-            prefix = (match_prefix or content.split(";")[0].split()[0]).lower()
-            existing = [r for r in existing if _txt_content(r.get("content", "")).lower().startswith(prefix)]
+        existing = self.matching(zone_id, name, rtype, content, match_prefix)
         if existing:
             if _same(rtype, existing[0].get("content", ""), content) and len(existing) == 1:
                 return "unchanged"
@@ -95,6 +107,12 @@ class Provider:
             return "updated"
         self._create(zone_id, name, rtype, content)
         return "created"
+
+    def delete_matching(self, zone_id: str, name: str, rtype: str, content: str) -> int:
+        recs = self.matching(zone_id, name, rtype, content)
+        for rec in recs:
+            self._delete(zone_id, rec, name, rtype)
+        return len(recs)
 
     def delete(self, zone_id: str, name: str, rtype: str) -> int:
         recs = self.records(zone_id, name, rtype)

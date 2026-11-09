@@ -200,3 +200,38 @@ def check_rpki(domain: str) -> dict:
     fixes = ["Ask the network that hosts your mail servers to publish ROAs (RPKI) for their prefixes."] if issues else []
     return _result("rpki", "RPKI", "pass" if not issues else "warn",
                    "Mail server routes: " + "; ".join(good + issues), issues, fixes)
+
+
+# ------------------------------------------------------------------ parked domains
+def check_parked(domain: str) -> dict:
+    """A domain that never sends or receives mail is still spoofable unless
+    it says so. For a parked domain (no MX, or a null MX) attackers' favourite
+    gap is a missing SPF -all and DMARC p=reject. Informational: domains that
+    do receive mail pass without further checks."""
+    title = "Parked domain"
+    hosts = _mx_hosts(domain)
+    if hosts:
+        return _result("parked", title, "pass", "Domain receives mail, so it isn't parked.")
+    spf = [t for t in dns_checks._txt(domain) if t.lower().startswith("v=spf1")]
+    dmarc = [t for t in dns_checks._txt(f"_dmarc.{domain}") if t.lower().startswith("v=dmarc1")]
+    issues, fixes = [], []
+    if hosts is not None:
+        issues.append("No null MX: senders will still try to deliver mail to this domain.")
+        fixes.append("Publish a null MX (RFC 7505): host @, type MX, priority 0, value \".\"")
+    if not spf or spf[0].replace(" ", "").lower() != "v=spf1-all":
+        issues.append("SPF doesn't say this domain sends no mail.")
+        fixes.append("v=spf1 -all")
+    policy = ""
+    if dmarc:
+        for tag in dmarc[0].split(";"):
+            k, _, v = tag.strip().partition("=")
+            if k.strip().lower() == "p":
+                policy = v.strip().lower()
+    if policy != "reject":
+        issues.append("DMARC isn't at p=reject, so mail forged from this domain can still be delivered.")
+        fixes.append("v=DMARC1; p=reject; sp=reject")
+    if not issues:
+        return _result("parked", title, "pass", "Parked and locked down: null MX, SPF -all and DMARC p=reject.")
+    return _result("parked", title, "warn",
+                   "This domain doesn't receive mail. Parked domains need records that say they send none.",
+                   issues, fixes)

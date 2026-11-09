@@ -1,6 +1,7 @@
 """Hosted DMARC / SPF / MTA-STS / TLS-RPT / BIMI records, and one-click DNS fixes through the
 customer's own DNS provider (Cloudflare, DigitalOcean or deSEC)."""
 import re
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -229,16 +230,79 @@ def apply_record(payload: DnsApplyIn, request: Request, db: Session = Depends(ge
         raise HTTPException(status_code=400, detail="Connect your DNS provider first")
     name = check_apply_allowed(payload.name, payload.type, payload.value,
                                _tenant_domains(db, user.tenant_id))
+    provider = user.tenant.dns_provider or "cloudflare"
     try:
-        dns = dns_providers.client(user.tenant.dns_provider or "cloudflare", token)
+        dns = dns_providers.client(provider, token)
         zone_id, _ = dns.zone_for(name)
+        before = [r.get("content", "") for r in dns.matching(zone_id, name, payload.type, payload.value)]
         result = dns.upsert(zone_id, name, payload.type, payload.value)
     except dns_providers.DnsProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+    change_id = None
+    if result != "unchanged":
+        row = models.DnsApplied(tenant_id=user.tenant_id, user_id=user.id, provider=provider, name=name,
+                                rtype=payload.type, value=payload.value.strip(), previous=before)
+        db.add(row)
+        db.commit()
+        change_id = row.id
     audit.log_request(db, request, "dns.apply", user,
                       {"name": name, "type": payload.type, "value": payload.value[:200], "result": result,
                        "provider": user.tenant.dns_provider})
-    return {"ok": True, "result": result, "name": name}
+    return {"ok": True, "result": result, "name": name, "change_id": change_id}
+
+
+def _applied_out(r: models.DnsApplied) -> dict:
+    return {"id": r.id, "name": r.name, "type": r.rtype, "value": r.value, "previous": r.previous,
+            "provider": r.provider, "created_at": r.created_at.isoformat() + "Z",
+            "rolled_back_at": r.rolled_back_at.isoformat() + "Z" if r.rolled_back_at else None}
+
+
+@router.get("/api/dns/applied")
+def list_applied(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """Records PhishLens changed through the DNS provider, newest first."""
+    rows = (db.query(models.DnsApplied).filter(models.DnsApplied.tenant_id == user.tenant_id)
+            .order_by(models.DnsApplied.created_at.desc()).limit(100).all())
+    return [_applied_out(r) for r in rows]
+
+
+@router.post("/api/dns/applied/{change_id}/rollback")
+def rollback_applied(change_id: str, request: Request, db: Session = Depends(get_db),
+                     user: models.User = Depends(require_admin)):
+    """Put back what was there before a one-click change. Refused when the
+    record has been changed again since, so a rollback never overwrites
+    someone's later edit."""
+    row = (db.query(models.DnsApplied)
+           .filter(models.DnsApplied.id == change_id, models.DnsApplied.tenant_id == user.tenant_id).first())
+    if not row:
+        raise HTTPException(status_code=404, detail="Change not found")
+    if row.rolled_back_at:
+        raise HTTPException(status_code=409, detail="This change was already undone")
+    token = crypto.decrypt(user.tenant.dns_token)
+    if not token or (user.tenant.dns_provider or "cloudflare") != row.provider:
+        raise HTTPException(status_code=400, detail="Reconnect the DNS provider this change was made with")
+    try:
+        dns = dns_providers.client(row.provider, token)
+        zone_id, _ = dns.zone_for(row.name)
+        now = [r.get("content", "") for r in dns.matching(zone_id, row.name, row.rtype, row.value)]
+        if len(now) != 1 or not dns_providers._same(row.rtype, now[0], dns_providers._txt_content(row.value)
+                                                    if row.rtype == "TXT" else row.value):
+            raise HTTPException(status_code=409,
+                                detail="The record has changed since; undo it in your DNS provider instead")
+        if not row.previous:
+            dns.delete_matching(zone_id, row.name, row.rtype, row.value)
+        else:
+            prefix = dns_providers.txt_prefix(row.value) if row.rtype == "TXT" else None
+            dns.upsert(zone_id, row.name, row.rtype, row.previous[0], match_prefix=prefix)
+            for extra in row.previous[1:]:
+                dns._create(zone_id, row.name, row.rtype, dns_providers._txt_content(extra)
+                            if row.rtype == "TXT" else extra)
+    except dns_providers.DnsProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    row.rolled_back_at = datetime.utcnow()
+    db.commit()
+    audit.log_request(db, request, "dns.rollback", user,
+                      {"name": row.name, "type": row.rtype, "restored": [v[:200] for v in row.previous]})
+    return _applied_out(row)
 
 
 # ------------------------------------------------------------------ Domain Connect
