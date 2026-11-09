@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /srv/phishlens
 # gpg encrypts DMARC failure reports to a team's PGP key (app/pgp.py).
