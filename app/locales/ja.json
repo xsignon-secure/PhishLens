@@ -826,5 +826,7 @@
  "Watching": "監視中",
  "Why": "理由",
  "through your connected DNS provider": "接続済みの DNS プロバイダー経由で",
- "through your hosted DMARC record": "ホストされた DMARC レコード経由で"
+ "through your hosted DMARC record": "ホストされた DMARC レコード経由で",
+ "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "1 行に 1 セレクター: セレクター、スペース、メールサービスから渡された公開鍵レコード（v=DKIM1; k=rsa; p=…）。古い鍵を廃止するにはセレクターの後に \"revoked\" と書きます。ローテーションは、新しいセレクターを追加し、サービスをそれに切り替えてから古い方を失効させます。",
+ "rotate to 2048-bit": "2048 ビットにローテーション"
 }

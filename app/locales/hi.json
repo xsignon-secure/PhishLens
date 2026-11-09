@@ -826,5 +826,7 @@
  "Watching": "निगरानी में",
  "Why": "क्यों",
  "through your connected DNS provider": "आपके कनेक्ट किए गए DNS प्रदाता से",
- "through your hosted DMARC record": "आपके होस्ट किए गए DMARC रिकॉर्ड से"
+ "through your hosted DMARC record": "आपके होस्ट किए गए DMARC रिकॉर्ड से",
+ "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "हर पंक्ति में एक सेलेक्टर: सेलेक्टर, एक स्पेस, फिर आपकी ईमेल सेवा का दिया सार्वजनिक कुंजी रिकॉर्ड (v=DKIM1; k=rsa; p=…)। पुरानी कुंजी हटाने के लिए सेलेक्टर के बाद \"revoked\" लिखें। रोटेट करने के लिए नया सेलेक्टर जोड़ें, अपनी सेवा को उस पर बदलें, फिर पुराना रद्द करें।",
+ "rotate to 2048-bit": "2048-बिट पर रोटेट करें"
 }

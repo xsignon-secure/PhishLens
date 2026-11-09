@@ -131,7 +131,7 @@
       <div class="scanbox small">
         <select id="hosted-domain" aria-label="Domain"></select>
         <select id="hosted-kind" aria-label="Record">
-          <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta_sts">MTA-STS</option><option value="tls_rpt">TLS-RPT</option><option value="bimi">BIMI</option>
+          <option value="dmarc">DMARC</option><option value="spf">SPF</option><option value="mta_sts">MTA-STS</option><option value="tls_rpt">TLS-RPT</option><option value="bimi">BIMI</option><option value="dkim">DKIM</option>
         </select>
       </div>
       <div id="hosted-fields"></div>
@@ -1311,6 +1311,9 @@ const HOSTED_FIELDS = {
     <textarea id="h-svg" class="hidden">${escapeHtml(c.svg || '')}</textarea>
     <label>${_t('Certificate URL (VMC or CMC .pem, optional)')}<input id="h-cert" type="url" placeholder="https://" value="${escapeHtml(c.certificate_url || '')}"></label>
     <div id="h-bimi-check"></div>`,
+  dkim: c => `<p class="muted small">${_t('One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by "revoked". To rotate, add the new selector, switch your service to it, then revoke the old one.')}</p>
+    <textarea id="h-dkim" rows="5" style="width:100%" placeholder="s2026 v=DKIM1; k=rsa; p=MIIBIjANBg…&#10;s2025 revoked">${escapeHtml((c.keys || []).map(k => k.selector + ' ' + (k.revoked ? 'revoked' : k.value)).join('\n'))}</textarea>
+    ${(c.keys || []).filter(k => !k.revoked).map(k => `<p class="muted small">${escapeHtml(k.selector)}: ${escapeHtml(k.type || 'rsa')} ${k.bits || ''}-bit${k.type === 'rsa' && k.bits < 2048 ? ' · ' + _t('rotate to 2048-bit') : ''}</p>`).join('')}`,
 };
 async function showBimiCheck() {
   const svg = document.getElementById('h-svg').value;
@@ -1326,6 +1329,10 @@ function hostedConfig(kind) {
   if (kind === 'dmarc') return {p: document.getElementById('h-p').value, np: document.getElementById('h-np').value || null, t: document.getElementById('h-t').checked, rua: lines('h-rua')};
   if (kind === 'spf') return {sources: lines('h-sources'), all: document.getElementById('h-all').value};
   if (kind === 'tls_rpt') return {rua: lines('h-tls-rua')};
+  if (kind === 'dkim') return {keys: document.getElementById('h-dkim').value.split('\n').map(x => x.trim()).filter(Boolean).map(line => {
+    const i = line.search(/\s/), sel = i < 0 ? line : line.slice(0, i), rest = i < 0 ? '' : line.slice(i + 1).trim();
+    return /^revoked?$/i.test(rest) ? {selector: sel, revoked: true} : {selector: sel, value: rest};
+  })};
   if (kind === 'bimi') return {svg: document.getElementById('h-svg').value, certificate_url: document.getElementById('h-cert').value.trim() || null};
   return {mode: document.getElementById('h-mode').value, mx: lines('h-mx')};
 }
@@ -1354,7 +1361,7 @@ async function loadHosted() {
     ? domains.map(d => `<option${d === cur ? ' selected' : ''}>${escapeHtml(d)}</option>`).join('')
     : ('<option value="">' + _t('Scan a domain first') + '</option>');
   renderHostedFields();
-  const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS', tls_rpt: 'TLS-RPT', bimi: 'BIMI'};
+  const labels = {dmarc: 'DMARC', spf: 'SPF', mta_sts: 'MTA-STS', tls_rpt: 'TLS-RPT', bimi: 'BIMI', dkim: 'DKIM'};
   await Promise.all([...new Set(h.records.map(r => r.domain))].map(domainConnectFor));
   const applyLabel = d => dashData.cfConnected ? dashData.dnsLabel : (dcCache[d] || {}).provider;
   document.getElementById('hosted-list').innerHTML = h.records.map(r => `<div class="dm-row" data-hosted="${escapeHtml(r.domain)}|${r.kind}">
