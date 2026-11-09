@@ -828,5 +828,20 @@
  "through your connected DNS provider": "a través de su proveedor DNS conectado",
  "through your hosted DMARC record": "a través de su registro DMARC alojado",
  "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "Un selector por línea: el selector, un espacio y luego el registro de clave pública que le da su servicio de correo (v=DKIM1; k=rsa; p=…). Para retirar una clave antigua, escriba el selector seguido de \"revoked\". Para rotar, añada el nuevo selector, cambie su servicio a él y luego revoque el antiguo.",
- "rotate to 2048-bit": "rote a 2048 bits"
+ "rotate to 2048-bit": "rote a 2048 bits",
+ "AI assistant": "Asistente de IA",
+ "Anthropic API key": "Clave API de Anthropic",
+ "Ask": "Preguntar",
+ "Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.": "Pregunte sobre sus dominios con palabras sencillas: qué está mal, qué arreglar primero, qué significa un informe DMARC. El asistente revisa los análisis, monitores, alertas e informes DMARC de su empresa antes de responder. Revise sus consejos antes de cambiar el DNS.",
+ "Assistant": "Asistente",
+ "Looked at: {0}": "Consultado: {0}",
+ "Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.": "Las preguntas se envían a Anthropic con esta clave y se facturan a su cuenta de Anthropic. La clave se guarda cifrada y nunca se vuelve a mostrar.",
+ "Remove key": "Quitar clave",
+ "Remove your Anthropic API key?": "¿Quitar su clave API de Anthropic?",
+ "The assistant is off. An owner or admin can add an Anthropic API key below.": "El asistente está desactivado. Un propietario o administrador puede añadir una clave API de Anthropic abajo.",
+ "Thinking…": "Pensando…",
+ "Use your own Anthropic API key": "Usar su propia clave API de Anthropic",
+ "Your question": "Su pregunta",
+ "e.g. Is it safe to move example.com to p=reject?": "p. ej. ¿Es seguro pasar example.com a p=reject?",
+ "✓ Key saved": "✓ Clave guardada"
 }

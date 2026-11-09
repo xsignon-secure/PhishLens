@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     RENDER_API_KEY: str = ""
     RENDER_SERVICE_ID: str = ""
     APP_NAME: str = "PhishLens"
+    # AI assistant: a server-wide Anthropic API key (optional). Companies can
+    # also bring their own key in the dashboard, which is used instead.
+    ANTHROPIC_API_KEY: str = ""
+    ASSISTANT_MODEL: str = "claude-opus-5-5"
     APP_URL: str = "http://localhost:8000"
     # None = auto: Secure cookies when APP_URL is https
     COOKIE_SECURE: bool | None = None

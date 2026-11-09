@@ -70,6 +70,8 @@ class Tenant(Base):
     plan = Column(String(10), nullable=False, default="free", server_default="free")
     # Approve DMARC senders that are clearly yours (high confidence) on their own.
     auto_approve_senders = Column(Boolean, nullable=False, default=False, server_default="0")
+    # The company's own Anthropic API key for the AI assistant (encrypted).
+    ai_key = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")

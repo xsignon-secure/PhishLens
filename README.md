@@ -103,6 +103,10 @@ address that shows SPF, DKIM, DMARC alignment and the delivery path.
   ([docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)).
 - **MCP server** at `/mcp`, so Claude or any MCP client can scan domains and
   read reports ([docs/MCP.md](docs/MCP.md)).
+- **Built-in AI assistant** (Dashboard → Assistant): ask about your domains in
+  plain words; it reads your company's scans, monitors, alerts and DMARC data
+  before answering. Uses Claude with the company's own Anthropic API key, or
+  the server's `ANTHROPIC_API_KEY`; off when neither is set.
 - REST API with API keys, and a Prometheus `/api/metrics` endpoint for Grafana.
 - **White-label:** your name, colour, logo and footer on shared reports, PDFs
   and alert emails.

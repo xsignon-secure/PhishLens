@@ -828,5 +828,20 @@
  "through your connected DNS provider": "接続済みの DNS プロバイダー経由で",
  "through your hosted DMARC record": "ホストされた DMARC レコード経由で",
  "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "1 行に 1 セレクター: セレクター、スペース、メールサービスから渡された公開鍵レコード（v=DKIM1; k=rsa; p=…）。古い鍵を廃止するにはセレクターの後に \"revoked\" と書きます。ローテーションは、新しいセレクターを追加し、サービスをそれに切り替えてから古い方を失効させます。",
- "rotate to 2048-bit": "2048 ビットにローテーション"
+ "rotate to 2048-bit": "2048 ビットにローテーション",
+ "AI assistant": "AI アシスタント",
+ "Anthropic API key": "Anthropic API キー",
+ "Ask": "質問",
+ "Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.": "ドメインについて普段の言葉で質問できます: 何が問題か、何を先に直すか、DMARC レポートの意味など。アシスタントは回答前に自社のスキャン、監視、アラート、DMARC レポートを確認します。DNS を変更する前に助言を確認してください。",
+ "Assistant": "アシスタント",
+ "Looked at: {0}": "参照: {0}",
+ "Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.": "質問はこのキーで Anthropic に送信され、お客様の Anthropic アカウントに請求されます。キーは暗号化して保存され、再表示されません。",
+ "Remove key": "キーを削除",
+ "Remove your Anthropic API key?": "Anthropic API キーを削除しますか？",
+ "The assistant is off. An owner or admin can add an Anthropic API key below.": "アシスタントはオフです。オーナーまたは管理者が下で Anthropic API キーを追加できます。",
+ "Thinking…": "考え中…",
+ "Use your own Anthropic API key": "自社の Anthropic API キーを使う",
+ "Your question": "質問内容",
+ "e.g. Is it safe to move example.com to p=reject?": "例: example.com を p=reject にしても安全ですか？",
+ "✓ Key saved": "✓ キーを保存しました"
 }

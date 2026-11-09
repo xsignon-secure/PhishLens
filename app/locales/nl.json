@@ -828,5 +828,20 @@
  "through your connected DNS provider": "via uw gekoppelde DNS-provider",
  "through your hosted DMARC record": "via uw gehoste DMARC-record",
  "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "Eén selector per regel: de selector, een spatie, daarna het publieke-sleutelrecord dat uw e-maildienst geeft (v=DKIM1; k=rsa; p=…). Om een oude sleutel uit te faseren, schrijf de selector gevolgd door \"revoked\". Om te roteren: voeg de nieuwe selector toe, zet uw dienst erop over en trek daarna de oude in.",
- "rotate to 2048-bit": "roteer naar 2048-bit"
+ "rotate to 2048-bit": "roteer naar 2048-bit",
+ "AI assistant": "AI-assistent",
+ "Anthropic API key": "Anthropic-API-sleutel",
+ "Ask": "Vragen",
+ "Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.": "Vraag in gewone woorden naar uw domeinen: wat er mis is, wat eerst te verhelpen, wat een DMARC-rapport betekent. De assistent bekijkt eerst de scans, monitors, meldingen en DMARC-rapporten van uw bedrijf. Controleer het advies voordat u DNS wijzigt.",
+ "Assistant": "Assistent",
+ "Looked at: {0}": "Bekeken: {0}",
+ "Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.": "Vragen worden met deze sleutel naar Anthropic gestuurd en op uw Anthropic-account gefactureerd. De sleutel wordt versleuteld opgeslagen en nooit meer getoond.",
+ "Remove key": "Sleutel verwijderen",
+ "Remove your Anthropic API key?": "Uw Anthropic-API-sleutel verwijderen?",
+ "The assistant is off. An owner or admin can add an Anthropic API key below.": "De assistent staat uit. Een eigenaar of beheerder kan hieronder een Anthropic-API-sleutel toevoegen.",
+ "Thinking…": "Denkt na…",
+ "Use your own Anthropic API key": "Uw eigen Anthropic-API-sleutel gebruiken",
+ "Your question": "Uw vraag",
+ "e.g. Is it safe to move example.com to p=reject?": "bijv. Is het veilig om example.com naar p=reject te zetten?",
+ "✓ Key saved": "✓ Sleutel opgeslagen"
 }
