@@ -17,7 +17,7 @@ from . import scheduler
 from .config import settings
 from .database import init_db
 from .routers import (auth, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages,
-                      platform, scans, signup, team, tlsrpt, tools, users)
+                      platform, scans, signup, sso, team, tlsrpt, tools, users)
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -57,6 +57,8 @@ app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lif
 _CSRF_EXEMPT = {
     "/api/auth/login", "/api/auth/first-password", "/api/auth/mfa", "/api/platform/login", "/api/scans/public", "/api/tools/headers", "/api/tools/check",
     "/api/tools/propagation", "/api/tools/url", "/api/tools/spf-tree", "/api/tools/bimi-svg",
+    "/api/auth/signup",
+    "/api/auth/saml/acs",  # cross-site POST from the IdP; the signed assertion authorizes it
 }
 
 
@@ -200,6 +202,7 @@ app.include_router(integrations.router)
 app.include_router(users.router)
 app.include_router(platform.router)
 app.include_router(signup.router)
+app.include_router(sso.router)
 
 
 @app.get("/api/health")

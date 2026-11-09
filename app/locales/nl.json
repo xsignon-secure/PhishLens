@@ -783,5 +783,19 @@
  "not visible in DNS: check it yourself": "niet zichtbaar in DNS: controleer het zelf",
  "{0}/{1} checked rules pass": "{0}/{1} gecontroleerde regels in orde",
  "✓ Added {0} domain(s). First scans run in the background.": "✓ {0} domein(en) toegevoegd. De eerste scans draaien op de achtergrond.",
- "✓ Change undone. Rescan in a few minutes.": "✓ Wijziging ongedaan gemaakt. Scan over een paar minuten opnieuw."
+ "✓ Change undone. Rescan in a few minutes.": "✓ Wijziging ongedaan gemaakt. Scan over een paar minuten opnieuw.",
+ "Client ID": "Client-ID",
+ "Email domain": "E-maildomein",
+ "Enter your work email, then choose Sign in with SSO.": "Vul uw werkmailadres in en kies daarna Aanmelden met SSO.",
+ "IdP entity ID": "Entity-ID van de IdP",
+ "IdP metadata XML (paste it, or fill in the three fields below)": "IdP-metadata-XML (plak deze, of vul de drie velden hieronder in)",
+ "IdP sign-in URL": "Aanmeld-URL van de IdP",
+ "IdP signing certificate (PEM)": "Ondertekeningscertificaat van de IdP (PEM)",
+ "Issuer URL": "Issuer-URL",
+ "Let people sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. SSO doesn't create accounts: add people under Users first, then they can use SSO instead of a password.": "Laat mensen zich aanmelden via Okta, Microsoft Entra ID, Google Workspace, ADFS of elke OpenID Connect- of SAML 2.0-provider. SSO maakt geen accounts aan: voeg mensen eerst toe onder Gebruikers, daarna kunnen ze SSO gebruiken in plaats van een wachtwoord.",
+ "Protocol": "Protocol",
+ "Require SSO for members and admins (owners can still use a password)": "SSO verplichten voor leden en beheerders (eigenaren kunnen nog een wachtwoord gebruiken)",
+ "Sign in with SSO": "Aanmelden met SSO",
+ "Single sign-on": "Single sign-on",
+ "leave blank to keep": "leeg laten om te behouden"
 }

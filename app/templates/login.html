@@ -7,6 +7,7 @@
     <label>{{ _("Email") }}<input name="email" type="email" autocomplete="username" required autofocus></label>
     <label>{{ _("Password") }}<input name="password" type="password" autocomplete="current-password" required></label>
     <button class="btn big" type="submit">{{ _("Log in") }}</button>
+    <button class="btn ghost" type="button" id="sso-btn" style="margin-top:10px;width:100%">{{ _("Sign in with SSO") }}</button>
   </form>
   <form id="pw-form" class="hidden">
     <p class="sub">{{ _("Welcome! Choose your own password to replace the temporary one. Use at least 12 characters; a few words strung together work well.") }}</p>
@@ -29,6 +30,13 @@
 <script>
 let stepToken = null;
 const err = document.getElementById('login-err');
+const ssoError = new URLSearchParams(location.search).get('sso_error');
+if (ssoError) err.textContent = ssoError;
+document.getElementById('sso-btn').addEventListener('click', () => {
+  const email = document.querySelector('#login-form [name=email]').value.trim();
+  if (!email.includes('@')) { err.textContent = _t('Enter your work email, then choose Sign in with SSO.'); return; }
+  location.href = '/api/auth/sso/start?email=' + encodeURIComponent(email);
+});
 const show = id => ['login-form', 'pw-form', 'mfa-form'].forEach(f => document.getElementById(f).classList.toggle('hidden', f !== id));
 
 async function post(path, body) {

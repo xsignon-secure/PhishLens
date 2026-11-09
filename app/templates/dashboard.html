@@ -286,6 +286,29 @@
       <div id="sessions-list"></div>
       <p><button id="revoke-btn" class="btn tiny ghost">{{ _("Sign out other devices") }}</button> · <button id="export-btn" class="btn tiny ghost admin-only hidden">{{ _("Export my data") }}</button></p>
     </div>
+  <div class="panel" id="sso-panel">
+    <h2><span class="dot"></span>{{ _("Single sign-on") }}</h2>
+    <p class="muted small">{{ _("Let people sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. SSO doesn't create accounts: add people under Users first, then they can use SSO instead of a password.") }}</p>
+    <div id="sso-status" class="muted small"></div>
+    <form id="sso-form" class="owner-only hidden">
+      <label>{{ _("Protocol") }}<select id="sso-protocol"><option value="oidc">OpenID Connect</option><option value="saml">SAML 2.0</option></select></label>
+      <div id="sso-oidc">
+        <label>{{ _("Issuer URL") }}<input id="sso-issuer" type="url" placeholder="https://acme.okta.com"></label>
+        <label>{{ _("Client ID") }}<input id="sso-client-id" type="text"></label>
+        <label>{{ _("Client secret") }}<input id="sso-secret" type="password" autocomplete="new-password" placeholder="{{ _("leave blank to keep") }}"></label>
+      </div>
+      <div id="sso-saml" class="hidden">
+        <label>{{ _("IdP metadata XML (paste it, or fill in the three fields below)") }}<textarea id="saml-metadata" rows="3" style="width:100%" placeholder="&lt;EntityDescriptor ...&gt;"></textarea></label>
+        <label>{{ _("IdP entity ID") }}<input id="saml-entity" type="text"></label>
+        <label>{{ _("IdP sign-in URL") }}<input id="saml-url" type="url" placeholder="https://idp.example.com/saml/sso"></label>
+        <label>{{ _("IdP signing certificate (PEM)") }}<textarea id="saml-cert" rows="2" style="width:100%" placeholder="{{ _("leave blank to keep") }}"></textarea></label>
+      </div>
+      <label>{{ _("Email domain") }}<input id="sso-domain" type="text" placeholder="acme.com"></label>
+      <label style="font-weight:500"><input id="sso-enforced" type="checkbox" style="width:auto"> {{ _("Require SSO for members and admins (owners can still use a password)") }}</label>
+      <button class="btn" type="submit">{{ _("Save") }}</button>
+      <button id="sso-del" class="btn ghost" type="button">{{ _("Remove") }}</button>
+    </form>
+  </div>
   <div class="panel admin-only hidden" id="audit-panel">
     <h2><span class="dot"></span>{{ _("Audit log") }}</h2>
     <div id="audit"><p class="muted">{{ _("Loading…") }}</p></div>
@@ -608,6 +631,8 @@ async function loadEnterprise() {
   loadPlan().catch(() => {});
   if (isOwner) { loadUsers().catch(() => {}); loadSmtp().catch(() => {}); }
   if (isOwner) loadPgp().catch(() => {});
+  document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
+  loadSso().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length

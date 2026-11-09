@@ -783,5 +783,19 @@
  "not visible in DNS: check it yourself": "no visible en DNS: compruébalo tú",
  "{0}/{1} checked rules pass": "{0}/{1} reglas comprobadas se cumplen",
  "✓ Added {0} domain(s). First scans run in the background.": "✓ {0} dominio(s) añadidos. Los primeros análisis se ejecutan en segundo plano.",
- "✓ Change undone. Rescan in a few minutes.": "✓ Cambio deshecho. Vuelve a analizar en unos minutos."
+ "✓ Change undone. Rescan in a few minutes.": "✓ Cambio deshecho. Vuelve a analizar en unos minutos.",
+ "Client ID": "ID de cliente",
+ "Email domain": "Dominio de correo",
+ "Enter your work email, then choose Sign in with SSO.": "Escriba su correo de trabajo y luego elija Iniciar sesión con SSO.",
+ "IdP entity ID": "ID de entidad del IdP",
+ "IdP metadata XML (paste it, or fill in the three fields below)": "XML de metadatos del IdP (péguelo o rellene los tres campos de abajo)",
+ "IdP sign-in URL": "URL de inicio de sesión del IdP",
+ "IdP signing certificate (PEM)": "Certificado de firma del IdP (PEM)",
+ "Issuer URL": "URL del emisor",
+ "Let people sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. SSO doesn't create accounts: add people under Users first, then they can use SSO instead of a password.": "Permita que las personas inicien sesión con Okta, Microsoft Entra ID, Google Workspace, ADFS o cualquier proveedor OpenID Connect o SAML 2.0. El SSO no crea cuentas: primero añada a las personas en Usuarios y luego podrán usar SSO en lugar de una contraseña.",
+ "Protocol": "Protocolo",
+ "Require SSO for members and admins (owners can still use a password)": "Exigir SSO a miembros y administradores (los propietarios aún pueden usar contraseña)",
+ "Sign in with SSO": "Iniciar sesión con SSO",
+ "Single sign-on": "Inicio de sesión único",
+ "leave blank to keep": "déjelo en blanco para conservarlo"
 }
