@@ -444,9 +444,11 @@ def test_password_change_signs_out_other_devices(client, db):
 
 
 def test_no_signup_or_invitation_routes(client, db):
-    for path in ("/api/auth/signup", "/api/team/invite", "/api/auth/password/forgot"):
+    # Public sign-up exists but is off unless SIGNUP_ENABLED (see test_fix_guide_gating.py).
+    assert client.post("/api/auth/signup", json={"company": "x", "email": "a@b.com"}).status_code == 404
+    for path in ("/api/team/invite", "/api/auth/password/forgot"):
         assert client.post(path, json={}).status_code in (404, 405)
-    assert client.get("/signup").status_code == 404
+    assert client.get("/signup", follow_redirects=False).status_code == 302
 
 
 # ------------------------------------------------------------------ platform admin

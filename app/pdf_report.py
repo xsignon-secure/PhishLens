@@ -167,9 +167,16 @@ _header_footer = _make_header_footer(None)
 
 
 def render(scan: dict, history: dict | None = None, share_url: str | None = None,
-           brand: dict | None = None) -> bytes:
-    """Render a scan (engine.scan_to_dict shape, or a bare result dict) to PDF bytes."""
+           brand: dict | None = None, kind: str = "report") -> bytes:
+    """Render a scan (engine.scan_to_dict shape, or a bare result dict) to PDF bytes.
+
+    kind="report" is the domain report: findings, risks and priorities, never
+    the fixes, so it is safe to hand to anyone. kind="guide" is the
+    step-by-step fix guide, which only signed-in accounts may download."""
+    from .scanner import gating
     r = scan.get("result") or scan
+    if kind == "report":
+        r = gating.findings_only(r)
     domain = r.get("domain") or scan.get("domain", "")
     score = int(r.get("score", scan.get("score", 0)) or 0)
     grade = str(r.get("grade", scan.get("grade", "F")))
@@ -178,12 +185,13 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
     recs = r.get("recommendations") or []
     rep = r.get("reputation")
     history = history if history is not None else scan.get("history")
+    name = (brand or {}).get("name") or settings.APP_NAME
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm,
                             topMargin=22 * mm, bottomMargin=16 * mm,
-                            title=f"{(brand or {}).get('name') or settings.APP_NAME} report: {domain}",
-                            author=(brand or {}).get("name") or settings.APP_NAME)
+                            title=f"{name} {'fix guide' if kind == 'guide' else 'report'}: {domain}",
+                            author=name)
     story = []
 
     # ---- headline: score tile + domain summary
@@ -195,7 +203,7 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(GRADE_COLORS.get(grade, "#dc2626"))),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
-    summary = [Paragraph(escape(domain), S["h1"]),
+    summary = [Paragraph(("Fix guide: " if kind == "guide" else "") + escape(domain), S["h1"]),
                _p(f"Scanned {_date(r.get('scanned_at') or scan.get('created_at'))}", "muted"),
                Spacer(1, 4),
                _p(f"{fails} failing · {warns} warnings · {len(checks)} checks")]
@@ -205,7 +213,7 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
         word = "up" if d > 0 else "down" if d < 0 else "unchanged"
         summary.append(_p(f"Score {word}: {trend['from_score']} → {trend['to_score']} "
                           f"since {_date(trend['since'])}"))
-    if rep:
+    if rep and kind == "report":
         if rep.get("known"):
             flagged = rep["malicious"] + rep["suspicious"]
             summary.append(_p(f"VirusTotal reputation: flagged by {flagged}/{rep['total']} vendors"))
@@ -216,51 +224,51 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
                               ("LEFTPADDING", (0, 0), (0, 0), 0)]))
     story += [head, Spacer(1, 6)]
 
-    # ---- observations: what is at risk, how badly, and the fix
+    if kind == "guide":
+        story += _guide_story(checks, plan)
+    else:
+        story += _report_story(r, checks, plan, recs)
+
+    story.append(Spacer(1, 10))
+    if share_url and kind == "report":
+        story.append(_p(f"Live report: {share_url}", "muted"))
+    if rep and rep.get("url") and kind == "report":
+        story.append(_p(f"VirusTotal report: {rep['url']}", "muted"))
+
+    deco = _make_header_footer(brand)
+    doc.build(story, onFirstPage=deco, onLaterPages=deco)
+    return buf.getvalue()
+
+
+def _report_story(r: dict, checks: list, plan: list, recs: list) -> list:
+    """Findings, risks and priorities. No fix records or steps."""
     from .scanner import observations
+    story = []
     obs = observations.build(checks)
     if obs:
         story.append(Paragraph("Observations", S["h2"]))
         sev_colors = {"High": "#dc2626", "Medium": "#d97706", "Low": "#64748b"}
-        rows = [[_p("Risk", "muted"), _p("Severity", "muted"), _p("Impact", "muted"), _p("Fix", "muted")]]
+        rows = [[_p("Risk", "muted"), _p("Severity", "muted"), _p("Impact", "muted")]]
         for o in obs:
             risk = [_p(o["risk"])] + ([_p(o["issue"], "muted")] if o["issue"] else [])
             rows.append([risk,
                          Paragraph(f'<font color="{sev_colors[o["severity"]]}"><b>{o["severity"]}</b></font>',
                                    S["body"]),
-                         _p(o["impact"]), _p(o["fix"])])
-        table = Table(rows, colWidths=[38 * mm, 18 * mm, None, 58 * mm], repeatRows=1)
+                         _p(o["impact"])])
+        table = Table(rows, colWidths=[48 * mm, 20 * mm, None], repeatRows=1)
         table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0")),
         ]))
         story += [table, Spacer(1, 6)]
 
-    # ---- action plan
     story.append(Paragraph("Fix these first", S["h2"]))
-    guided = [c for c in checks if c.get("guide")]
     if plan:
-        n = 0
-        for item in plan:
-            n += 1
-            if item.get("guide"):
-                story += _guide_block(n, item.get("check", ""), item.get("points"), item["guide"])
-            else:
-                story.append(KeepTogether([
-                    _p(f"{n}. {item.get('check', '')}  (+{item.get('points', 0)} pts)"),
-                    _p(item.get("fix", ""), "code"), Spacer(1, 4)]))
-        planned = {item.get("check") for item in plan}
-        rest = [c for c in guided if c.get("title") not in planned]
-        if rest:
-            story.append(Paragraph("Other fixes", S["h2"]))
-            for c in rest:
-                n += 1
-                story += _guide_block(n, c.get("title", ""), (c.get("max_score") or 0) - (c.get("score") or 0),
-                                      c["guide"])
+        for n, item in enumerate(plan, 1):
+            story.append(_p(f"{n}. {item.get('check', '')}  (+{item.get('points', 0)} pts)"))
     else:
         story.append(_p("Nothing urgent: this domain is in great shape."))
 
-    # ---- findings table
     story.append(Paragraph("Findings", S["h2"]))
     rows = [[_p("Status", "muted"), _p("Check", "muted"), _p("Points", "muted"), _p("Details", "muted")]]
     for c in checks:
@@ -269,10 +277,6 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
                           f'{escape(status.upper())}</b></font>', S["body"])
         detail = [_p(c.get("details", ""))]
         detail += [_p("• " + str(x), "muted") for x in c.get("issues") or []]
-        if c.get("guide"):
-            detail.append(_p("Fix: " + _pdf_text(c["guide"].get("headline", "")) + " (see above)", "muted"))
-        else:
-            detail += [_p(f, "code") for f in c.get("fixes") or []]
         rows.append([badge, _p(c.get("title", "")), _p(f"{c.get('score', 0)}/{c.get('max_score', 0)}"),
                      detail])
     table = Table(rows, colWidths=[17 * mm, 30 * mm, 16 * mm, None], repeatRows=1)
@@ -283,7 +287,12 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
     ]))
     story.append(table)
 
-    # ---- next steps beyond DNS
+    if r.get("locked_fixes"):
+        story += [Spacer(1, 8), KeepTogether([
+            Paragraph("Step-by-step fix guide", S["h2"]),
+            _p(f"The exact DNS records and steps to fix the {r['locked_fixes']} issue(s) above are in "
+               f"a separate fix guide for signed-in accounts: {settings.APP_URL}/login")])]
+
     for rec in recs:
         block = [Paragraph(escape(rec.get("headline", "")), S["h2"]), _p(rec.get("body", ""))]
         for prod in rec.get("products") or []:
@@ -291,13 +300,43 @@ def render(scan: dict, history: dict | None = None, share_url: str | None = None
         if rec.get("cta"):
             block.append(_p(f"{rec['cta'].get('label', '')}: {rec['cta'].get('href', '')}", "muted"))
         story.append(KeepTogether(block))
+    return story
 
-    story.append(Spacer(1, 10))
-    if share_url:
-        story.append(_p(f"Live report: {share_url}", "muted"))
-    if rep and rep.get("url"):
-        story.append(_p(f"VirusTotal report: {rep['url']}", "muted"))
 
-    deco = _make_header_footer(brand)
-    doc.build(story, onFirstPage=deco, onLaterPages=deco)
-    return buf.getvalue()
+def _guide_story(checks: list, plan: list) -> list:
+    """Step by step: the exact records to publish, in priority order."""
+    story = [_p("Work through these in order and rescan after each change. DNS changes can "
+                "take from a few minutes to a few hours to be visible everywhere.", "muted"),
+             Spacer(1, 4)]
+    n = 0
+    done = set()
+    by_title = {c.get("title"): c for c in checks}
+    if plan:
+        story.append(Paragraph("Fix these first", S["h2"]))
+    for item in plan:
+        c = by_title.get(item.get("check")) or {}
+        g = item.get("guide") or c.get("guide")
+        n += 1
+        if g:
+            story += _guide_block(n, item.get("check", ""), item.get("points"), g)
+        else:
+            story.append(KeepTogether(
+                [_p(f"{n}. {item.get('check', '')}  (+{item.get('points', 0)} pts)")]
+                + [_p(f, "code") for f in (c.get("fixes") or [item.get("fix", "")]) if f]
+                + [Spacer(1, 4)]))
+        done.add(item.get("check"))
+    rest = [c for c in checks if c.get("title") not in done and c.get("status") in ("fail", "warn")
+            and (c.get("guide") or c.get("fixes"))]
+    if rest:
+        story.append(Paragraph("Other fixes", S["h2"]))
+        for c in rest:
+            n += 1
+            pts = (c.get("max_score") or 0) - (c.get("score") or 0)
+            if c.get("guide"):
+                story += _guide_block(n, c.get("title", ""), pts, c["guide"])
+            else:
+                story.append(KeepTogether([_p(f"{n}. {c.get('title', '')}  (+{pts} pts)")]
+                                          + [_p(f, "code") for f in c.get("fixes") or []] + [Spacer(1, 4)]))
+    if not n:
+        story.append(_p("Nothing to fix: this domain is in great shape."))
+    return story

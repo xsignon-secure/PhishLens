@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 
 from .. import audit, bimi, header_analyzer, models, schemas, url_check
 from ..database import get_db
-from ..deps import assert_public_target, client_ip, get_current_user, normalize_domain, public_scan_limit, rate_limit
-from ..scanner import dns_checks, lookalike, mail_checks, net, web_checks
+from ..deps import (assert_public_target, client_ip, get_current_user, normalize_domain, optional_user,
+                    public_scan_limit, rate_limit)
+from ..scanner import dns_checks, gating, lookalike, mail_checks, net, web_checks
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
@@ -71,8 +72,9 @@ class CheckIn(BaseModel):
 
 
 @router.post("/check")
-def check_one(payload: CheckIn, request: Request):
-    """Public: run one check (e.g. just SPF) without a full scan or an account."""
+def check_one(payload: CheckIn, request: Request, user: models.User | None = Depends(optional_user)):
+    """Public: run one check (e.g. just SPF) without a full scan or an account.
+    The fix records are for signed-in accounts (scanner/gating.py)."""
     fn = SINGLE_CHECKS.get(payload.check)
     if not fn:
         raise HTTPException(status_code=404, detail="Unknown check")
@@ -80,9 +82,10 @@ def check_one(payload: CheckIn, request: Request):
     domain = normalize_domain(payload.domain)
     assert_public_target(domain)
     try:
-        return fn(domain)
+        result = fn(domain)
     except dns_checks.DnsLookupError:
         raise HTTPException(status_code=503, detail="DNS servers didn't answer; try again shortly")
+    return result if user else gating.lock_check(result)
 
 
 # ------------------------------------------------------------------ DNS propagation

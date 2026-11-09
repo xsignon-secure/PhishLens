@@ -412,7 +412,7 @@ function bimiCheckHtml(r, svg, sender) {
     </div>`;
 }
 
-function observationsTable(checks) {
+function observationsTable(checks, locked) {
   const rank = {high: 0, medium: 1, low: 2};
   const rows = checks.filter(c => c.status === 'fail' || c.status === 'warn')
     .map(c => ({c, sev: severityFor(c)}))
@@ -421,12 +421,12 @@ function observationsTable(checks) {
   const label = {high: _t('High'), medium: _t('Medium'), low: _t('Low')};
   return `<div class="observations"><h3>${_t('Observations')}</h3>
     <div class="table-wrap"><table>
-    <thead><tr><th>${_t('Risk')}</th><th>${_t('Severity')}</th><th>${_t('Impact')}</th><th>${_t('Fix')}</th></tr></thead>
+    <thead><tr><th>${_t('Risk')}</th><th>${_t('Severity')}</th><th>${_t('Impact')}</th>${locked ? '' : `<th>${_t('Fix')}</th>`}</tr></thead>
     <tbody>${rows.map(({c, sev}) => `<tr>
       <td><strong>${escapeHtml(c.title)}</strong>${(c.issues || [])[0] ? `<br><span class="muted small">${escapeHtml(c.issues[0])}</span>` : ''}</td>
       <td><span class="sev ${sev}">${label[sev]}</span></td>
       <td>${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : '<span class="muted">—</span>'}</td>
-      <td>${escapeHtml((c.fixes || [])[0] || '')}</td></tr>`).join('')}</tbody>
+      ${locked ? '' : `<td>${escapeHtml((c.fixes || [])[0] || '')}</td>`}</tr>`).join('')}</tbody>
     </table></div></div>`;
 }
 
@@ -437,6 +437,19 @@ function dnssecParts(checks) {
   const no = `<span class="badge warn">${_t('Disabled')}</span>`;
   return `<p class="details">${_t('Signed at nameservers')}: ${c.signed_at_nameservers ? yes : no}
     · ${_t('DS record at registrar')}: ${c.ds_at_registrar ? yes : no}</p>`;
+}
+
+/* The free report has no fixes: the server leaves them out (solutions_locked)
+   and this card says where to get them. */
+function lockedGuideCard(r, opts) {
+  const next = opts.next ? '?next=' + encodeURIComponent(opts.next) : '';
+  return `<div class="locked-guide" id="fix-guide-locked">
+    <h3>${_t('🔒 Step-by-step fix guide')}</h3>
+    <p>${_t('The exact DNS records and steps to fix {0} issue(s) are in the fix guide, free for registered users.', {0: r.locked_fixes})}</p>
+    <p class="locked-actions">
+      ${window.SIGNUP_ON ? `<a class="btn" href="/signup${next}">${_t('Create a free account')}</a>` : ''}
+      <a class="btn ghost" href="/login${next}">${_t('Log in')}</a></p>
+  </div>`;
 }
 
 function renderReport(scan, isPublic, opts = {}) {
@@ -463,7 +476,13 @@ function renderReport(scan, isPublic, opts = {}) {
   const planned = {};
   plan.forEach((p, i) => { if (p.guide) planned[p.check] = i + 1; });
   const hasGuides = checks.some(c => c.guide);
-  const planHtml = plan.length
+  const locked = !!r.solutions_locked;
+  const lockHtml = locked && r.locked_fixes ? lockedGuideCard(r, opts) : '';
+  const planHtml = locked
+    ? (plan.length ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3>
+      <ol>${plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span></li>`).join('')}</ol>
+      ${lockHtml}</div>` : (lockHtml || `<div class="plan good"><h3>${_t('✓ Nothing urgent — this domain is in great shape.')}</h3></div>`))
+    : plan.length
     ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3>
       ${hasGuides ? providerPicker(pk, detected) : ''}` +
       plan.map((p, i) => {
@@ -483,6 +502,7 @@ function renderReport(scan, isPublic, opts = {}) {
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${c.key === 'dnssec' ? dnssecParts(checks) : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
+      ${c.solutions_locked ? `<p class="fix-locked"><a href="#fix-guide-locked">${_t('🔒 How to fix: in the fix guide')}</a></p>` : ''}
       ${c.guide && planned[c.title] ? `<p class="fix-see"><a href="#fix-${escapeHtml(c.key)}">${_t('How to fix: see step {0} above ↑', {0: planned[c.title]})}</a></p>`
         : c.guide ? `<div class="fix-in-check">${fixCard(c.guide, c, c.max_score - c.score, r.domain, pk, opts, 0)}</div>`
         : (c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
@@ -500,13 +520,14 @@ function renderReport(scan, isPublic, opts = {}) {
           <span class="grade ${gradeClass(r.score)}">${_t('Grade {0}', {0: escapeHtml(r.grade)})}</span>
           <span class="muted small">${_t('{0} failing · {1} warnings', {0: issues, 1: warnings})}</span>
           ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${_t('⤓ Download PDF')}</a>` : ''}
+          ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${_t('⤓ Fix guide (PDF)')}</a>` : ''}
           ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${_t('✉ Email me this report')}</button>` : ''}
         </div>
         ${trendLine(scan.history)}
         ${reputationBadge(r.reputation)}
       </div>
     </div>
-    ${observationsTable(checks)}
+    ${observationsTable(checks, locked)}
     ${planHtml}
     ${recHtml}
     <h3 class="findings-title">${_t('Findings')}</h3>
@@ -539,7 +560,7 @@ function bindReportInteractions(container) {
           .finally(() => { mail.disabled = false; });
         return;
       }
-      const see = e.target.closest('.fix-see a');
+      const see = e.target.closest('.fix-see a, .fix-locked a');
       if (see) {
         e.preventDefault();
         const el = container.querySelector(see.getAttribute('href'));

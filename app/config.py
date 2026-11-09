@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     # Hosted plans (Free / Pro / MSP, set per company at /platform). Off = every
     # company gets everything, which is what a self-hosted copy wants.
     PLANS_ENABLED: bool = False
+    # Public sign-up at /signup: anyone with a working email address gets a
+    # free company account (login details go to that address, which proves
+    # it is theirs). Off = companies are created at /platform only. Needs the
+    # server mail settings (SMTP_*).
+    SIGNUP_ENABLED: bool = False
+    SIGNUPS_PER_IP_PER_HOUR: int = 5
+    SIGNUPS_PER_HOUR: int = 100
     # Shown on the Terms/Privacy pages and footer of your instance.
     CONTACT_EMAIL: str = ""
     SOURCE_URL: str = "https://github.com/xsignon-secure/PhishLens"

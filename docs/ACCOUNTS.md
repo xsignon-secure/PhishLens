@@ -1,7 +1,20 @@
 # Accounts, companies and sign-in
 
-PhishLens has no self-signup and no invitation links. Accounts are created by
-admins, and login details are emailed from each company's own mail server.
+PhishLens has no invitation links. Accounts are created by admins, and login
+details are emailed from each company's own mail server.
+
+**Public sign-up (optional).** With `SIGNUP_ENABLED=true` (and the server's
+`SMTP_*` set), `/signup` lets anyone create a company on the Free plan with
+themselves as owner. It reuses the admin flow: a temporary password is
+emailed to the address given (so nobody gets in without that inbox), then the
+first login asks for a new password and an authenticator app. Abuse limits:
+`SIGNUPS_PER_IP_PER_HOUR` (5), `SIGNUPS_PER_HOUR` (100), a hidden honeypot
+field, the email domain must exist, common throwaway-mail domains are refused,
+and an address that already has an account gets the same answer as a new one.
+
+**What needs an account.** Scan findings are free. The fixes (exact records,
+step-by-step fix cards, and the fix guide PDF) need a signed-in account; see
+`app/scanner/gating.py`. The domain report PDF never contains fixes.
 
 ## Who does what
 
@@ -97,7 +110,7 @@ an owner from `/platform` (**Add owner**).
 |---|---|
 | Reading another company's data by changing an id in a URL (IDOR) | Every query filters on the signed-in user's company; another company's object is "not found" (404), never "forbidden". Tests in `tests/test_accounts.py` and `tests/test_security.py`. |
 | Editing the company in a session token | Tokens are signed; a token with a bad signature is refused (403) and logged as `security.token_tampered`, critical. A validly signed token whose company doesn't match the account is refused, its session ended, and logged as `security.cross_tenant`. |
-| Finding out who has an account | One login error for every failure, constant-time hashing for unknown emails, no signup or password-reset form. |
+| Finding out who has an account | One login error for every failure, constant-time hashing for unknown emails, no password-reset form; sign-up (when on) answers the same for new and existing addresses. |
 | Password guessing | Account lock with growing delay, per-account and per-IP limits, Argon2id, breached-password check. |
 | Stolen session cookie | httpOnly cookies, short access tokens, idle and absolute expiry, refresh rotation with replay detection, per-device sign-out. Sensitive changes need a fresh authenticator code. |
 | Stolen password | Authenticator app required for owners and admins (codes can't be reused); recovery codes stored as hashes. |
