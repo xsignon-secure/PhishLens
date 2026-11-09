@@ -843,5 +843,6 @@
  "Use your own Anthropic API key": "自社の Anthropic API キーを使う",
  "Your question": "質問内容",
  "e.g. Is it safe to move example.com to p=reject?": "例: example.com を p=reject にしても安全ですか？",
- "✓ Key saved": "✓ キーを保存しました"
+ "✓ Key saved": "✓ キーを保存しました",
+ "New certificate in CT logs": "CT ログに新しい証明書"
 }

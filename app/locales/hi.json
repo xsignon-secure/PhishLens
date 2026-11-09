@@ -843,5 +843,6 @@
  "Use your own Anthropic API key": "अपनी Anthropic API कुंजी उपयोग करें",
  "Your question": "आपका सवाल",
  "e.g. Is it safe to move example.com to p=reject?": "उदा. क्या example.com को p=reject पर ले जाना सुरक्षित है?",
- "✓ Key saved": "✓ कुंजी सहेजी गई"
+ "✓ Key saved": "✓ कुंजी सहेजी गई",
+ "New certificate in CT logs": "CT लॉग में नया प्रमाणपत्र"
 }

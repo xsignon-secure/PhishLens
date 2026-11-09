@@ -66,7 +66,10 @@ def run(force: bool = False, min_age_hours: float = 20, domain: str | None = Non
                     not monitor.lookalikes_checked_at
                     or monitor.lookalikes_checked_at
                     < datetime.utcnow() - timedelta(days=lookalike_days))
-                result = engine.rescan_monitor(db, monitor, check_lookalikes=due)
+                ct_due = plans.has(tenant, "lookalike_watch") and (
+                    not (monitor.ct_state or {}).get("checked_at")
+                    or monitor.ct_state["checked_at"] < (datetime.utcnow() - timedelta(hours=20)).isoformat())
+                result = engine.rescan_monitor(db, monitor, check_lookalikes=due, check_ct=ct_due)
                 done += 1
                 alerted += len(result["alerts"])
                 print(f"[{datetime.utcnow().isoformat()}] {monitor.domain} "

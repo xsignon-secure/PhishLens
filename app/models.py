@@ -171,6 +171,8 @@ class Monitor(Base):
     # next check alerts only on newly registered ones.
     lookalikes = Column(JSON, nullable=True)
     lookalikes_checked_at = Column(DateTime, nullable=True)
+    # Certificate Transparency baseline: {issuers, max_id, lookalike_max_id, checked_at}.
+    ct_state = Column(JSON, nullable=True)
     client = Column(String(100), nullable=True)  # MSP: which customer this domain belongs to
     # What raises an alert on rescans: none | essential | balanced | comprehensive
     alert_level = Column(String(20), nullable=False, default="balanced", server_default="balanced")
