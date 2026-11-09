@@ -9,6 +9,7 @@
       <a href="#domains" data-nav="domains" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span>{{ _("Domains") }}</span></a>
       <a href="#reports" data-nav="reports" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 15v-3M12 15V9M16 15v-5"/></svg><span>{{ _("DMARC reports") }}</span></a>
       <a href="#dns" data-nav="dns" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg><span>{{ _("DNS &amp; hosting") }}</span></a>
+      <a href="#assistant" data-nav="assistant" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg><span>{{ _("Assistant") }}</span></a>
       <a href="#integrations" data-nav="integrations" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg><span>{{ _("Integrations") }}</span></a>
       <a href="#users" data-nav="users" class="side-link admin-only hidden"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg><span>{{ _("Users") }}</span></a>
       <a href="#security" data-nav="security" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>{{ _("Security") }}</span></a>
@@ -139,6 +140,27 @@
       <p id="hosted-msg" class="muted small"></p>
     </form>
     <div id="hosted-list"></div>
+  </div>
+  </div>
+
+  <div data-section="assistant" class="hidden">
+  <div class="panel" id="assistant-panel">
+    <h2><span class="dot"></span>{{ _("AI assistant") }}</h2>
+    <p class="muted small">{{ _("Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.") }}</p>
+    <div id="assistant-off" class="muted small hidden">{{ _("The assistant is off. An owner or admin can add an Anthropic API key below.") }}</div>
+    <div id="assistant-log" class="assistant-log" aria-live="polite"></div>
+    <form id="assistant-form" class="assistant-form">
+      <textarea id="assistant-input" rows="2" maxlength="8000" placeholder="{{ _("e.g. Is it safe to move example.com to p=reject?") }}" aria-label="{{ _("Your question") }}"></textarea>
+      <button class="btn" type="submit">{{ _("Ask") }}</button>
+    </form>
+    <details class="admin-only hidden" style="margin-top:14px"><summary class="small">{{ _("Use your own Anthropic API key") }}</summary>
+      <p class="muted small">{{ _("Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.") }}</p>
+      <form id="assistant-key-form" class="scanbox small">
+        <input id="assistant-key" type="password" placeholder="sk-ant-…" autocomplete="off" aria-label="{{ _("Anthropic API key") }}">
+        <button class="btn" type="submit">{{ _("Save key") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="assistant-key-del">{{ _("Remove key") }}</button>
+      </form>
+    </details>
   </div>
   </div>
 
@@ -622,6 +644,60 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
   } catch (err) { el.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p></div>'; }
 });
 
+/* ---------------- AI assistant ---------------- */
+let assistantHistory = [];
+function assistantText(t) {
+  return escapeHtml(t).replace(/```([\s\S]*?)```/g, (_, c) => '<pre>' + c.replace(/^\w*\n/, '') + '</pre>')
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+}
+function renderAssistant(pending) {
+  const log = document.getElementById('assistant-log');
+  log.innerHTML = assistantHistory.map(m => `<div class="bubble ${m.role}">${assistantText(m.content)}${m.tools && m.tools.length ? `<div class="muted small">${_t('Looked at: {0}', {0: escapeHtml([...new Set(m.tools)].join(', '))})}</div>` : ''}</div>`).join('')
+    + (pending ? `<div class="bubble assistant muted">${_t('Thinking…')}</div>` : '');
+  log.scrollTop = log.scrollHeight;
+}
+async function loadAssistant() {
+  const st = await api('/api/assistant');
+  document.getElementById('assistant-off').classList.toggle('hidden', st.enabled);
+  document.getElementById('assistant-form').classList.toggle('hidden', !st.enabled);
+  document.getElementById('assistant-key-del').classList.toggle('hidden', !st.own_key);
+}
+document.getElementById('assistant-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = document.getElementById('assistant-input'), q = input.value.trim();
+  if (!q) return;
+  assistantHistory.push({role: 'user', content: q});
+  input.value = '';
+  renderAssistant(true);
+  try {
+    const r = await api('/api/assistant/chat', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({messages: assistantHistory.slice(-20).map(m => ({role: m.role, content: m.content}))})});
+    assistantHistory.push({role: 'assistant', content: r.reply, tools: r.tools_used});
+  } catch (err) {
+    assistantHistory.pop();
+    input.value = q;
+    if (err.message !== 'auth') toast(err.message);
+  }
+  renderAssistant(false);
+});
+document.getElementById('assistant-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('assistant-form').requestSubmit(); }
+});
+document.getElementById('assistant-key-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const el = document.getElementById('assistant-key');
+  try {
+    await api('/api/team/assistant-key', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key: el.value.trim()})});
+    el.value = ''; toast(_t('✓ Key saved'));
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  loadAssistant();
+});
+document.getElementById('assistant-key-del').addEventListener('click', async () => {
+  if (!confirm(_t('Remove your Anthropic API key?'))) return;
+  await api('/api/team/assistant-key', {method: 'DELETE'});
+  loadAssistant();
+});
+
 /* ---------------- workspace: api keys, webhooks, audit -------- */
 async function loadEnterprise() {
   const me = await api('/api/auth/me');
@@ -634,6 +710,7 @@ async function loadEnterprise() {
   if (isOwner) loadPgp().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
+  loadAssistant().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length

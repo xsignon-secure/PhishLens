@@ -828,5 +828,20 @@
  "through your connected DNS provider": "आपके कनेक्ट किए गए DNS प्रदाता से",
  "through your hosted DMARC record": "आपके होस्ट किए गए DMARC रिकॉर्ड से",
  "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "हर पंक्ति में एक सेलेक्टर: सेलेक्टर, एक स्पेस, फिर आपकी ईमेल सेवा का दिया सार्वजनिक कुंजी रिकॉर्ड (v=DKIM1; k=rsa; p=…)। पुरानी कुंजी हटाने के लिए सेलेक्टर के बाद \"revoked\" लिखें। रोटेट करने के लिए नया सेलेक्टर जोड़ें, अपनी सेवा को उस पर बदलें, फिर पुराना रद्द करें।",
- "rotate to 2048-bit": "2048-बिट पर रोटेट करें"
+ "rotate to 2048-bit": "2048-बिट पर रोटेट करें",
+ "AI assistant": "AI सहायक",
+ "Anthropic API key": "Anthropic API कुंजी",
+ "Ask": "पूछें",
+ "Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.": "अपने डोमेन के बारे में आसान शब्दों में पूछें: क्या गलत है, पहले क्या ठीक करें, DMARC रिपोर्ट का क्या मतलब है। सहायक जवाब देने से पहले आपकी कंपनी के स्कैन, मॉनिटर, अलर्ट और DMARC रिपोर्ट देखता है। DNS बदलने से पहले उसकी सलाह जाँच लें।",
+ "Assistant": "सहायक",
+ "Looked at: {0}": "देखा गया: {0}",
+ "Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.": "सवाल इस कुंजी से Anthropic को भेजे जाते हैं और आपके Anthropic खाते में बिल होते हैं। कुंजी एन्क्रिप्ट करके रखी जाती है और फिर कभी नहीं दिखाई जाती।",
+ "Remove key": "कुंजी हटाएँ",
+ "Remove your Anthropic API key?": "अपनी Anthropic API कुंजी हटाएँ?",
+ "The assistant is off. An owner or admin can add an Anthropic API key below.": "सहायक बंद है। कोई मालिक या एडमिन नीचे Anthropic API कुंजी जोड़ सकता है।",
+ "Thinking…": "सोच रहा है…",
+ "Use your own Anthropic API key": "अपनी Anthropic API कुंजी उपयोग करें",
+ "Your question": "आपका सवाल",
+ "e.g. Is it safe to move example.com to p=reject?": "उदा. क्या example.com को p=reject पर ले जाना सुरक्षित है?",
+ "✓ Key saved": "✓ कुंजी सहेजी गई"
 }

@@ -828,5 +828,20 @@
  "through your connected DNS provider": "tramite il tuo provider DNS collegato",
  "through your hosted DMARC record": "tramite il tuo record DMARC ospitato",
  "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "Un selettore per riga: il selettore, uno spazio, poi il record di chiave pubblica fornito dal tuo servizio email (v=DKIM1; k=rsa; p=…). Per ritirare una vecchia chiave, scrivi il selettore seguito da \"revoked\". Per ruotare, aggiungi il nuovo selettore, passa il servizio al nuovo, poi revoca il vecchio.",
- "rotate to 2048-bit": "ruota a 2048 bit"
+ "rotate to 2048-bit": "ruota a 2048 bit",
+ "AI assistant": "Assistente IA",
+ "Anthropic API key": "Chiave API Anthropic",
+ "Ask": "Chiedi",
+ "Ask about your domains in plain words: what's wrong, what to fix first, what a DMARC report means. The assistant looks at your company's scans, monitors, alerts and DMARC reports before it answers. Check its advice before changing DNS.": "Chiedi dei tuoi domini con parole semplici: cosa non va, cosa correggere prima, cosa significa un report DMARC. L'assistente esamina scansioni, monitor, avvisi e report DMARC della tua azienda prima di rispondere. Verifica i suoi consigli prima di modificare il DNS.",
+ "Assistant": "Assistente",
+ "Looked at: {0}": "Consultato: {0}",
+ "Questions are sent to Anthropic with this key and billed to your Anthropic account. The key is stored encrypted and never shown again.": "Le domande vengono inviate ad Anthropic con questa chiave e addebitate al tuo account Anthropic. La chiave è salvata cifrata e non viene più mostrata.",
+ "Remove key": "Rimuovi chiave",
+ "Remove your Anthropic API key?": "Rimuovere la tua chiave API Anthropic?",
+ "The assistant is off. An owner or admin can add an Anthropic API key below.": "L'assistente è spento. Un proprietario o amministratore può aggiungere una chiave API Anthropic qui sotto.",
+ "Thinking…": "Sto pensando…",
+ "Use your own Anthropic API key": "Usa la tua chiave API Anthropic",
+ "Your question": "La tua domanda",
+ "e.g. Is it safe to move example.com to p=reject?": "es. È sicuro portare example.com a p=reject?",
+ "✓ Key saved": "✓ Chiave salvata"
 }
