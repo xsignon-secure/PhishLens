@@ -1,4 +1,4 @@
-# Hosted DMARC, SPF, MTA-STS, TLS-RPT and BIMI
+# Hosted DMARC, SPF, MTA-STS, TLS-RPT, BIMI and DKIM
 
 Customers delegate their records to PhishLens once; after that every policy
 change is a click in the dashboard. PhishLens writes the real records into a DNS
@@ -39,6 +39,7 @@ Cloudflare in one click). For example.com:
 | MTA-STS | `_mta-sts.example.com CNAME example.com.<tag>._mta-sts.<HOSTED_ZONE>` and `mta-sts.example.com CNAME <MTA_STS_TARGET>` |
 | TLS-RPT | `_smtp._tls.example.com CNAME example.com.<tag>._smtp._tls.<HOSTED_ZONE>` |
 | BIMI | `default._bimi.example.com CNAME example.com.<tag>._bimi.<HOSTED_ZONE>` |
+| DKIM | `<selector>._domainkey.example.com CNAME <selector>.example.com.<tag>._dkim.<HOSTED_ZONE>` (one per selector) |
 
 `<tag>` is unique per account, so two accounts can't overwrite each other's
 records. MTA-STS policies are served only to the account the domain's
@@ -55,3 +56,14 @@ records. MTA-STS policies are served only to the account the domain's
   `v=BIMI1; l=<that URL>; a=<certificate URL, optional>`. A new logo gets a
   new URL, so inboxes fetch it again. Gmail and Apple Mail also need a VMC or
   CMC certificate from a certificate authority; PhishLens doesn't issue one.
+
+## Hosted DKIM
+
+The owner lists each selector with the public key record their email service
+gives them (`v=DKIM1; k=rsa; p=...`). PhishLens checks the key (RSA 1024-bit
+or more, or ed25519) and publishes it in the hosted zone. To rotate a key,
+add the new selector, switch the service to it, then mark the old selector
+revoked: PhishLens publishes `v=DKIM1; p=` for it (RFC 6376 3.6.1). Each new
+selector needs its CNAME once; after that nothing changes in the customer's
+DNS. Services that give a CNAME instead of a key (SendGrid, Mailchimp and
+others) already rotate keys themselves, so leave those as they are.

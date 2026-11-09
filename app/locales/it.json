@@ -826,5 +826,7 @@
  "Watching": "In osservazione",
  "Why": "Perché",
  "through your connected DNS provider": "tramite il tuo provider DNS collegato",
- "through your hosted DMARC record": "tramite il tuo record DMARC ospitato"
+ "through your hosted DMARC record": "tramite il tuo record DMARC ospitato",
+ "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "Un selettore per riga: il selettore, uno spazio, poi il record di chiave pubblica fornito dal tuo servizio email (v=DKIM1; k=rsa; p=…). Per ritirare una vecchia chiave, scrivi il selettore seguito da \"revoked\". Per ruotare, aggiungi il nuovo selettore, passa il servizio al nuovo, poi revoca il vecchio.",
+ "rotate to 2048-bit": "ruota a 2048 bit"
 }

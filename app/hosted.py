@@ -28,7 +28,7 @@ import httpx
 from . import bimi, dns_providers, models
 from .config import settings
 
-KINDS = ("dmarc", "spf", "mta_sts", "tls_rpt", "bimi")
+KINDS = ("dmarc", "spf", "mta_sts", "tls_rpt", "bimi", "dkim")
 _EMAIL = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}")
 SPF_CHUNK = 420           # characters per hosted SPF record (well under the 512-byte UDP answer)
 SPF_LOOKUP_BUDGET = 40    # DNS queries spent flattening one domain
@@ -61,8 +61,62 @@ def _tag(rec: models.HostedRecord) -> str:
 
 def hosted_name(rec: models.HostedRecord) -> str:
     label = {"dmarc": "_dmarc", "spf": "_spf", "mta_sts": "_mta-sts",
-             "tls_rpt": "_smtp._tls", "bimi": "_bimi"}[rec.kind]
+             "tls_rpt": "_smtp._tls", "bimi": "_bimi", "dkim": "_dkim"}[rec.kind]
     return f"{rec.domain}.{_tag(rec)}.{label}.{settings.HOSTED_ZONE}"
+
+
+def dkim_name(rec: models.HostedRecord, selector: str) -> str:
+    return f"{selector}.{hosted_name(rec)}"
+
+
+_SELECTOR = re.compile(r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*")
+
+
+def clean_dkim_key(value: str) -> tuple[str, dict]:
+    """Normalise a DKIM public key record ("v=DKIM1; k=rsa; p=MIIB...", or
+    just the base64 key) and check the key itself. Returns (record, info)."""
+    import base64
+
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+
+    value = " ".join(value.replace('"', " ").split())
+    if "=" not in value or not re.search(r"(^|;)\s*p\s*=", value):
+        value = f"v=DKIM1; k=rsa; p={value}"
+    tags = {}
+    for part in value.split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            tags[k.strip().lower()] = v.strip()
+    k = tags.get("k", "rsa").lower()
+    p = re.sub(r"\s+", "", tags.get("p", ""))
+    if k not in ("rsa", "ed25519"):
+        raise HostedError(f"Unsupported DKIM key type: {k}")
+    if not p:
+        raise HostedError("The key is empty. To retire a selector, mark it revoked instead.")
+    try:
+        der = base64.b64decode(p, validate=True)
+    except ValueError:
+        raise HostedError("The key (p=) isn't valid base64")
+    if k == "ed25519":
+        if len(der) != 32:
+            raise HostedError("An ed25519 DKIM key is 32 bytes")
+        bits = 256
+    else:
+        try:
+            key = load_der_public_key(der)
+        except ValueError:
+            raise HostedError("The key (p=) isn't an RSA public key")
+        if not isinstance(key, rsa.RSAPublicKey):
+            raise HostedError("The key (p=) isn't an RSA public key")
+        bits = key.key_size
+        if bits < 1024:
+            raise HostedError(f"{bits}-bit keys are too weak: use 2048-bit")
+    out = ["v=DKIM1", f"k={k}"]
+    if tags.get("t"):
+        out.append(f"t={tags['t']}")
+    out.append(f"p={p}")
+    return "; ".join(out), {"type": k, "bits": bits}
 
 
 # ------------------------------------------------------------------ config validation
@@ -146,6 +200,23 @@ def clean_config(kind: str, cfg: dict, domain: str) -> dict:
         if not rua:
             raise HostedError("Add a report address (an email address or https:// URL)")
         return {"rua": rua[:3]}
+    if kind == "dkim":
+        keys, seen = [], set()
+        for item in (cfg.get("keys") or [])[:10]:
+            sel = (item.get("selector") or "").strip().lower().removesuffix("._domainkey")
+            if not sel or not _SELECTOR.fullmatch(sel) or len(sel) > 63:
+                raise HostedError(f"Invalid selector: {sel or '(empty)'}")
+            if sel in seen:
+                raise HostedError(f"Selector {sel} is listed twice")
+            seen.add(sel)
+            if item.get("revoked"):
+                keys.append({"selector": sel, "value": None, "revoked": True})
+                continue
+            value, info = clean_dkim_key(item.get("value") or "")
+            keys.append({"selector": sel, "value": value, "revoked": False, **info})
+        if not keys:
+            raise HostedError("Add at least one selector and its public key")
+        return {"keys": keys}
     if kind == "bimi":
         svg = (cfg.get("svg") or "").strip()
         if not svg:
@@ -299,6 +370,9 @@ def desired_records(rec: models.HostedRecord, resolver=None) -> dict[str, str]:
         return {hosted_name(rec): tls_rpt_value(rec.config)}
     if rec.kind == "bimi":
         return {hosted_name(rec): bimi_value(rec)}
+    if rec.kind == "dkim":
+        # A revoked selector publishes an empty key (RFC 6376 3.6.1).
+        return {dkim_name(rec, k["selector"]): k["value"] or "v=DKIM1; p=" for k in rec.config["keys"]}
     raise HostedError("Unknown record kind")
 
 
@@ -312,6 +386,9 @@ def customer_records(rec: models.HostedRecord) -> list[dict]:
         return [{"name": d, "type": "TXT",
                  "value": f"v=spf1 include:{hosted_name(rec)} {rec.config['all']}",
                  "note": "Replace your existing v=spf1 record (keep other TXT records)."}]
+    if rec.kind == "dkim":
+        return [{"name": f"{k['selector']}._domainkey.{d}", "type": "CNAME", "value": dkim_name(rec, k["selector"]),
+                 "note": "Delete any existing TXT record at this name first."} for k in rec.config["keys"]]
     if rec.kind in ("tls_rpt", "bimi"):
         name = f"_smtp._tls.{d}" if rec.kind == "tls_rpt" else f"default._bimi.{d}"
         return [{"name": name, "type": "CNAME", "value": hosted_name(rec),

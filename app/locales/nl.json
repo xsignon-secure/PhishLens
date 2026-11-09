@@ -826,5 +826,7 @@
  "Watching": "Bewaakt",
  "Why": "Waarom",
  "through your connected DNS provider": "via uw gekoppelde DNS-provider",
- "through your hosted DMARC record": "via uw gehoste DMARC-record"
+ "through your hosted DMARC record": "via uw gehoste DMARC-record",
+ "One selector per line: the selector, a space, then the public key record your email service gives you (v=DKIM1; k=rsa; p=…). To retire an old key, write the selector followed by \"revoked\". To rotate, add the new selector, switch your service to it, then revoke the old one.": "Eén selector per regel: de selector, een spatie, daarna het publieke-sleutelrecord dat uw e-maildienst geeft (v=DKIM1; k=rsa; p=…). Om een oude sleutel uit te faseren, schrijf de selector gevolgd door \"revoked\". Om te roteren: voeg de nieuwe selector toe, zet uw dienst erop over en trek daarna de oude in.",
+ "rotate to 2048-bit": "roteer naar 2048-bit"
 }

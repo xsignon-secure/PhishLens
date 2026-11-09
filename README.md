@@ -82,7 +82,7 @@ for your DNS provider.
 
 ### Fixing, not just finding
 
-- Hosted DMARC, SPF (with flattening), MTA-STS, TLS-RPT and BIMI records
+- Hosted DMARC, SPF (with flattening), MTA-STS, TLS-RPT, BIMI and DKIM records
   ([docs/HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md)).
 - One-click DNS fixes (with undo) on Cloudflare, DigitalOcean, deSEC, GoDaddy,
   Amazon Route 53, Hetzner, Porkbun, Vultr, Linode (Akamai) and Gandi, plus Domain Connect ([docs/DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md)).
@@ -272,7 +272,7 @@ Run the tests with `.venv/bin/python -m pytest tests/ -q`.
 | [SSO.md](docs/SSO.md) | Single sign-on with SAML 2.0 or OpenID Connect (Okta, Entra ID, Google) |
 | [PLANS.md](docs/PLANS.md) | Hosted Free / Pro / MSP plans |
 | [DEPLOY.md](docs/DEPLOY.md) · [DEPLOY-RENDER.md](docs/DEPLOY-RENDER.md) | Production deployment |
-| [HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md) | Hosted DMARC, SPF, MTA-STS, BIMI |
+| [HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md) | Hosted DMARC, SPF, MTA-STS, BIMI, DKIM |
 | [DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md) | One-click publishing |
 | [INTEGRATIONS.md](docs/INTEGRATIONS.md) | Report mailboxes, SIEM, PSA, helpdesks |
 | [MCP.md](docs/MCP.md) | AI assistant connection |
