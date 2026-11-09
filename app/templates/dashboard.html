@@ -71,6 +71,20 @@
   </div>
 
   <div data-section="reports" class="hidden">
+    <div class="panel" id="phish-panel">
+      <h2><span class="dot"></span>{{ _("Reported phishing") }}</h2>
+      <p class="muted small">{{ _("Got a suspicious email? Save it as a file (.eml, or forward it to yourself as an attachment and save that) and upload it here. PhishLens checks the sender and every link and keeps only the headers and links, never the message text.") }}</p>
+      <label class="btn tiny" style="display:inline-block;cursor:pointer">{{ _("Report a suspicious email (.eml)") }}
+        <input id="phish-file" type="file" accept=".eml,message/rfc822" multiple hidden>
+      </label>
+      <p id="phish-msg" class="muted small"></p>
+      <div id="phish-list"></div>
+      <form id="takedown-form" class="scanbox small admin-only hidden">
+        <input id="takedown-domain" type="text" placeholder="{{ _("Phishing domain, e.g. acme-login.top") }}" aria-label="{{ _("Phishing domain") }}">
+        <button class="btn tiny" type="submit">{{ _("Write takedown request") }}</button>
+      </form>
+      <div id="takedown-out"></div>
+    </div>
     <div class="panel" id="dmarc-panel">
       <h2><span class="dot"></span>{{ _("DMARC reports") }}</h2>
       <p class="muted small">{{ _("Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.") }}</p>
@@ -698,6 +712,66 @@ document.getElementById('assistant-key-del').addEventListener('click', async () 
   loadAssistant();
 });
 
+/* ---------------- reported phishing + takedowns ---------------- */
+const PHISH_VERDICT = {clean: ['pass', N_('Looks clean')], suspicious: ['warn', N_('Suspicious')],
+  'likely phishing': ['fail', N_('Likely phishing')], dangerous: ['fail', N_('Dangerous')]};
+const PHISH_STATUS = {new: N_('New'), confirmed: N_('Confirmed phishing'), false_positive: N_('Not phishing')};
+async function loadPhish() {
+  const rows = await api('/api/phish-reports');
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  const list = document.getElementById('phish-list');
+  list.innerHTML = rows.length ? rows.map(r => {
+    const [cls, label] = PHISH_VERDICT[r.verdict] || ['warn', r.verdict];
+    const bad = r.links.filter(l => l.verdict === 'dangerous' || l.verdict === 'likely phishing');
+    return `<div class="dm-row" data-phish="${escapeHtml(r.id)}"><div class="top"><strong>${escapeHtml(r.subject || _t('(no subject)'))}</strong>
+      <span class="badge ${cls}">${_t(label)}</span> <span class="muted small">${_t(PHISH_STATUS[r.status] || r.status)}</span>
+      ${admin ? `<span class="sender-acts">${r.status !== 'confirmed' ? `<button class="btn tiny ghost" data-pstatus="confirmed">${_t('Confirm phishing')}</button>` : ''}${r.status !== 'false_positive' ? `<button class="btn tiny ghost" data-pstatus="false_positive">${_t('Not phishing')}</button>` : ''}</span>` : ''}</div>
+      <div class="meta">${_t('From {0} · reported by {1} · {2}', {0: escapeHtml(r.sender || '?'), 1: escapeHtml(r.reported_by || '?'), 2: escapeHtml(r.created_at.slice(0, 10))})}</div>
+      ${r.links.length ? `<div class="meta muted">${r.links.map(l => escapeHtml(l.domain || l.url) + ' (' + escapeHtml(_t((PHISH_VERDICT[l.verdict] || [0, l.verdict || '?'])[1])) + ')').join(' · ')}</div>` : ''}
+      ${admin ? bad.map(l => `<button class="btn tiny" data-takedown="${escapeHtml(l.domain)}" data-turl="${escapeHtml(l.url || '')}">${_t('Takedown request for {0}', {0: escapeHtml(l.domain)})}</button>`).join(' ') : ''}</div>`;
+  }).join('') : '<p class="muted">' + _t('No reports yet.') + '</p>';
+  list.querySelectorAll('[data-pstatus]').forEach(b => b.onclick = async () => {
+    await api('/api/phish-reports/' + b.closest('[data-phish]').dataset.phish, {method: 'PATCH',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: b.dataset.pstatus})});
+    loadPhish();
+  });
+  list.querySelectorAll('[data-takedown]').forEach(b => b.onclick = () =>
+    showTakedown({domain: b.dataset.takedown, url: b.dataset.turl || null, report_id: b.closest('[data-phish]').dataset.phish}));
+}
+async function showTakedown(req) {
+  const out = document.getElementById('takedown-out');
+  out.innerHTML = '<p class="muted small">' + _t('Looking up the registrar and hosting provider…') + '</p>';
+  try {
+    const d = await api('/api/phish-reports/takedown', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(req)});
+    const mailto = 'mailto:' + d.to.map(encodeURIComponent).join(',') + '?subject=' + encodeURIComponent(d.subject) + '&body=' + encodeURIComponent(d.body);
+    out.innerHTML = `<div class="report"><h3 class="small-h">${_t('Takedown request for {0}', {0: escapeHtml(d.domain)})}</h3>
+      <p class="small">${_t('Registrar: {0}', {0: escapeHtml(d.registrar.name || '?')})} · ${_t('Hosting: {0}', {0: escapeHtml(d.hosting.name || '?')})}${d.ip ? ' (' + escapeHtml(d.ip) + ')' : ''}</p>
+      <p class="small">${_t('Send to:')} <code>${escapeHtml(d.to.join(', ') || _t('no abuse address found: use the registrar\'s abuse form'))}</code></p>
+      <p class="small"><b>${escapeHtml(d.subject)}</b></p><pre class="small" style="white-space:pre-wrap">${escapeHtml(d.body)}</pre>
+      ${d.to.length ? `<a class="btn tiny" href="${escapeHtml(mailto)}">${_t('Open in my email app')}</a>` : ''}
+      <button class="copy-btn" data-copy="${escapeHtml(d.body)}">${_t('Copy')}</button>
+      <p class="muted small">${_t('Also report it to:')} ${d.also.map(escapeHtml).join(' · ')}</p></div>`;
+    bindReportInteractions(out);
+  } catch (err) { out.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+}
+document.getElementById('takedown-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const d = document.getElementById('takedown-domain').value.trim();
+  if (d) showTakedown({domain: d});
+});
+document.getElementById('phish-file').addEventListener('change', async (e) => {
+  const msg = document.getElementById('phish-msg');
+  let n = 0;
+  for (const f of e.target.files) {
+    msg.textContent = _t('Checking {0}…', {0: f.name});
+    try { await api('/api/phish-reports', {method: 'POST', headers: {'Content-Type': 'message/rfc822'}, body: f}); n++; }
+    catch (err) { if (err.message !== 'auth') toast(f.name + ': ' + err.message); }
+  }
+  msg.textContent = n ? _t('{0} report(s) checked.', {0: n}) : '';
+  e.target.value = '';
+  loadPhish();
+});
+
 /* ---------------- workspace: api keys, webhooks, audit -------- */
 async function loadEnterprise() {
   const me = await api('/api/auth/me');
@@ -711,6 +785,7 @@ async function loadEnterprise() {
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});
+  loadPhish().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');
   document.getElementById('apikeys').innerHTML = keys.length

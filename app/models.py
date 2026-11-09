@@ -322,6 +322,24 @@ class DmarcAutopilot(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class PhishReport(Base):
+    """A suspicious email someone in the company reported. Only headers,
+    links and the verdict are kept, never the message body."""
+    __tablename__ = "phish_reports"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    reported_by = Column(String(320), nullable=True)
+    subject = Column(String(300), nullable=True)
+    sender = Column(String(300), nullable=True)
+    verdict = Column(String(20), nullable=False)  # clean | suspicious | likely phishing | dangerous
+    score = Column(Integer, nullable=False, default=0)
+    header = Column(JSON, nullable=True)
+    links = Column(JSON, nullable=True)
+    status = Column(String(20), nullable=False, default="new")  # new | confirmed | false_positive
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
 class ForensicReport(Base):
     """One DMARC failure (RUF / ARF) report. Only headers are kept: never the
     message body, which can contain the recipient's mail."""
