@@ -298,6 +298,26 @@ class SenderRule(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class DmarcAutopilot(Base):
+    """Moves a domain's DMARC policy none -> quarantine -> reject on its own
+    once reports show it's safe, and steps back if real mail starts failing.
+    history: [{at, from, to, reason, via, change_id}]."""
+    __tablename__ = "dmarc_autopilot"
+    __table_args__ = (UniqueConstraint("tenant_id", "domain", name="uq_autopilot_tenant_domain"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    domain = Column(String(253), nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True)
+    target = Column(String(10), nullable=False, default="reject")  # quarantine | reject
+    status = Column(String(10), nullable=False, default="watching")  # watching | done | paused
+    message = Column(Text, nullable=True)
+    last_step_at = Column(DateTime, nullable=True)
+    last_checked_at = Column(DateTime, nullable=True)
+    history = Column(JSON, nullable=False, default=list)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class ForensicReport(Base):
     """One DMARC failure (RUF / ARF) report. Only headers are kept: never the
     message body, which can contain the recipient's mail."""

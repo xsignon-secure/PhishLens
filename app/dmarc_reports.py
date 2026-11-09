@@ -293,7 +293,7 @@ def summarize(reports: list, domain: str, days: int, rules: dict | None = None) 
                 fix = (f"Some {s['sender']} mail is unsigned. Make sure every stream "
                        f"(marketing, transactional, support) signs with DKIM for {domain}.")
         rows.append({
-            "sender": s["sender"], "messages": s["messages"], "pass_rate": rate,
+            "sender": s["sender"], "messages": s["messages"], "failed": s["messages"] - s["passed"], "pass_rate": rate,
             "dkim_aligned": s["dkim_aligned"], "spf_aligned": s["spf_aligned"],
             "ip_count": len(s["ips"]), "sample_ips": sorted(i for i in s["ips"] if i)[:5],
             "quarantined": s["quarantined"], "rejected": s["rejected"],

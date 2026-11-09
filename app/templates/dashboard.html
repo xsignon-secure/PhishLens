@@ -85,6 +85,7 @@
       <select id="dmarc-domain" class="hidden" aria-label="Domain"></select>
       <p id="dmarc-msg" class="muted small"></p>
       <div id="dmarc-summary"></div>
+      <div id="autopilot-box"></div>
       <div id="ruf-list"></div>
       <details class="admin-only hidden" id="pgp-box" style="margin-top:12px">
         <summary class="small">{{ _("Encrypt failure reports with your PGP key") }}</summary>
@@ -988,7 +989,44 @@ async function loadDmarc(selected) {
   });
   showDmarcView('senders');
   loadDkimHealth(current).catch(() => {});
+  loadAutopilot(current).catch(() => {});
 }
+const AP_MODES = {hosted: N_('through your hosted DMARC record'), dns: N_('through your connected DNS provider')};
+async function loadAutopilot(domain) {
+  const box = document.getElementById('autopilot-box');
+  const a = await api('/api/autopilot/' + encodeURIComponent(domain));
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  const st = a.status === 'paused' ? 'warn' : a.status === 'done' ? 'pass' : 'info';
+  box.innerHTML = `<h3 class="small-h">${_t('Enforcement autopilot')}</h3>
+    <p class="muted small">${_t('Moves {0} from p=none to quarantine and then reject on its own, one step every two weeks, once 98% of mail passes and every real sender is aligned. If real mail starts failing it steps back and lets you know.', {0: escapeHtml(domain)})}</p>
+    ${a.mode ? `<p class="muted small">${_t('Changes are made {0}.', {0: _t(AP_MODES[a.mode])})}</p>`
+      : `<p class="muted small">${_t('To use autopilot, host your DMARC record with PhishLens or connect your DNS provider.')}</p>`}
+    ${a.message ? `<p>${a.status ? `<span class="badge ${st}">${_t(AP_STATUS[a.status] || a.status)}</span> ` : ''}${escapeHtml(a.message)}</p>` : ''}
+    ${admin && a.mode ? `<div class="scanbox small"><label><input type="checkbox" id="ap-on"${a.enabled && a.status !== 'paused' ? ' checked' : ''}> ${a.status === 'paused' ? _t('Resume autopilot') : _t('Autopilot on')}</label>
+      <select id="ap-target" aria-label="${_t('Goal')}"><option value="reject"${a.target === 'reject' ? ' selected' : ''}>${_t('Goal: p=reject')}</option><option value="quarantine"${a.target === 'quarantine' ? ' selected' : ''}>${_t('Goal: p=quarantine')}</option></select>
+      ${a.enabled && a.status !== 'paused' ? `<button class="btn tiny ghost" id="ap-check">${_t('Check now')}</button>` : ''}
+      ${(a.history || []).length ? `<button class="btn tiny ghost" id="ap-back">${_t('Step back one level')}</button>` : ''}</div>` : ''}
+    ${(a.history || []).length ? `<div class="observations"><div class="table-wrap"><table><thead><tr><th>${_t('When')}</th><th>${_t('Change')}</th><th>${_t('Why')}</th></tr></thead><tbody>${a.history.slice(0, 10).map(x =>
+      `<tr><td>${escapeHtml(x.at.slice(0, 10))}</td><td><code>p=${escapeHtml(x.from)} → p=${escapeHtml(x.to)}</code></td><td>${escapeHtml(x.reason)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+  const save = async () => {
+    try {
+      await api('/api/autopilot/' + encodeURIComponent(domain), {method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled: document.getElementById('ap-on').checked, target: document.getElementById('ap-target').value})});
+    } catch (err) { alert(err.message); }
+    loadAutopilot(domain);
+  };
+  const on = document.getElementById('ap-on');
+  if (on) { on.onchange = save; document.getElementById('ap-target').onchange = save; }
+  const chk = document.getElementById('ap-check');
+  if (chk) chk.onclick = async () => { await api('/api/autopilot/' + encodeURIComponent(domain) + '/check', {method: 'POST'}); loadAutopilot(domain); };
+  const back = document.getElementById('ap-back');
+  if (back) back.onclick = async () => {
+    if (!confirm(_t('Step the DMARC policy back one level and pause autopilot?'))) return;
+    try { await api('/api/autopilot/' + encodeURIComponent(domain) + '/step-back', {method: 'POST'}); } catch (err) { alert(err.message); }
+    loadAutopilot(domain); loadApplied().catch(() => {});
+  };
+}
+const AP_STATUS = {watching: N_('Watching'), done: N_('Goal reached'), paused: N_('Paused')};
 const DMARC_VIEWS = [['senders', N_('Senders')], ['hosts', N_('Sending hosts')], ['countries', N_('Countries')], ['volume', N_('Volume')]];
 function shareBar(n, total) {
   const pct = total ? Math.max(1, Math.round(100 * n / total)) : 0;

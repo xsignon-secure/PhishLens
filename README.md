@@ -70,6 +70,12 @@ for your DNS provider.
   Microsoft 365 or Gmail.
 - Traffic grouped by sending service, with pass rates, a fix for each failing
   sender, and a clear signal for when it is safe to move to quarantine or reject.
+- Senders classified as approved, authorized, needs a fix, suspicious or not
+  ours, with a confidence score; approve or block them, or auto-approve.
+- Enforcement autopilot: moves p=none to quarantine to reject on its own when
+  reports show it's safe, and steps back if real mail starts failing
+  (through hosted DMARC or your connected DNS provider). Runs with the
+  scheduled rescans (`RESCAN_INTERVAL_HOURS`).
 - Forensic (RUF) reports with headers only, optionally PGP-encrypted to your key.
 - SMTP TLS (TLS-RPT) reports, DKIM key health, sending hosts, countries and
   daily volume charts.
