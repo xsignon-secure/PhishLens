@@ -851,3 +851,17 @@ details > summary:hover { color: #fff; }
 .guide-mail input { flex: 1 1 180px; padding: 9px 11px; font-size: 14px; background: var(--bg1); color: var(--ink);
   border: 1px solid var(--line); border-radius: 8px; }
 .guide-mail p { flex-basis: 100%; margin: 0 !important; }
+
+/* DMARC sender classification */
+.sender-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border, rgba(127,127,127,.3)); background: transparent; color: inherit; font-size: 13px; cursor: pointer; }
+.chip.on { border-color: var(--accent); background: var(--blue-bg); }
+.cat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+.cat-dot.approved, .cat-dot.authorized { background: var(--green); }
+.cat-dot.needs_fix { background: var(--amber); }
+.cat-dot.suspicious, .cat-dot.blocked { background: var(--red); }
+.cat-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--blue-bg); color: var(--blue); }
+.cat-badge.approved, .cat-badge.authorized { background: var(--green-bg); color: var(--green); }
+.cat-badge.needs_fix { background: var(--amber-bg); color: var(--amber); }
+.cat-badge.suspicious, .cat-badge.blocked { background: var(--red-bg); color: var(--red); }
+.sender-acts { margin-left: auto; display: inline-flex; gap: 4px; }

@@ -2,12 +2,13 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import audit, dmarc_reports, forensic, ip_enrich, models, plans
 from ..database import get_db
-from ..deps import get_current_user, normalize_domain, rate_limit
+from ..deps import get_current_user, normalize_domain, rate_limit, require_admin
 
 router = APIRouter(prefix="/api/dmarc", tags=["dmarc"])
 
@@ -114,8 +115,77 @@ def domain_summary(domain: str, days: int = 30, enrich: bool = True, db: Session
                        models.DmarcReport.domain == domain,
                        models.DmarcReport.date_begin >= since)
                .order_by(models.DmarcReport.date_begin.desc()).all())
-    summary = dmarc_reports.summarize(reports, domain, days)
+    summary = classified_summary(db, user.tenant, reports, domain, days)
     return ip_enrich.enrich_summary(summary) if enrich else summary
+
+
+def sender_rules(db: Session, tenant_id: str, domain: str) -> dict:
+    rows = db.query(models.SenderRule).filter(models.SenderRule.tenant_id == tenant_id,
+                                              models.SenderRule.domain == domain).all()
+    return {r.sender: {"verdict": r.verdict, "source": r.source} for r in rows}
+
+
+def classified_summary(db: Session, tenant: models.Tenant, reports: list, domain: str, days: int) -> dict:
+    """The per-sender summary with each sender classified. With auto-approve
+    on, senders that are clearly the company's own are approved and saved."""
+    rules = sender_rules(db, tenant.id, domain)
+    summary = dmarc_reports.summarize(reports, domain, days, rules)
+    if tenant.auto_approve_senders:
+        new = [r["sender"] for r in summary["senders"] if r["auto_approvable"]]
+        if new:
+            for name in new:
+                db.add(models.SenderRule(tenant_id=tenant.id, domain=domain, sender=name[:300],
+                                         verdict="approved", source="auto"))
+                rules[name] = {"verdict": "approved", "source": "auto"}
+            try:
+                db.commit()
+            except IntegrityError:  # another request approved them first
+                db.rollback()
+            summary = dmarc_reports.summarize(reports, domain, days, rules)
+    summary["auto_approve"] = bool(tenant.auto_approve_senders)
+    summary["categories"] = {c: sum(1 for r in summary["senders"] if r["category"] == c)
+                             for c in ("approved", "authorized", "needs_fix", "suspicious", "blocked")}
+    return summary
+
+
+class SenderRuleIn(BaseModel):
+    sender: str = Field(min_length=1, max_length=300)
+    # approved | blocked; None removes the decision.
+    verdict: str | None = Field(default=None, pattern="^(approved|blocked)$")
+
+
+@router.put("/senders/{domain}")
+def set_sender_rule(domain: str, body: SenderRuleIn, request: Request, db: Session = Depends(get_db),
+                    user: models.User = Depends(require_admin)):
+    """Mark a sending service as yours (approved) or not yours (blocked)."""
+    domain = normalize_domain(domain)
+    row = (db.query(models.SenderRule)
+           .filter_by(tenant_id=user.tenant_id, domain=domain, sender=body.sender).first())
+    if body.verdict is None:
+        if row:
+            db.delete(row)
+    elif row:
+        row.verdict, row.source = body.verdict, "manual"
+    else:
+        db.add(models.SenderRule(tenant_id=user.tenant_id, domain=domain, sender=body.sender,
+                                 verdict=body.verdict, source="manual"))
+    db.commit()
+    audit.log_request(db, request, "dmarc.sender." + (body.verdict or "cleared"), user,
+                      {"domain": domain, "sender": body.sender})
+    return {"domain": domain, "sender": body.sender, "verdict": body.verdict}
+
+
+class AutoApproveIn(BaseModel):
+    enabled: bool
+
+
+@router.put("/auto-approve")
+def set_auto_approve(body: AutoApproveIn, request: Request, db: Session = Depends(get_db),
+                     user: models.User = Depends(require_admin)):
+    user.tenant.auto_approve_senders = body.enabled
+    db.commit()
+    audit.log_request(db, request, "dmarc.auto_approve", user, {"enabled": body.enabled})
+    return {"enabled": body.enabled}
 
 
 @router.get("/dkim/{domain}")

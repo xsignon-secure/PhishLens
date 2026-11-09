@@ -797,5 +797,16 @@
  "Require SSO for members and admins (owners can still use a password)": "SSO verplichten voor leden en beheerders (eigenaren kunnen nog een wachtwoord gebruiken)",
  "Sign in with SSO": "Aanmelden met SSO",
  "Single sign-on": "Single sign-on",
- "leave blank to keep": "leeg laten om te behouden"
+ "leave blank to keep": "leeg laten om te behouden",
+ "Approve": "Goedkeuren",
+ "Approved": "Goedgekeurd",
+ "Authorized": "Geautoriseerd",
+ "Auto-approve senders that are clearly yours (confidence 90 or more)": "Afzenders die duidelijk van u zijn automatisch goedkeuren (betrouwbaarheid 90 of meer)",
+ "Needs a fix": "Moet worden opgelost",
+ "Not ours": "Niet van ons",
+ "Reset": "Herstellen",
+ "Show all": "Alles tonen",
+ "Suspicious": "Verdacht",
+ "auto-approved": "automatisch goedgekeurd",
+ "confidence {0}": "betrouwbaarheid {0}"
 }

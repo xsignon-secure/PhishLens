@@ -797,5 +797,16 @@
  "Require SSO for members and admins (owners can still use a password)": "सदस्यों और एडमिन के लिए SSO अनिवार्य करें (मालिक अब भी पासवर्ड का उपयोग कर सकते हैं)",
  "Sign in with SSO": "SSO से साइन इन करें",
  "Single sign-on": "सिंगल साइन-ऑन",
- "leave blank to keep": "रखने के लिए खाली छोड़ें"
+ "leave blank to keep": "रखने के लिए खाली छोड़ें",
+ "Approve": "स्वीकृत करें",
+ "Approved": "स्वीकृत",
+ "Authorized": "अधिकृत",
+ "Auto-approve senders that are clearly yours (confidence 90 or more)": "जो प्रेषक स्पष्ट रूप से आपके हैं उन्हें अपने-आप स्वीकृत करें (विश्वास 90 या अधिक)",
+ "Needs a fix": "सुधार चाहिए",
+ "Not ours": "हमारा नहीं",
+ "Reset": "रीसेट करें",
+ "Show all": "सभी दिखाएँ",
+ "Suspicious": "संदिग्ध",
+ "auto-approved": "अपने-आप स्वीकृत",
+ "confidence {0}": "विश्वास {0}"
 }

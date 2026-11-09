@@ -797,5 +797,16 @@
  "Require SSO for members and admins (owners can still use a password)": "メンバーと管理者に SSO を必須にする（オーナーは引き続きパスワードを使用可能）",
  "Sign in with SSO": "SSO でサインイン",
  "Single sign-on": "シングルサインオン",
- "leave blank to keep": "変更しない場合は空欄"
+ "leave blank to keep": "変更しない場合は空欄",
+ "Approve": "承認",
+ "Approved": "承認済み",
+ "Authorized": "認可済み",
+ "Auto-approve senders that are clearly yours (confidence 90 or more)": "明らかに自社の送信元を自動承認（信頼度 90 以上）",
+ "Needs a fix": "要修正",
+ "Not ours": "自社ではない",
+ "Reset": "リセット",
+ "Show all": "すべて表示",
+ "Suspicious": "不審",
+ "auto-approved": "自動承認",
+ "confidence {0}": "信頼度 {0}"
 }
