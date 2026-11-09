@@ -166,7 +166,7 @@ cp .env.example .env          # set SECRET_KEY and ADMIN_PASSWORD
 3. The owner signs in at `/login`, chooses a password and sets up an
    authenticator app, then adds the company's mail server and users.
 
-Full walkthrough: [docs/ACCOUNTS.md](docs/ACCOUNTS.md).
+Full walkthrough: [docs/ACCOUNTS.md](docs/ACCOUNTS.md). Single sign-on (SAML or OIDC) for existing accounts: [docs/SSO.md](docs/SSO.md).
 
 ## Configuration
 
@@ -263,6 +263,7 @@ Run the tests with `.venv/bin/python -m pytest tests/ -q`.
 | Guide | Covers |
 |---|---|
 | [ACCOUNTS.md](docs/ACCOUNTS.md) | Companies, roles, sign-in, threat model |
+| [SSO.md](docs/SSO.md) | Single sign-on with SAML 2.0 or OpenID Connect (Okta, Entra ID, Google) |
 | [PLANS.md](docs/PLANS.md) | Hosted Free / Pro / MSP plans |
 | [DEPLOY.md](docs/DEPLOY.md) · [DEPLOY-RENDER.md](docs/DEPLOY-RENDER.md) | Production deployment |
 | [HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md) | Hosted DMARC, SPF, MTA-STS, BIMI |

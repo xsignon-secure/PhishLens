@@ -783,5 +783,19 @@
  "not visible in DNS: check it yourself": "DNS में दिखाई नहीं देता: स्वयं जाँचें",
  "{0}/{1} checked rules pass": "{0}/{1} जाँचे गए नियम पास",
  "✓ Added {0} domain(s). First scans run in the background.": "✓ {0} डोमेन जोड़े गए। पहले स्कैन पृष्ठभूमि में चलते हैं।",
- "✓ Change undone. Rescan in a few minutes.": "✓ बदलाव पूर्ववत हुआ। कुछ मिनट में दोबारा स्कैन करें।"
+ "✓ Change undone. Rescan in a few minutes.": "✓ बदलाव पूर्ववत हुआ। कुछ मिनट में दोबारा स्कैन करें।",
+ "Client ID": "क्लाइंट ID",
+ "Email domain": "ईमेल डोमेन",
+ "Enter your work email, then choose Sign in with SSO.": "अपना कार्य ईमेल दर्ज करें, फिर SSO से साइन इन चुनें।",
+ "IdP entity ID": "IdP एंटिटी ID",
+ "IdP metadata XML (paste it, or fill in the three fields below)": "IdP मेटाडेटा XML (पेस्ट करें, या नीचे के तीन फ़ील्ड भरें)",
+ "IdP sign-in URL": "IdP साइन-इन URL",
+ "IdP signing certificate (PEM)": "IdP साइनिंग प्रमाणपत्र (PEM)",
+ "Issuer URL": "इश्यूअर URL",
+ "Let people sign in through Okta, Microsoft Entra ID, Google Workspace, ADFS or any OpenID Connect or SAML 2.0 provider. SSO doesn't create accounts: add people under Users first, then they can use SSO instead of a password.": "लोगों को Okta, Microsoft Entra ID, Google Workspace, ADFS या किसी भी OpenID Connect या SAML 2.0 प्रदाता से साइन इन करने दें। SSO खाते नहीं बनाता: पहले उपयोगकर्ता में लोगों को जोड़ें, फिर वे पासवर्ड के बजाय SSO का उपयोग कर सकते हैं।",
+ "Protocol": "प्रोटोकॉल",
+ "Require SSO for members and admins (owners can still use a password)": "सदस्यों और एडमिन के लिए SSO अनिवार्य करें (मालिक अब भी पासवर्ड का उपयोग कर सकते हैं)",
+ "Sign in with SSO": "SSO से साइन इन करें",
+ "Single sign-on": "सिंगल साइन-ऑन",
+ "leave blank to keep": "रखने के लिए खाली छोड़ें"
 }

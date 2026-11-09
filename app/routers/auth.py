@@ -120,6 +120,11 @@ def login(payload: LoginIn, request: Request, response: Response, db: Session = 
     if not sessions.account_usable_or_pending(user):
         audit.log(db, "auth.login_refused", user=user, ip=_ip(request), detail={"status": user.status})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=GENERIC_FAIL)
+    if user.tenant.sso_enforced and user.role != "owner" and (user.tenant.sso_issuer or user.tenant.saml_sso_url):
+        # Only after the password proved who they are, so this reveals nothing.
+        audit.log(db, "auth.password_refused_sso", user=user, ip=_ip(request))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Your company signs in with SSO: use \"Sign in with SSO\"")
     user.failed_logins, user.locked_until = 0, None
     if passwords.needs_rehash(user.password_hash):
         user.password_hash = passwords.hash_password(payload.password)
