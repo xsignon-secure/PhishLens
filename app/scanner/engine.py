@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from .. import deps, models
-from . import dns_snapshot, guides, recommendations, reputation, scoring
+from . import dns_snapshot, gating, guides, recommendations, reputation, scoring
 
 HISTORY_POINTS = 12
 TREND_WINDOW_DAYS = 30
@@ -65,13 +65,16 @@ def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.S
     return scan
 
 
-def scan_to_dict(scan: models.Scan, db: Session | None = None) -> dict:
+def scan_to_dict(scan: models.Scan, db: Session | None = None, solutions: bool = True) -> dict:
+    """A scan for an API response. solutions=False gives the free report:
+    findings only, without fix records or guides (see gating.py)."""
+    result = with_guides(scan.result) if solutions else gating.findings_only(scan.result)
     out = {
         "id": scan.id,
         "domain": scan.domain,
         "score": scan.score,
         "grade": scan.grade,
-        "result": with_guides(scan.result),
+        "result": result,
         "is_public": scan.is_public,
         "created_at": scan.created_at.isoformat() + "Z",
     }

@@ -20,6 +20,7 @@
     <button class="btn big" type="submit">{{ _("Verify") }}</button>
   </form>
   <p id="login-err" class="error" role="alert"></p>
+  {% if signup_on() %}<p class="small">{{ _("No account yet?") }} <a href="/signup{% if request.query_params.get('next') %}?next={{ request.query_params.get('next')|urlencode }}{% endif %}">{{ _("Create a free account") }}</a></p>{% endif %}
   <p class="muted small">{{ _("Accounts are created by your company's administrator. Forgot your password? Ask them to send you new login details.") }}</p>
   <p class="muted small">{{ _("No account needed for the free tools:") }} <a href="/">{{ _("Scan") }}</a> · <a href="/tools">{{ _("Free tools") }}</a> · <a href="/tools/headers">{{ _("Header check") }}</a></p>
 </section>
@@ -37,12 +38,18 @@ async function post(path, body) {
   return d;
 }
 
+// Back to the page that sent the visitor here (a same-site path only).
+function safeNext() {
+  const n = new URLSearchParams(location.search).get('next') || '';
+  return n.startsWith('/') && !n.startsWith('//') && !n.startsWith('/\\') ? n : '/dashboard';
+}
+
 function next(d) {
   err.textContent = '';
   stepToken = d.step_token || null;
   if (d.next === 'change_password') { show('pw-form'); document.getElementById('pw-new').focus(); }
   else if (d.next === 'mfa') { show('mfa-form'); document.getElementById('mfa-code').focus(); }
-  else location.href = '/dashboard';
+  else location.href = safeNext();
 }
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {

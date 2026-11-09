@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Create a free account") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>{{ _("Create a free account") }}</h1>
+  <p class="sub">{{ _("Get the step-by-step fix guide for every scan, monitoring and alerts. We email your login details to the address below, so use one you can read.") }}</p>
+  <form id="signup-form">
+    <label>{{ _("Company or organization") }}<input name="company" type="text" autocomplete="organization" maxlength="200" required autofocus></label>
+    <label>{{ _("Your name") }}<input name="full_name" type="text" autocomplete="name" maxlength="200"></label>
+    <label>{{ _("Work email") }}<input name="email" type="email" autocomplete="email" required></label>
+    <label class="hp" aria-hidden="true">Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+    <label class="check-line"><input name="accept_terms" type="checkbox" required> <span>{{ _("I accept the <a href=\"/terms\" target=\"_blank\">Terms</a> and the <a href=\"/privacy\" target=\"_blank\">Privacy notice</a>") }}</span></label>
+    <button class="btn big" type="submit">{{ _("Create a free account") }}</button>
+  </form>
+  <div id="signup-done" class="hidden">
+    <p class="sub" id="signup-msg"></p>
+    <p><a class="btn" id="signup-login" href="/login">{{ _("Log in") }}</a></p>
+  </div>
+  <p id="signup-err" class="error" role="alert"></p>
+  <p class="muted small">{{ _("Already have an account?") }} <a href="/login">{{ _("Log in") }}</a></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById('signup-form');
+const nextParam = new URLSearchParams(location.search).get('next');
+if (nextParam) document.getElementById('signup-login').href = '/login?next=' + encodeURIComponent(nextParam);
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const err = document.getElementById('signup-err');
+  err.textContent = '';
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/auth/signup', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({company: fd.get('company'), full_name: fd.get('full_name') || '', email: fd.get('email'),
+                            website: fd.get('website') || '', accept_terms: fd.get('accept_terms') === 'on'})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(errorText(d, _t('Sign-up failed')));
+    form.classList.add('hidden');
+    document.getElementById('signup-msg').textContent = _t('Check your inbox: your login details are on the way. If nothing arrives in a few minutes, check spam or try logging in.');
+    document.getElementById('signup-done').classList.remove('hidden');
+  } catch (x) { err.textContent = x.message; btn.disabled = false; }
+});
+</script>
+{% endblock %}

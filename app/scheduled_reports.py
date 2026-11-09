@@ -31,6 +31,7 @@ def build(db: Session, tenant: models.Tenant) -> tuple[str, str, list] | None:
     """(subject, body, attachments) for the tenant, or None with nothing to report."""
     from .branding import for_tenant
     from .routers.scans import _pdf_bytes
+    from .scanner import gating
 
     monitors = (db.query(models.Monitor)
                 .filter(models.Monitor.tenant_id == tenant.id, models.Monitor.is_active.is_(True))
@@ -44,6 +45,9 @@ def build(db: Session, tenant: models.Tenant) -> tuple[str, str, list] | None:
             continue
         pdf, filename = _pdf_bytes(scan, db, with_history=True)
         attachments.append((filename, pdf, "application/pdf"))
+        if any(gating.fixable(c) for c in (scan.result or {}).get("checks") or []):
+            guide, guide_name = _pdf_bytes(scan, db, kind="guide")
+            attachments.append((guide_name, guide, "application/pdf"))
         client = f" [{m.client}]" if m.client else ""
         lines.append(f"- {m.domain}{client}: {scan.score}/100 (grade {scan.grade}), checked {scan.created_at:%Y-%m-%d}")
     if not attachments:
@@ -52,9 +56,9 @@ def build(db: Session, tenant: models.Tenant) -> tuple[str, str, list] | None:
     period = "Weekly" if tenant.report_schedule == "weekly" else "Monthly"
     more = (f"\n{len(monitors) - MAX_DOMAINS} more domains are on the dashboard." if len(monitors) > MAX_DOMAINS else "")
     body = (f"{period} email security report from {name}.\n\n" + "\n".join(lines) + more +
-            f"\n\nThe PDF reports are attached. Dashboard: {settings.APP_URL}/dashboard\n"
+            f"\n\nThe PDF reports and fix guides are attached. Dashboard: {settings.APP_URL}/dashboard\n"
             f"Change or stop these emails on the dashboard (Scheduled reports).\n")
-    return f"{period} email security report: {len(attachments)} domain(s)", body, attachments
+    return f"{period} email security report: {len(lines)} domain(s)", body, attachments
 
 
 def send(db: Session, tenant: models.Tenant, now: datetime | None = None) -> bool:

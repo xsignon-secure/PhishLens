@@ -22,6 +22,7 @@
       <a href="#" id="logout">{{ _("Log out") }}</a>
     {% else %}
       <a href="/login">{{ _("Log in") }}</a>
+      {% if signup_on() %}<a href="/signup" class="nav-cta">{{ _("Sign up free") }}</a>{% endif %}
     {% endif %}
   </nav>
 </header>
@@ -38,7 +39,7 @@
   <p><select id="lang-pick" aria-label="Language" class="small">{% for code, name in languages.items() %}<option value="{{ code }}"{% if code == current_lang() %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></p>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script>window.I18N = {{ i18n_catalog()|tojson }};</script>
+<script>window.I18N = {{ i18n_catalog()|tojson }}; window.SIGNUP_ON = {{ signup_on()|tojson }};</script>
 <script src="/static/app.js?v={{ asset_v }}"></script>
 <script>
 document.getElementById('lang-pick').addEventListener('change', (e) => {

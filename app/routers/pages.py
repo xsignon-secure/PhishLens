@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from .. import i18n, models
-from ..scanner import engine
+from ..scanner import engine, gating
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user
@@ -33,6 +33,14 @@ def _asset_version() -> str:
 
 templates.env.globals["asset_v"] = _asset_version()
 templates.env.globals["plans_on"] = lambda: settings.PLANS_ENABLED
+
+
+def _signup_on() -> bool:
+    from .signup import enabled
+    return enabled()
+
+
+templates.env.globals["signup_on"] = _signup_on
 
 
 def _user_or_none(request: Request, db: Session):
@@ -65,6 +73,15 @@ def headers_tool(request: Request, db: Session = Depends(get_db)):
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"request": request})
+
+
+@router.get("/signup", response_class=HTMLResponse)
+def signup_page(request: Request, db: Session = Depends(get_db)):
+    if _user_or_none(request, db):
+        return RedirectResponse("/dashboard", status_code=302)
+    if not _signup_on():
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "signup.html", {"request": request})
 
 
 @router.get("/platform", response_class=HTMLResponse)
@@ -119,8 +136,10 @@ def shared_report(scan_id: str, request: Request, db: Session = Depends(get_db))
     brand = branding.for_tenant(tenant)
     if brand:
         brand = {k: brand[k] for k in ("name", "color", "footer", "logo_data_url")}
+    user = _user_or_none(request, db)
+    # Fixes only for signed-in viewers, as in the API (see scanner/gating.py).
+    result = engine.with_guides(scan.result) if user else gating.findings_only(scan.result)
     return templates.TemplateResponse(
         request, "report.html",
-        {"request": request, "scan": scan, "result": engine.with_guides(scan.result),
-         "user": _user_or_none(request, db), "brand": brand}
+        {"request": request, "scan": scan, "result": result, "user": user, "brand": brand}
     )

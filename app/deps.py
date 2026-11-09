@@ -192,6 +192,19 @@ def get_current_user(
     return user
 
 
+def optional_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User | None:
+    """The signed-in user, or None for an anonymous visitor. For pages and
+    endpoints that are public but show more to signed-in accounts."""
+    try:
+        return get_current_user(request, credentials, db)
+    except HTTPException:
+        return None
+
+
 def require_admin(user: models.User = Depends(get_current_user)) -> models.User:
     """Owners and admins: company settings and user management."""
     if user.role not in ("owner", "admin"):

@@ -182,6 +182,7 @@ All settings are environment variables; `.env.example` lists every one.
 | `RESCAN_INTERVAL_HOURS` | Built-in rescans (e.g. `168` weekly, `1` hourly). |
 | `REPORT_FETCH_MINUTES` | Import DMARC/TLS reports from IMAP, Microsoft 365 or Gmail. |
 | `PLANS_ENABLED` | `true` turns on hosted plans. Off by default. |
+| `SIGNUP_ENABLED` | `true` opens `/signup`: anyone can create a free company account (login details go to their email). Needs `SMTP_*`. Off by default. |
 | `RATE_LIMIT_STORAGE` | `database` to share limits across several instances. |
 | `VIRUSTOTAL_API_KEY`, `SAFE_BROWSING_API_KEY`, `URLHAUS_AUTH_KEY`, `OPENPHISH_FEED` | Optional reputation and link-checker feeds. |
 | `RPKI_CHECK`, `GEOIP_DB` | Optional RPKI lookups and DMARC sender countries. |
@@ -198,9 +199,15 @@ All settings are environment variables; `.env.example` lists every one.
 
 ## Security
 
-- **Admin-created accounts only:** no signup, no invite links, no
+- **Admin-created accounts by default:** no invite links and no
   self-service reset. The platform admin creates companies and owners but
-  never sees company data.
+  never sees company data. A hosted service can turn on `SIGNUP_ENABLED`,
+  which lets anyone create a free company (login details go to the email
+  given, so the address is verified; per-IP and hourly caps).
+- **Free report vs fix guide:** anyone can scan and see the findings; the
+  exact fix records and step-by-step fix guide (in the app and as a PDF) are
+  for signed-in accounts only, enforced on the server for API responses,
+  shared links and PDFs.
 - **Hard company isolation:** every query is scoped to the signed-in company;
   another company's ids answer 404, and tampered tokens are refused and logged
   as critical.

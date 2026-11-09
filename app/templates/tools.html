@@ -128,7 +128,8 @@ document.getElementById('chk-form').addEventListener('submit', async (e) => {
       <p>${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>${c.max_score ? ` <span class="pts">${c.score}/${c.max_score}</span>` : ''}</p>
       <p class="details">${escapeHtml(c.details || '')}</p>
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
-      ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code> <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button></p>`).join('')}</div>`;
+      ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code> <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button></p>`).join('')}
+      ${c.solutions_locked ? `<p class="fix-locked">${_t('🔒 How to fix: in the fix guide')} · <a href="/login?next=/tools">${_t('Log in')}</a>${window.SIGNUP_ON ? ` · <a href="/signup?next=/tools">${_t('Create a free account')}</a>` : ''}</p>` : ''}</div>`;
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
 

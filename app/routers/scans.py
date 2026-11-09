@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from .. import audit, models, pdf_report, plans, schemas
 from ..config import settings
 from ..database import get_db
-from ..deps import client_ip, get_current_user, public_scan_limit, rate_limit, tenant_scans
+from ..deps import client_ip, get_current_user, optional_user, public_scan_limit, rate_limit, tenant_scans
 from ..scanner import engine
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
@@ -13,19 +13,24 @@ router = APIRouter(prefix="/api/scans", tags=["scans"])
 HISTORY_PAGE = 500
 
 
-def _pdf_bytes(scan: models.Scan, db: Session, with_history: bool = False) -> tuple[bytes, str]:
+def _pdf_bytes(scan: models.Scan, db: Session, with_history: bool = False,
+               kind: str = "report") -> tuple[bytes, str]:
+    """kind="report" (findings only, anyone who may see the scan) or
+    kind="guide" (the step-by-step fix guide, signed-in accounts only)."""
     # History is the tenant's private trend: only in the signed-in export.
     data = engine.scan_to_dict(scan, db if with_history else None)
     share_url = f"{settings.APP_URL}/r/{scan.id}" if scan.is_public else None
     from .. import branding
     tenant = (db.query(models.Tenant).filter(models.Tenant.id == scan.tenant_id).first()
               if scan.tenant_id else None)
-    pdf = pdf_report.render(data, share_url=share_url, brand=branding.for_tenant(tenant))
-    return pdf, f"phishlens-{scan.domain}-{scan.created_at:%Y-%m-%d}.pdf"
+    pdf = pdf_report.render(data, share_url=share_url, brand=branding.for_tenant(tenant), kind=kind)
+    suffix = "-fix-guide" if kind == "guide" else ""
+    return pdf, f"phishlens-{scan.domain}-{scan.created_at:%Y-%m-%d}{suffix}.pdf"
 
 
-def _pdf_response(scan: models.Scan, db: Session, with_history: bool = False) -> Response:
-    pdf, filename = _pdf_bytes(scan, db, with_history)
+def _pdf_response(scan: models.Scan, db: Session, with_history: bool = False,
+                  kind: str = "report") -> Response:
+    pdf, filename = _pdf_bytes(scan, db, with_history, kind)
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"',
                              "Cache-Control": "private, no-store"})
@@ -41,6 +46,42 @@ def public_scan_pdf(scan_id: str, request: Request, db: Session = Depends(get_db
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return _pdf_response(scan, db)
+
+
+def _public_scan(db: Session, scan_id: str) -> models.Scan:
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id,
+                                        models.Scan.tenant_id.is_(None)).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return scan
+
+
+@router.get("/public/{scan_id}")
+def get_public_scan(scan_id: str, request: Request, db: Session = Depends(get_db),
+                    user: models.User | None = Depends(optional_user)):
+    """A landing-page scan again, by its unguessable id: after signing in,
+    the visitor comes back to the same report with the fixes unlocked."""
+    rate_limit(request, f"pdf:{client_ip(request)}", 30)
+    return engine.scan_to_dict(_public_scan(db, scan_id), solutions=user is not None)
+
+
+@router.get("/public/{scan_id}/guide.pdf")
+def public_scan_guide(scan_id: str, request: Request, db: Session = Depends(get_db),
+                      user: models.User = Depends(get_current_user)):
+    """Fix guide for a landing-page scan. Signed-in accounts only."""
+    scan = _public_scan(db, scan_id)
+    audit.log_request(db, request, "guide.pdf", user, {"scan_id": scan.id, "domain": scan.domain})
+    return _pdf_response(scan, db, kind="guide")
+
+
+@router.get("/shared/{scan_id}/guide.pdf")
+def shared_scan_guide(scan_id: str, request: Request, db: Session = Depends(get_db),
+                      user: models.User = Depends(get_current_user)):
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id, models.Scan.is_public.is_(True)).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Report not found")
+    audit.log_request(db, request, "guide.pdf", user, {"scan_id": scan.id, "domain": scan.domain})
+    return _pdf_response(scan, db, kind="guide")
 
 
 @router.get("/shared/{scan_id}/pdf")
@@ -62,12 +103,14 @@ def domain_history(domain: str, db: Session = Depends(get_db),
 
 
 @router.post("/public")
-def public_scan(payload: schemas.ScanIn, request: Request, db: Session = Depends(get_db)):
-    """No-auth scan for the landing page funnel. Rate-limited per IP."""
+def public_scan(payload: schemas.ScanIn, request: Request, db: Session = Depends(get_db),
+                user: models.User | None = Depends(optional_user)):
+    """No-auth scan for the landing page funnel. Rate-limited per IP.
+    Anonymous visitors get the findings; the fixes need an account."""
     public_scan_limit(request)
     scan = engine.run_scan(db, payload.domain, tenant_id=None)
     audit.log_request(db, request, "scan.public", detail={"domain": scan.domain, "score": scan.score})
-    return engine.scan_to_dict(scan)
+    return engine.scan_to_dict(scan, solutions=user is not None)
 
 
 @router.post("", status_code=201)
@@ -115,6 +158,16 @@ def scan_pdf(scan_id: str, request: Request, db: Session = Depends(get_db),
     return _pdf_response(scan, db, with_history=True)
 
 
+@router.get("/{scan_id}/guide.pdf")
+def scan_guide_pdf(scan_id: str, request: Request, db: Session = Depends(get_db),
+                   user: models.User = Depends(get_current_user)):
+    scan = tenant_scans(db, user).filter(models.Scan.id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    audit.log_request(db, request, "guide.pdf", user, {"scan_id": scan.id, "domain": scan.domain})
+    return _pdf_response(scan, db, kind="guide")
+
+
 @router.post("/{scan_id}/email")
 def email_scan(scan_id: str, request: Request, db: Session = Depends(get_db),
                user: models.User = Depends(get_current_user)):
@@ -128,23 +181,27 @@ def email_scan(scan_id: str, request: Request, db: Session = Depends(get_db),
         raise HTTPException(status_code=503, detail="Email is not set up on this server")
     rate_limit(request, f"report-email:{user.id}", 10)
     pdf, filename = _pdf_bytes(scan, db, with_history=True)
-    body = (f"Your PhishLens report for {scan.domain} is attached.\n\n"
+    guide, guide_name = _pdf_bytes(scan, db, kind="guide")
+    body = (f"Your PhishLens report and fix guide for {scan.domain} are attached.\n\n"
             f"Score: {scan.score}/100 (grade {scan.grade}).\n"
             f"Open it online: {settings.APP_URL}/dashboard\n")
     if not mailer.send_email([user.email], f"Report for {scan.domain}", body,
-                             attachments=[(filename, pdf, "application/pdf")], tenant=user.tenant):
+                             attachments=[(filename, pdf, "application/pdf"),
+                                          (guide_name, guide, "application/pdf")], tenant=user.tenant):
         raise HTTPException(status_code=502, detail="The email could not be sent")
     audit.log_request(db, request, "report.email", user, {"scan_id": scan.id, "domain": scan.domain})
     return {"ok": True, "to": user.email}
 
 
 @router.get("/shared/{scan_id}")
-def get_shared_scan(scan_id: str, db: Session = Depends(get_db)):
-    """Shareable report link. Only scans explicitly marked public."""
+def get_shared_scan(scan_id: str, db: Session = Depends(get_db),
+                    user: models.User | None = Depends(optional_user)):
+    """Shareable report link. Only scans explicitly marked public. The fixes
+    show only to signed-in viewers."""
     scan = db.query(models.Scan).filter(models.Scan.id == scan_id, models.Scan.is_public.is_(True)).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Report not found")
-    return engine.scan_to_dict(scan)
+    return engine.scan_to_dict(scan, solutions=user is not None)
 
 
 @router.post("/{scan_id}/share")
