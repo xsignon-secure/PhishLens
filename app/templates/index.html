@@ -36,7 +36,7 @@
         <li><span class="badge pass">{{ _("Pass") }}</span><span class="pv-name">DKIM</span><span class="pv-note">{{ _("2048-bit key") }}</span></li>
         <li><span class="badge warn">{{ _("Warning") }}</span><span class="pv-name">MTA-STS</span><span class="pv-note">{{ _("Not set up") }}</span></li>
       </ul>
-      <div class="preview-fix">{{ _("Fix 1 of 5 · add this TXT record at _dmarc") }}<code>v=DMARC1; p=quarantine; rua=mailto:dmarc@yourcompany.com</code></div>
+      <div class="preview-fix">{{ _("Top risk: attackers can send email as yourcompany.com") }}</div>
     </div>
   </div>
 
@@ -82,8 +82,8 @@
     </div>
     <div class="card">
       <div class="icon">3</div>
-      <h3>{{ _("Fix it, record by record") }}</h3>
-      <p>{{ _("Create a free account for the step-by-step fix guide: the exact DNS record for every issue. Copy, paste, done — then rescan to watch the grade climb.") }}</p>
+      <h3>{{ _("Close the gaps") }}</h3>
+      <p>{{ _("Create a free account to unlock your remediation plan, then rescan to watch the grade climb.") }}</p>
     </div>
   </div>
 </section>
@@ -91,7 +91,7 @@
 <section class="section" aria-labelledby="who-h">
   <div class="section-head">
     <h2 id="who-h">{{ _("Built for the people who look after email") }}</h2>
-    <p>{{ _("You don't need to be an email expert. Every finding comes with plain-English impact and the exact record to change.") }}</p>
+    <p>{{ _("You don't need to be an email expert. Every finding is explained in plain English, with its impact and severity.") }}</p>
   </div>
   <div class="audience">
     <div class="card">

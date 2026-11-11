@@ -310,9 +310,9 @@ def _report_story(r: dict, checks: list, plan: list, recs: list) -> list:
 
     if r.get("locked_fixes"):
         story += [Spacer(1, 8), KeepTogether([
-            Paragraph("Step-by-step fix guide", S["h2"]),
-            _p(f"The exact DNS records and steps to fix the {r['locked_fixes']} issue(s) above are in "
-               f"a separate fix guide for signed-in accounts: {settings.APP_URL}/login")])]
+            Paragraph("Remediation plan", S["h2"]),
+            _p(f"A remediation plan for the {r['locked_fixes']} issue(s) above is available to "
+               f"signed-in users: {settings.APP_URL}/login")])]
 
     for rec in recs:
         block = [Paragraph(escape(rec.get("headline", "")), S["h2"]), _p(rec.get("body", ""))]

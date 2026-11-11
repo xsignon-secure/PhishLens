@@ -83,7 +83,7 @@ def test_anonymous_landing_scan_has_no_fixes_in_json_or_pdf(client):
     assert pdf.status_code == 200
     text = _pdf_text(pdf.content)
     assert "No DMARC record found" in text and "rua=mailto:dmarc@acme.example" not in text
-    assert "fix guide" in text.lower()
+    assert "remediation plan" in text.lower() and "fix guide" not in text.lower()
 
     assert client.get(f"/api/scans/public/{body['id']}/guide.pdf").status_code == 401
 
@@ -200,3 +200,36 @@ def test_signup_off_by_default_and_needs_a_mail_server(client, db, monkeypatch):
     monkeypatch.setattr(mailer, "is_configured", lambda: False)
     assert client.post("/api/auth/signup", json=_form()).status_code == 503
     assert client.get("/signup", follow_redirects=False).status_code == 302
+
+
+# ------------------------------------------------------------------ nothing reveals how fixes work
+def test_anonymous_scan_has_no_next_step_advice(client):
+    """The free report carries findings only: no fixes, guides or advice."""
+    body = client.post("/api/scans/public", json={"domain": "acme.com"}).json()
+    assert body["result"]["recommendations"] == []
+    pdf = _pdf_text(client.get(f"/api/scans/public/{body['id']}/pdf").content)
+    assert "DNS fixes stop spoofing" not in pdf and "exact DNS records" not in pdf
+
+
+@pytest.mark.parametrize("path", ["/", "/help", "/tools"])
+def test_public_pages_do_not_describe_how_fixes_are_delivered(client, path):
+    html = client.get(path).text
+    for phrase in ("exact DNS record", "exact record", "Copy, paste", "precise DNS record",
+                   "add this TXT record", "v=DMARC1; p=quarantine", "Step-by-step fix guide"):
+        assert phrase not in html, f"{path} mentions {phrase!r}"
+
+
+def test_free_report_script_never_names_the_fix_method():
+    src = open("app/static/app.js", encoding="utf-8").read()
+    start = src.index("function lockedGuideCard")
+    card = src[src.index("return `", start):src.index("\n}\n", start)]  # the markup it shows
+    for phrase in ("DNS record", "exact", "step", "copy", "paste", "guide"):
+        assert phrase not in card.lower(), phrase
+
+
+def test_record_generators_are_for_signed_in_users_only(client, db):
+    html = client.get("/tools").text
+    assert 'id="gen-locked"' in html and "gen-kind" not in html and "v=DMARC1" not in html
+    login_as(client, make_user(db))
+    html = client.get("/tools").text
+    assert "gen-kind" in html and "gen-locked" not in html
