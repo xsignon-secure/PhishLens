@@ -2,14 +2,43 @@
 {% block title %}PhishLens — {{ _("Check your domain's email security") }}{% endblock %}
 {% block content %}
 <section class="hero">
-  <span class="eyebrow">{{ _("Free domain check") }}</span>
-  <h1>{{ _("Is your domain <span class=\"grad-text\">phish-proof?</span>") }}</h1>
-  <p class="sub">{{ _("Type your domain below. We'll check its email security posture, show you what's wrong and what to fix first.") }}</p>
-  <form id="scan-form" class="scanbox" autocomplete="off">
-    <input id="scan-domain" type="text" placeholder="example.com" spellcheck="false" aria-label="Domain to scan">
-    <button type="submit" class="btn big">{{ _("Scan my domain") }}</button>
-  </form>
-  <p class="hint">{{ _("<b>Free.</b> No signup needed to scan. Nothing to install.") }}</p>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">{{ _("Free domain check") }}</span>
+      <h1>{{ _("Is your domain <span class=\"grad-text\">phish-proof?</span>") }}</h1>
+      <p class="sub">{{ _("Type your domain below. We'll check its email security posture, show you what's wrong and what to fix first.") }}</p>
+      <form id="scan-form" class="scanbox" autocomplete="off">
+        <input id="scan-domain" type="text" placeholder="example.com" spellcheck="false" aria-label="Domain to scan">
+        <button type="submit" class="btn big">{{ _("Scan my domain") }}</button>
+      </form>
+      <ul class="trust">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ _("No signup needed") }}</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ _("Results in under a minute") }}</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ _("Reads public DNS only") }}</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ _("Open source (MIT)") }}</li>
+      </ul>
+    </div>
+
+    <div class="preview" aria-hidden="true">
+      <div class="preview-top">
+        <div class="preview-ring">
+          <svg width="76" height="76" viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="var(--surface-3)" stroke-width="7"/><circle cx="38" cy="38" r="32" fill="none" stroke="var(--gC)" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="56"/></svg>
+          <b>72</b>
+        </div>
+        <div>
+          <div class="preview-dom">yourcompany.com</div>
+          <div class="preview-meta">{{ _("Grade C · 2 failing · 3 warnings") }}</div>
+        </div>
+      </div>
+      <ul class="preview-rows">
+        <li><span class="badge pass">{{ _("Pass") }}</span><span class="pv-name">SPF</span><span class="pv-note">{{ _("4 of 10 lookups") }}</span></li>
+        <li><span class="badge fail">{{ _("Fail") }}</span><span class="pv-name">DMARC</span><span class="pv-note">{{ _("Policy is none") }}</span></li>
+        <li><span class="badge pass">{{ _("Pass") }}</span><span class="pv-name">DKIM</span><span class="pv-note">{{ _("2048-bit key") }}</span></li>
+        <li><span class="badge warn">{{ _("Warning") }}</span><span class="pv-name">MTA-STS</span><span class="pv-note">{{ _("Not set up") }}</span></li>
+      </ul>
+      <div class="preview-fix">{{ _("Fix 1 of 5 · add this TXT record at _dmarc") }}<code>v=DMARC1; p=quarantine; rua=mailto:dmarc@yourcompany.com</code></div>
+    </div>
+  </div>
 
   <div id="scan-progress" class="scan-progress hidden" aria-live="polite">
     <div class="phase"><span class="spinner"></span><span id="phase-text">{{ _("Starting…") }}</span></div>
@@ -19,26 +48,83 @@
   <div id="scan-result"></div>
 </section>
 
-<section class="features" aria-label="{{ _("How it works") }}">
-  <div class="card">
-    <div class="icon">①</div>
-    <h3>{{ _("Enter your domain") }}</h3>
-    <p>{{ _("One field, one click. We read only public records — nothing is installed and no email is ever sent.") }}</p>
+<section class="section" aria-labelledby="checks-h">
+  <div class="section-head">
+    <h2 id="checks-h">{{ _("Everything that decides whether your email can be faked") }}</h2>
+    <p>{{ _("Each scan runs 18 checks against your public DNS, mail servers and website, then weighs them into one score.") }}</p>
   </div>
-  <div class="card">
-    <div class="icon">②</div>
-    <h3>{{ _("Get a clear grade") }}</h3>
-    <p>{{ _("Your domain gets a simple 0–100 score and a letter grade anyone on the team can understand.") }}</p>
-  </div>
-  <div class="card">
-    <div class="icon">③</div>
-    <h3>{{ _("Fix it, record by record") }}</h3>
-    <p>{{ _("Create a free account for the step-by-step fix guide: the exact DNS record for every issue. Copy, paste, done — then rescan to watch the grade climb.") }}</p>
+  <div class="check-grid">
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h3>DMARC</h3><p>{{ _("Tells inboxes to reject mail that pretends to be you.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 15l2 2 3-4"/></svg></span><h3>SPF</h3><p>{{ _("Lists the servers allowed to send for your domain.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2M14 8l2 2"/></svg></span><h3>DKIM</h3><p>{{ _("Signs every message so changes are caught.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><h3>MTA-STS &amp; TLS-RPT</h3><p>{{ _("Keeps mail to you encrypted in transit.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span><h3>{{ _("Mail servers") }}</h3><p>{{ _("MX, STARTTLS, reverse DNS, DANE and IPv6.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span><h3>{{ _("Blocklists") }}</h3><p>{{ _("Checks 10 major spam and phishing blocklists.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span><h3>DNSSEC &amp; CAA</h3><p>{{ _("Stops forged DNS answers and rogue certificates.") }}</p></div>
+    <div class="check-tile"><span class="tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg></span><h3>{{ _("Website") }}</h3><p>{{ _("HTTPS certificate and browser security headers.") }}</p></div>
   </div>
 </section>
 
-<p class="muted small" style="text-align:center;margin-top:28px">
-  {{ _("Got a suspicious email?") }} <a href="/tools/headers">{{ _("Check its headers →") }}</a> · <a href="/tools">{{ _("Check a link →") }}</a> · {{ _("Curious what a scan actually looks at?") }} <a href="/help">{{ _("Read the Help guide →") }}</a>
+<section class="section" aria-labelledby="how-h">
+  <div class="section-head">
+    <h2 id="how-h">{{ _("How it works") }}</h2>
+  </div>
+  <div class="features">
+    <div class="card">
+      <div class="icon">1</div>
+      <h3>{{ _("Enter your domain") }}</h3>
+      <p>{{ _("One field, one click. We read only public records — nothing is installed and no email is ever sent.") }}</p>
+    </div>
+    <div class="card">
+      <div class="icon">2</div>
+      <h3>{{ _("Get a clear grade") }}</h3>
+      <p>{{ _("Your domain gets a simple 0–100 score and a letter grade anyone on the team can understand.") }}</p>
+    </div>
+    <div class="card">
+      <div class="icon">3</div>
+      <h3>{{ _("Fix it, record by record") }}</h3>
+      <p>{{ _("Create a free account for the step-by-step fix guide: the exact DNS record for every issue. Copy, paste, done — then rescan to watch the grade climb.") }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="who-h">
+  <div class="section-head">
+    <h2 id="who-h">{{ _("Built for the people who look after email") }}</h2>
+    <p>{{ _("You don't need to be an email expert. Every finding comes with plain-English impact and the exact record to change.") }}</p>
+  </div>
+  <div class="audience">
+    <div class="card">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
+      <h3>{{ _("Small businesses") }}</h3>
+      <p>{{ _("Find out in a minute if criminals can send email as you, and fix it without hiring a consultant.") }}</p>
+    </div>
+    <div class="card">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+      <h3>{{ _("IT and security teams") }}</h3>
+      <p>{{ _("Monitor every domain, read DMARC reports, get alerts when a record changes and move to p=reject safely.") }}</p>
+    </div>
+    <div class="card">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg></div>
+      <h3>{{ _("Managed service providers") }}</h3>
+      <p>{{ _("Group domains by client, brand reports with your logo and send alerts straight to your PSA.") }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div>
+    <h2>{{ _("See where your domain stands") }}</h2>
+    <p>{{ _("Free, no signup, and the report is yours to keep.") }}</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="btn big" href="#" id="cta-scan">{{ _("Scan my domain") }}</a>
+    <a class="btn big ghost" href="/help">{{ _("Read the Help guide →") }}</a>
+  </div>
+</section>
+
+<p class="more-tools">
+  {{ _("Got a suspicious email?") }} <a href="/tools/headers">{{ _("Check its headers →") }}</a> · <a href="/tools">{{ _("Check a link →") }}</a>
 </p>
 {% endblock %}
 {% block scripts %}
@@ -47,9 +133,15 @@ window.rescanDomain = (domain) => {
   document.getElementById('scan-domain').value = domain;
   document.getElementById('scan-form').requestSubmit();
 };
+document.getElementById('cta-scan').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  document.getElementById('scan-domain').focus({preventScroll: true});
+});
 function showReport(data) {
   const box = document.getElementById('scan-result');
   // ?scan=<id> brings a visitor back to this report after logging in.
+  document.querySelector('.hero').classList.add('has-report');
   box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf',
     guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/?scan=' + data.id, scanId: data.id});
   bindReportInteractions(box);

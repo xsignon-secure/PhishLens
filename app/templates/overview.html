@@ -3,7 +3,7 @@
 {% block content %}
 <section class="dash">
   <span class="eyebrow">{{ _("Overview") }}</span>
-  <h1>{{ _("All your domains at a glance") }}</h1>
+  <h1 style="margin-bottom:20px">{{ _("All your domains at a glance") }}</h1>
   <div id="ov-kpis" class="kpi-row" aria-live="polite"></div>
   <div class="dash-grid">
     <div class="panel">
@@ -52,10 +52,10 @@ function kpi(color, num, label, sub, glyph) {
     const o = await api('/api/overview');
     const t = o.totals;
     document.getElementById('ov-kpis').innerHTML =
-      kpi('blue', t.domains, _t('Domains'), _t('{0} active · {1} paused', {0: t.active, 1: t.paused}), '◈') +
-      kpi('violet', t.clients, _t('Clients'), _t('{0} added, {1} removed this month', {0: t.added_this_month, 1: t.removed_this_month}), '👥') +
-      kpi(t.avg_score == null ? 'blue' : t.avg_score >= 80 ? 'green' : t.avg_score >= 60 ? 'amber' : 'red', t.avg_score ?? '—', _t('Average score'), '', '★') +
-      kpi(t.alerts_30d ? 'orange' : 'green', t.alerts_30d, _t('Alerts (30 days)'), _t('{0} DNS changes', {0: t.dns_changes_30d}), '🔔');
+      kpi('blue', t.domains, _t('Domains'), _t('{0} active · {1} paused', {0: t.active, 1: t.paused}), ICONS.globe) +
+      kpi('violet', t.clients, _t('Clients'), _t('{0} added, {1} removed this month', {0: t.added_this_month, 1: t.removed_this_month}), '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>') +
+      kpi(t.avg_score == null ? 'blue' : t.avg_score >= 80 ? 'green' : t.avg_score >= 60 ? 'amber' : 'red', t.avg_score ?? '—', _t('Average score'), '', ICONS.gauge) +
+      kpi(t.alerts_30d ? 'orange' : 'green', t.alerts_30d, _t('Alerts (30 days)'), _t('{0} DNS changes', {0: t.dns_changes_30d}), ICONS.bell);
     document.getElementById('ov-lowest').innerHTML = o.lowest.length ? o.lowest.map(domainLine).join('')
       : '<p class="muted">' + _t('No monitored domains yet.') + ' <a href="/setup">' + _t('Guided DMARC setup →') + '</a></p>';
     document.getElementById('ov-alerts').innerHTML = o.alert_kinds.length

@@ -34,7 +34,21 @@ function gradeClass(score) {
   return 'gF';
 }
 
-const GRADE_COLORS = { gA: '#34d399', gB: '#60a5fa', gC: '#fbbf24', gD: '#fb923c', gF: '#f87171' };
+// Grade colours come from the theme (style.css --gA … --gF), so they follow light and dark mode.
+const GRADE_COLORS = { gA: 'var(--gA)', gB: 'var(--gB)', gC: 'var(--gC)', gD: 'var(--gD)', gF: 'var(--gF)' };
+
+/* Small inline icons (stroke = currentColor). */
+const ICONS = {
+  download: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  target: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
+  scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/></svg>',
+};
 
 /* ---------------- toast ---------------- */
 let _toastTimer = null;
@@ -112,7 +126,7 @@ function scoreRing(score) {
     <svg width="118" height="118" viewBox="0 0 118 118" aria-hidden="true">
       <circle class="ring-bg" cx="59" cy="59" r="52"></circle>
       <circle class="ring-fg" cx="59" cy="59" r="52"
-        stroke="${color}"
+        style="stroke:${color}"
         stroke-dasharray="${C.toFixed(1)}"
         stroke-dashoffset="${C.toFixed(1)}"
         data-target-offset="${(C * (1 - score / 100)).toFixed(1)}"></circle>
@@ -151,8 +165,8 @@ function sparkline(points, w = 120, h = 28) {
   const color = GRADE_COLORS[gradeClass(last)];
   return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"
     aria-label="Score history: ${points.map(p => p.score).join(', ')}">
-    <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" points="${xy.join(' ')}"/>
-    <circle cx="${xy[xy.length - 1].split(',')[0]}" cy="${xy[xy.length - 1].split(',')[1]}" r="2.5" fill="${color}"/></svg>`;
+    <polyline fill="none" style="stroke:${color}" stroke-width="2" stroke-linejoin="round" points="${xy.join(' ')}"/>
+    <circle cx="${xy[xy.length - 1].split(',')[0]}" cy="${xy[xy.length - 1].split(',')[1]}" r="2.5" style="fill:${color}"/></svg>`;
 }
 
 function trendLine(history) {
@@ -461,7 +475,7 @@ function dnssecParts(checks) {
 function lockedGuideCard(r, opts) {
   const next = opts.next ? '?next=' + encodeURIComponent(opts.next) : '';
   return `<div class="locked-guide" id="fix-guide-locked">
-    <h3>${_t('🔒 Step-by-step fix guide')}</h3>
+    <h3>${ICONS.lock + ' ' + _t('Step-by-step fix guide')}</h3>
     <p>${_t('The exact DNS records and steps to fix {0} issue(s) are in the fix guide, free for registered users.', {0: r.locked_fixes})}</p>
     ${window.SIGNUP_ON && opts.scanId ? `<form class="guide-mail" data-scan="${escapeHtml(opts.scanId)}">
       <input name="email" type="email" required placeholder="${_t('Work email')}" aria-label="${_t('Work email')}">
@@ -502,11 +516,11 @@ function renderReport(scan, isPublic, opts = {}) {
   const locked = !!r.solutions_locked;
   const lockHtml = locked && r.locked_fixes ? lockedGuideCard(r, opts) : '';
   const planHtml = locked
-    ? (plan.length ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3>
+    ? (plan.length ? `<div class="plan"><h3>${ICONS.target + ' ' + _t('Fix these first — biggest grade gains')}</h3>
       <ol>${plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span></li>`).join('')}</ol>
-      ${lockHtml}</div>` : (lockHtml || `<div class="plan good"><h3>${_t('✓ Nothing urgent — this domain is in great shape.')}</h3></div>`))
+      ${lockHtml}</div>` : (lockHtml || `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`))
     : plan.length
-    ? `<div class="plan"><h3>${_t('🎯 Fix these first — biggest grade gains')}</h3>
+    ? `<div class="plan"><h3>${ICONS.target + ' ' + _t('Fix these first — biggest grade gains')}</h3>
       ${hasGuides ? providerPicker(pk, detected) : ''}` +
       plan.map((p, i) => {
         const c = checks.find(x => x.title === p.check) || {title: p.check, status: 'fail'};
@@ -515,22 +529,31 @@ function renderReport(scan, isPublic, opts = {}) {
         <span class="fixline"><code>${escapeHtml(p.fix)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li></ol>`;
       }).join('') + `</div>`
-    : `<div class="plan good"><h3>${_t('✓ Nothing urgent — this domain is in great shape.')}</h3></div>`;
+    : `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`;
 
-  const checksHtml = checks.map((c, i) => `
-    <details class="check ${c.status}" style="animation-delay:${Math.min(0.35 + i * 0.05, 1.2).toFixed(2)}s">
+  const checkRow = (c, i) => `
+    <details class="check ${c.status}" style="animation-delay:${Math.min(0.2 + i * 0.03, 0.8).toFixed(2)}s">
       <summary>${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>
         <span class="pts">${c.score}/${c.max_score}</span>
         <span class="chev">▾</span></summary>
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${c.key === 'dnssec' ? dnssecParts(checks) : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
-      ${c.solutions_locked ? `<p class="fix-locked"><a href="#fix-guide-locked">${_t('🔒 How to fix: in the fix guide')}</a></p>` : ''}
+      ${c.solutions_locked ? `<p class="fix-locked"><a href="#fix-guide-locked">${_t('How to fix: in the fix guide')}</a></p>` : ''}
       ${c.guide && planned[c.title] ? `<p class="fix-see"><a href="#fix-${escapeHtml(c.key)}">${_t('How to fix: see step {0} above ↑', {0: planned[c.title]})}</a></p>`
         : c.guide ? `<div class="fix-in-check">${fixCard(c.guide, c, c.max_score - c.score, r.domain, pk, opts, 0)}</div>`
         : (c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button>${applyButton(f, opts)}</p>`).join('')}
-    </details>`).join('');
+    </details>`;
+  // Problems first, then what already passes, so the list reads as a to-do list.
+  const rank = {fail: 0, warn: 1};
+  const open = checks.filter(c => c.status !== 'pass').sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2));
+  const passed = checks.filter(c => c.status === 'pass');
+  const checksHtml = (open.length ? `<p class="findings-group">${_t('Needs attention')} · ${open.length}</p>` + open.map(checkRow).join('') : '') +
+    (passed.length ? `<p class="findings-group">${_t('Passed')} · ${passed.length}</p>` + passed.map((c, i) => checkRow(c, open.length + i)).join('') : '');
+  const scanned = r.scanned_at ? new Date(r.scanned_at) : null;
+  const scannedText = scanned && !isNaN(scanned)
+    ? scanned.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : _t('just now');
 
   return `
   <div class="report">
@@ -538,17 +561,25 @@ function renderReport(scan, isPublic, opts = {}) {
       ${scoreRing(r.score)}
       <div>
         <h2>${escapeHtml(r.domain)}</h2>
-        <p class="muted">${_t('Scanned {0}', {0: escapeHtml(r.scanned_at || _t('just now'))})}</p>
+        <p class="muted" style="margin:0">${_t('Scanned {0}', {0: escapeHtml(scannedText)})}</p>
         <div class="grade-line">
           <span class="grade ${gradeClass(r.score)}">${_t('Grade {0}', {0: escapeHtml(r.grade)})}</span>
           <span class="muted small">${_t('{0} failing · {1} warnings', {0: issues, 1: warnings})}</span>
-          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${_t('⤓ Download PDF')}</a>` : ''}
-          ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${_t('⤓ Fix guide (PDF)')}</a>` : ''}
-          ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${_t('✉ Email me this report')}</button>` : ''}
         </div>
         ${trendLine(scan.history)}
         ${reputationBadge(r.reputation)}
+        <div class="report-actions">
+          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${ICONS.download}${_t('Download PDF')}</a>` : ''}
+          ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${ICONS.download}${_t('Fix guide (PDF)')}</a>` : ''}
+          ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${ICONS.mail}${_t('Email me this report')}</button>` : ''}
+        </div>
       </div>
+    </div>
+    <div class="report-stats">
+      <div class="stat"><b>${r.score}<small class="muted" style="font-size:14px;font-weight:600">/100</small></b><span>${_t('Score')}</span></div>
+      <div class="stat fail"><b>${issues}</b><span>${_t('Failing')}</span></div>
+      <div class="stat warn"><b>${warnings}</b><span>${_t('Warnings')}</span></div>
+      <div class="stat pass"><b>${passed.length}</b><span>${_t('Passed')}</span></div>
     </div>
     ${observationsTable(checks, locked)}
     ${complianceCard(r.compliance)}
@@ -709,7 +740,7 @@ function renderChecklist(container, steps) {
           ${s.done ? '' : '<span class="checklist-go">→</span>'}
         </button>`).join('')}
     </div>
-    ${done === steps.length ? ('<p class="all-done">' + _t('🎉 All set — your domain security is on autopilot.') + '</p>') : ''}`;
+    ${done === steps.length ? ('<p class="all-done">' + _t('All set — your domain security is on autopilot.') + '</p>') : ''}`;
   container.querySelectorAll('.checklist-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = btn.getAttribute('data-target');
@@ -745,10 +776,10 @@ function avgScoreTile(scans, monitors) {
 function renderKpis(container, { monitors = [], alerts = [], scans = [] } = {}) {
   const avg = avgScoreTile(scans, monitors);
   const tiles = [
-    { cls: 'kpi-blue', glyph: '◈', num: monitors.length, label: _t('Domains monitored'), sub: monitors.length ? _t('Under continuous watch') : _t('Add your first below'), animate: true },
-    { cls: avg.cls, glyph: '✦', num: avg.num, label: _t('Average score'), sub: avg.sub, animate: typeof avg.num === 'number' },
-    { cls: alerts.length ? 'kpi-red' : 'kpi-green', glyph: alerts.length ? '⚠' : '✓', num: alerts.length, label: _t('Open alerts'), sub: alerts.length ? _t('Needs your attention') : _t('All quiet'), animate: true, pulse: alerts.length > 0 },
-    { cls: 'kpi-violet', glyph: '◐', num: scans.length, label: _t('Scans run'), sub: scans.length === 1 ? _t('1 scan completed') : _t('{0} scans completed', {0: scans.length}), animate: true },
+    { cls: 'kpi-blue', glyph: ICONS.globe, num: monitors.length, label: _t('Domains monitored'), sub: monitors.length ? _t('Under continuous watch') : _t('Add your first below'), animate: true },
+    { cls: avg.cls, glyph: ICONS.gauge, num: avg.num, label: _t('Average score'), sub: avg.sub, animate: typeof avg.num === 'number' },
+    { cls: alerts.length ? 'kpi-red' : 'kpi-green', glyph: alerts.length ? ICONS.bell : ICONS.check, num: alerts.length, label: _t('Open alerts'), sub: alerts.length ? _t('Needs your attention') : _t('All quiet'), animate: true, pulse: alerts.length > 0 },
+    { cls: 'kpi-violet', glyph: ICONS.scan, num: scans.length, label: _t('Scans run'), sub: scans.length === 1 ? _t('1 scan completed') : _t('{0} scans completed', {0: scans.length}), animate: true },
   ];
   container.innerHTML = tiles.map((t, i) => `
     <div class="kpi ${t.cls} ${t.pulse ? 'pulse' : ''}" style="animation-delay:${(i * 0.09).toFixed(2)}s">
