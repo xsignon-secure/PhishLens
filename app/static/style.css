@@ -44,6 +44,14 @@
   --font: Inter, "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
   --nav-h: 60px;
+  /* title palette: six hues, each AA on white */
+  --t1: #1f5bd8; --t1-bg: #e8effc;
+  --t2: #7c3aed; --t2-bg: #f1eafe;
+  --t3: #0e7c86; --t3-bg: #e2f5f6;
+  --t4: #c0267a; --t4-bg: #fce8f2;
+  --t5: #c2410c; --t5-bg: #fdede4;
+  --t6: #15803d; --t6-bg: #e7f6ec;
+  --title-grad: linear-gradient(92deg, #1f5bd8 0%, #7c3aed 50%, #c0267a 100%);
 }
 [data-theme="dark"] {
   color-scheme: dark;
@@ -79,6 +87,13 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
   --shadow: 0 12px 32px -16px rgba(0, 0, 0, .7);
   --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, .8);
+  --t1: #7aa2ff; --t1-bg: rgba(122, 162, 255, .14);
+  --t2: #b69cff; --t2-bg: rgba(182, 156, 255, .14);
+  --t3: #3fd0c9; --t3-bg: rgba(63, 208, 201, .13);
+  --t4: #f47bbd; --t4-bg: rgba(244, 123, 189, .13);
+  --t5: #fb9a5c; --t5-bg: rgba(251, 154, 92, .13);
+  --t6: #4ade80; --t6-bg: rgba(74, 222, 128, .12);
+  --title-grad: linear-gradient(92deg, #7aa2ff 0%, #b69cff 50%, #f47bbd 100%);
 }
 
 * { box-sizing: border-box; }
@@ -1166,3 +1181,36 @@ details > summary:hover { color: var(--ink-strong); }
   .sum-stats { grid-template-columns: 1fr 1fr; }
   .rpt-head .report-actions { width: 100%; }
 }
+
+/* ---- colourful titles: every titled block takes one of six hues in turn */
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col) { --tc: var(--t1); --tc-bg: var(--t1-bg); }
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col):nth-of-type(6n+2) { --tc: var(--t2); --tc-bg: var(--t2-bg); }
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col):nth-of-type(6n+3) { --tc: var(--t3); --tc-bg: var(--t3-bg); }
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col):nth-of-type(6n+4) { --tc: var(--t4); --tc-bg: var(--t4-bg); }
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col):nth-of-type(6n+5) { --tc: var(--t5); --tc-bg: var(--t5-bg); }
+:is(.panel, .card, .check-tile, .help-section, .section, .rpt-sec, .cat-card, .side-link, .foot-col):nth-of-type(6n+6) { --tc: var(--t6); --tc-bg: var(--t6-bg); }
+main h1:not(.hero h1), .rpt-head h2, .hero h1 .grad-text {
+  background: var(--title-grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: var(--accent);
+}
+main h1:not(.hero h1) { display: block; width: fit-content; max-width: 100%; }
+.help-hero h1, .help-hero .sub { margin-left: auto; margin-right: auto; }
+.section-head h2, .panel h2, .card h3, .check-tile h3, .help-section h2,
+.report .sec-head h3, .report .observations .sec-head h3, .report .compliance .sec-head h3, .foot-col h4 { color: var(--tc); }
+.panel h2 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+  box-shadow: 0 0 0 4px var(--tc-bg); flex-shrink: 0; }
+.panel { border-top: 3px solid var(--tc); }
+.card .icon, .tile-ico { color: var(--tc); background: var(--tc-bg); border-color: transparent; }
+.check-tile, .card { border-top: 3px solid var(--tc); }
+.rpt-sec .sec-head h3::before { content: ""; display: inline-block; width: 4px; height: .9em; border-radius: 2px;
+  background: var(--tc); margin-right: 9px; vertical-align: -1px; }
+.side-link .ico { color: var(--tc); }
+.side-link.active { color: var(--tc); background: var(--tc-bg); }
+.rpt-kicker, .eyebrow { color: var(--t2); }
+.eyebrow { background: var(--t2-bg); border-color: transparent; }
+.findings-group { color: var(--t3); }
+.cta-band { background: linear-gradient(120deg, #1f3fae 0%, #5b2bc4 55%, #a3226b 100%); color: #f8faff; }
+.cta-band .btn { background: #ffffff; color: #1f2a5c; }
+.cta-band .btn:hover { background: #eef2ff; color: #1f2a5c; }
+.side-link.active .ico { color: var(--tc); }
+.rpt-head h2 { width: fit-content; max-width: 100%; }
