@@ -29,8 +29,8 @@
   <div class="panel" id="onboarding-panel">
     <div id="checklist"></div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <a class="btn tiny" href="/setup">{{ _("Guided DMARC setup →") }}</a>
-      <button class="btn tiny" id="tour-btn">{{ _("▶ Take the guided tour") }}</button>
+      <a class="btn tiny" href="/setup" style="margin-left:0">{{ _("Guided DMARC setup →") }}</a>
+      <button class="btn tiny ghost" id="tour-btn" style="margin-left:0">{{ _("Take the guided tour") }}</button>
       <button class="btn tiny ghost" id="checklist-dismiss" style="margin-left:0">{{ _("Dismiss") }}</button>
     </div>
   </div>
@@ -687,7 +687,7 @@ document.getElementById('adhoc-form').addEventListener('submit', async (e) => {
     bindReportInteractions(el);
     revealSection(el);
     el.scrollIntoView({behavior: 'smooth'});
-    if (wasFirst) setTimeout(() => toast(_t('🎉 First scan complete! Work the action plan above.')), 1600);
+    if (wasFirst) setTimeout(() => toast(_t('First scan complete! Work the action plan above.')), 1600);
     loadDashboard();
   } catch (err) { el.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p></div>'; }
 });
@@ -1702,6 +1702,58 @@ document.getElementById('hosted-form').addEventListener('submit', async (e) => {
     msg.textContent = _t('✓ Published. Add the records below to your DNS once (if you haven\'t already).');
   } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
   loadHosted();
+});
+
+/* ---------------- single sign-on (owners) ---------------- */
+async function loadSso() {
+  const c = await api('/api/team/sso');
+  const status = c.configured
+    ? _t('SSO is on for @{0} ({1}).', {0: escapeHtml(c.email_domain), 1: c.protocol === 'saml' ? 'SAML 2.0' : 'OpenID Connect'}) +
+      (c.enforced ? ' ' + _t('Required for members and admins.') : '')
+    : _t('Not set up yet.');
+  document.getElementById('sso-status').innerHTML = `<p>${status}</p>
+    <p>${_t('OpenID Connect redirect URI:')} <code>${escapeHtml(c.redirect_uri)}</code><br>
+    ${_t('SAML entity ID:')} <code>${escapeHtml(c.sp_entity_id)}</code> · ${_t('ACS URL:')} <code>${escapeHtml(c.acs_url)}</code></p>`;
+  document.getElementById('sso-protocol').value = c.protocol || 'oidc';
+  showSsoProtocol();
+  document.getElementById('saml-entity').value = c.saml_entity_id || '';
+  document.getElementById('saml-url').value = c.saml_sso_url || '';
+  document.getElementById('sso-issuer').value = c.issuer || '';
+  document.getElementById('sso-client-id').value = c.client_id || '';
+  document.getElementById('sso-domain').value = c.email_domain || (dashData.me ? dashData.me.email.split('@')[1] : '');
+  document.getElementById('sso-enforced').checked = !!c.enforced;
+  document.getElementById('sso-del').classList.toggle('hidden', !c.configured);
+}
+function showSsoProtocol() {
+  const saml = document.getElementById('sso-protocol').value === 'saml';
+  document.getElementById('sso-saml').classList.toggle('hidden', !saml);
+  document.getElementById('sso-oidc').classList.toggle('hidden', saml);
+}
+document.getElementById('sso-protocol').addEventListener('change', showSsoProtocol);
+document.getElementById('sso-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const val = id => document.getElementById(id).value.trim();
+  const common = {email_domain: val('sso-domain'), enforced: document.getElementById('sso-enforced').checked};
+  try {
+    if (val('sso-protocol') === 'saml') {
+      await api('/api/team/saml', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(Object.assign({
+        metadata_xml: val('saml-metadata') || null, entity_id: val('saml-entity') || null,
+        sso_url: val('saml-url') || null, certificate: val('saml-cert') || null}, common))});
+      document.getElementById('saml-metadata').value = document.getElementById('saml-cert').value = '';
+    } else {
+      await api('/api/team/sso', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(Object.assign({
+        issuer: val('sso-issuer'), client_id: val('sso-client-id'),
+        client_secret: document.getElementById('sso-secret').value || null}, common))});
+      document.getElementById('sso-secret').value = '';
+    }
+    toast(_t('SSO saved. Test it from the login page in a private window before requiring it.'));
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  loadSso().catch(() => {});
+});
+document.getElementById('sso-del').addEventListener('click', async () => {
+  if (!confirm(_t('Turn off single sign-on?'))) return;
+  try { await api('/api/team/sso', {method: 'DELETE'}); } catch (err) { if (err.message !== 'auth') toast(err.message); }
+  loadSso().catch(() => {});
 });
 
 /* ---------------- PGP for failure reports ---------------- */
