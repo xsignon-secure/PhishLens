@@ -40,5 +40,7 @@ def findings_only(result: dict | None) -> dict | None:
     # worth), not how to fix them.
     out["action_plan"] = [{"check": p.get("check"), "points": p.get("points")}
                           for p in out.get("action_plan") or []]
+    # Next-step advice is remediation too, so the free report leaves it out.
+    out["recommendations"] = []
     out["solutions_locked"] = True
     return out

@@ -1,6 +1,7 @@
 """Next-step advice for a scan: what DNS records can't fix.
 
-The scan gives every DNS fix for free. What DNS can never fix is credential
+Signed-in reports carry the DNS fixes (the free report has none, see
+gating.py). What DNS can never fix is credential
 phishing of your people through lookalike domains and fake sign-in pages, so
 when a scan finds gaps we say so plainly and point to phishing-resistant MFA.
 Vendor-neutral on purpose: no products, prices or sales contacts.

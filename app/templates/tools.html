@@ -4,7 +4,7 @@
 <section class="tool">
   <span class="eyebrow">{{ _("Free tools · no sign-up") }}</span>
   <h1>{{ _("Check a link, check a record, build a record") }}</h1>
-  <p class="sub">{{ _("A phishing link checker, quick checks for a single part of your email security, record generators that write the exact DNS value, and a propagation checker.") }} {{ _("Want everything at once?") }} <a href="/">{{ _("Run a full scan") }}</a>.</p>
+  <p class="sub">{{ _("A phishing link checker, quick checks for a single part of your email security, record generators and a propagation checker.") }} {{ _("Want everything at once?") }} <a href="/">{{ _("Run a full scan") }}</a>.</p>
 
   <div class="panel">
     <h2><span class="dot"></span>{{ _("Is this link phishing?") }}</h2>
@@ -129,7 +129,7 @@ document.getElementById('chk-form').addEventListener('submit', async (e) => {
       <p class="details">${escapeHtml(c.details || '')}</p>
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
       ${(c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code> <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button></p>`).join('')}
-      ${c.solutions_locked ? `<p class="fix-locked">${_t('How to fix: in the fix guide')} · <a href="/login?next=/tools">${_t('Log in')}</a>${window.SIGNUP_ON ? ` · <a href="/signup?next=/tools">${_t('Create a free account')}</a>` : ''}</p>` : ''}</div>`;
+      ${c.solutions_locked ? `<p class="fix-locked">${_t('Remediation available to signed-in users')} · <a href="/login?next=/tools">${_t('Log in')}</a>${window.SIGNUP_ON ? ` · <a href="/signup?next=/tools">${_t('Create a free account')}</a>` : ''}</p>` : ''}</div>`;
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
 

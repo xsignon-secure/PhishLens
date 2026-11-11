@@ -434,7 +434,7 @@ function observationsTable(checks, locked) {
     .sort((a, b) => rank[a.sev] - rank[b.sev]);
   if (!rows.length) return '';
   const label = {high: _t('High'), medium: _t('Medium'), low: _t('Low')};
-  return `<div class="observations"><h3>${_t('Observations')}</h3>
+  return `<section class="observations rpt-sec"><div class="sec-head"><h3>${_t('Top risks')}</h3><p>${_t('What an attacker could do today, most serious first.')}</p></div>
     <div class="table-wrap"><table>
     <thead><tr><th>${_t('Risk')}</th><th>${_t('Severity')}</th><th>${_t('Impact')}</th>${locked ? '' : `<th>${_t('Fix')}</th>`}</tr></thead>
     <tbody>${rows.map(({c, sev}) => `<tr>
@@ -442,7 +442,7 @@ function observationsTable(checks, locked) {
       <td><span class="sev ${sev}">${label[sev]}</span></td>
       <td>${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : '<span class="muted">—</span>'}</td>
       ${locked ? '' : `<td>${escapeHtml((c.fixes || [])[0] || '')}</td>`}</tr>`).join('')}</tbody>
-    </table></div></div>`;
+    </table></div></section>`;
 }
 
 /* Gmail / Yahoo / Microsoft sender requirements, from compliance.py. */
@@ -450,7 +450,7 @@ function complianceCard(list) {
   if (!list || !list.length) return '';
   const icon = {pass: '✓', fail: '✗', warn: '!', manual: '?'};
   const label = {pass: _t('Meets'), fail: _t('Fails'), warn: _t('Partly')};
-  return `<div class="compliance"><h3>${_t('Mailbox provider requirements')}</h3>
+  return `<section class="compliance rpt-sec"><div class="sec-head"><h3>${_t('Mailbox provider requirements')}</h3><p>${_t('Rules Gmail, Yahoo and Microsoft apply to senders.')}</p></div>
     <div class="compliance-grid">${list.map(p => `
       <details class="compliance-col ${p.status}">
         <summary><strong>${escapeHtml(p.name)}</strong>
@@ -458,7 +458,7 @@ function complianceCard(list) {
           <span class="muted small">${_t('{0}/{1} checked rules pass', {0: p.passed, 1: p.checked})}</span></summary>
         <p class="muted small">${escapeHtml(p.note)}</p>
         <ul>${p.rules.map(r => `<li class="rule ${r.status}"><span class="ri">${icon[r.status]}</span> ${escapeHtml(r.label)}${r.status === 'manual' ? ` <span class="muted small">(${_t('not visible in DNS: check it yourself')})</span>` : ''}</li>`).join('')}</ul>
-      </details>`).join('')}</div></div>`;
+      </details>`).join('')}</div></section>`;
 }
 
 function dnssecParts(checks) {
@@ -470,23 +470,88 @@ function dnssecParts(checks) {
     · ${_t('DS record at registrar')}: ${c.ds_at_registrar ? yes : no}</p>`;
 }
 
-/* The free report has no fixes: the server leaves them out (solutions_locked)
-   and this card says where to get them. */
+/* The free report has no fixes: the server leaves them out (solutions_locked).
+   This card says the plan exists and who can open it, never how fixes work. */
 function lockedGuideCard(r, opts) {
   const next = opts.next ? '?next=' + encodeURIComponent(opts.next) : '';
-  return `<div class="locked-guide" id="fix-guide-locked">
-    <h3>${ICONS.lock + ' ' + _t('Step-by-step fix guide')}</h3>
-    <p>${_t('The exact DNS records and steps to fix {0} issue(s) are in the fix guide, free for registered users.', {0: r.locked_fixes})}</p>
-    ${window.SIGNUP_ON && opts.scanId ? `<form class="guide-mail" data-scan="${escapeHtml(opts.scanId)}">
+  return `<div class="plan-lock" id="remediation-locked">
+    <div class="locked-ico">${ICONS.lock}</div>
+    <div class="locked-body">
+    <h3>${_t('Your remediation plan is ready')}</h3>
+    <p>${_t('{0} issue(s) on this domain have a remediation plan. Sign in or create a free account to view it.', {0: r.locked_fixes})}</p>
+    ${window.SIGNUP_ON && opts.scanId ? `<form class="plan-mail" data-scan="${escapeHtml(opts.scanId)}">
       <input name="email" type="email" required placeholder="${_t('Work email')}" aria-label="${_t('Work email')}">
       <input name="company" type="text" required maxlength="200" placeholder="${_t('Company or organization')}" aria-label="${_t('Company or organization')}">
-      <button class="btn" type="submit">${_t('Email me the fix guide')}</button>
+      <button class="btn" type="submit">${_t('Send me the plan')}</button>
       <p class="muted small">${_t('Creates your free account. By continuing you accept the Terms and Privacy notice.')}</p>
     </form>` : ''}
     <p class="locked-actions">
       ${window.SIGNUP_ON && !opts.scanId ? `<a class="btn" href="/signup${next}">${_t('Create a free account')}</a>` : ''}
       <a class="btn ghost" href="/login${next}">${_t('Log in')}</a></p>
+    </div>
   </div>`;
+}
+
+/* Report sections: every check belongs to one category. */
+const CHECK_CATEGORY = {
+  spf: 'auth', dkim: 'auth', dmarc: 'auth', bimi: 'auth',
+  'smtp-tls': 'transport', 'mta-sts': 'transport', 'tls-rpt': 'transport', dane: 'transport',
+  mx: 'dns', dnssec: 'dns', caa: 'dns', ptr: 'dns', ipv6: 'dns', rpki: 'dns', parked: 'dns',
+  dnsbl: 'reputation', 'tls-cert': 'web', 'sec-headers': 'web',
+};
+const CATEGORIES = [
+  {key: 'auth', label: N_('Email authentication'), blurb: N_('Stops others sending email as you')},
+  {key: 'transport', label: N_('Transport encryption'), blurb: N_('Keeps mail private in transit')},
+  {key: 'dns', label: N_('Domain and DNS'), blurb: N_('Integrity of your domain records')},
+  {key: 'reputation', label: N_('Reputation'), blurb: N_('Blocklists and sender standing')},
+  {key: 'web', label: N_('Website'), blurb: N_('HTTPS and browser protections')},
+];
+const KEY_PROTOCOLS = ['spf', 'dkim', 'dmarc', 'mta-sts', 'tls-rpt', 'bimi', 'dnssec'];
+
+function riskLevel(score) {
+  if (score >= 80) return {cls: 'low', label: _t('Low risk')};
+  if (score >= 60) return {cls: 'moderate', label: _t('Moderate risk')};
+  if (score >= 40) return {cls: 'high', label: _t('High risk')};
+  return {cls: 'critical', label: _t('Critical risk')};
+}
+
+function verdictFor(r, checks) {
+  const dmarc = checks.find(c => c.key === 'dmarc');
+  const spoofable = !dmarc || dmarc.status !== 'pass';
+  const dom = escapeHtml(r.domain);
+  if (r.score >= 90 && !spoofable) return {
+    head: _t('{0} is well protected', {0: dom}),
+    sub: _t('Email authentication is enforced and the main controls are in place. Keep monitoring for changes.')};
+  if (spoofable) return {
+    head: _t('Attackers can send email that appears to come from {0}', {0: dom}),
+    sub: _t('Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.')};
+  return {
+    head: _t('Spoofing is blocked, but gaps remain'),
+    sub: _t('Forged mail from this domain is rejected. Other controls below still leave room for interception or abuse.')};
+}
+
+function categoryCards(checks) {
+  return CATEGORIES.map(cat => {
+    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key);
+    if (!cs.length) return '';
+    const earned = cs.reduce((a, c) => a + (c.score || 0), 0);
+    const max = cs.reduce((a, c) => a + (c.max_score || 0), 0);
+    const pct = max ? Math.round(100 * earned / max) : null;
+    const fails = cs.filter(c => c.status === 'fail').length, warns = cs.filter(c => c.status === 'warn').length;
+    const tone = pct === null ? 'na' : pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad';
+    return `<div class="cat-card ${tone}">
+      <div class="cat-top"><span class="cat-name">${_t(cat.label)}</span><span class="cat-pct">${pct === null ? '—' : pct + '%'}</span></div>
+      <div class="cat-bar"><span style="width:${pct || 0}%"></span></div>
+      <div class="cat-meta">${_t(cat.blurb)}</div>
+      <div class="cat-counts">${fails ? `<span class="dotc fail">${_t('{0} failing', {0: fails})}</span>` : ''}${warns ? `<span class="dotc warn">${_t('{0} warnings', {0: warns})}</span>` : ''}${!fails && !warns ? `<span class="dotc pass">${_t('All passed')}</span>` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function protocolStrip(checks) {
+  const icon = {pass: '✓', warn: '!', fail: '✕'};
+  return KEY_PROTOCOLS.map(k => checks.find(c => c.key === k)).filter(Boolean).map(c =>
+    `<a class="proto ${c.status}" href="#chk-${escapeHtml(c.key)}"><span class="proto-ico">${icon[c.status] || '·'}</span>${escapeHtml(c.title)}</a>`).join('');
 }
 
 function renderReport(scan, isPublic, opts = {}) {
@@ -496,6 +561,7 @@ function renderReport(scan, isPublic, opts = {}) {
   const recs = r.recommendations || [];
   const issues = checks.filter(c => c.status === 'fail').length;
   const warnings = checks.filter(c => c.status === 'warn').length;
+  const passedN = checks.filter(c => c.status === 'pass').length;
 
   const recHtml = recs.map(rec => `
     <div class="recommend">
@@ -515,12 +581,16 @@ function renderReport(scan, isPublic, opts = {}) {
   const hasGuides = checks.some(c => c.guide);
   const locked = !!r.solutions_locked;
   const lockHtml = locked && r.locked_fixes ? lockedGuideCard(r, opts) : '';
+  const goodHtml = `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`;
+  const rankList = plan.length ? `<ol class="risk-rank">${plan.map((p, i) => `<li>
+      <span class="rr-n">${i + 1}</span><strong>${escapeHtml(p.check)}</strong>
+      <span class="rr-pts">${_t('+{0} pts', {0: p.points})}</span>
+      ${locked ? `<span class="rr-lock">${ICONS.lock}</span>` : ''}</li>`).join('')}</ol>` : '';
+  const planHead = `<div class="sec-head"><h3>${_t('Remediation priorities')}</h3><p>${_t('Ranked by how much each item raises your score.')}</p></div>`;
   const planHtml = locked
-    ? (plan.length ? `<div class="plan"><h3>${ICONS.target + ' ' + _t('Fix these first — biggest grade gains')}</h3>
-      <ol>${plan.map(p => `<li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span></li>`).join('')}</ol>
-      ${lockHtml}</div>` : (lockHtml || `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`))
+    ? (plan.length || lockHtml ? `<section class="rpt-sec">${planHead}<div class="plan locked-plan">${rankList}${lockHtml}</div></section>` : goodHtml)
     : plan.length
-    ? `<div class="plan"><h3>${ICONS.target + ' ' + _t('Fix these first — biggest grade gains')}</h3>
+    ? `<section class="rpt-sec">${planHead}<div class="plan">
       ${hasGuides ? providerPicker(pk, detected) : ''}` +
       plan.map((p, i) => {
         const c = checks.find(x => x.title === p.check) || {title: p.check, status: 'fail'};
@@ -528,66 +598,92 @@ function renderReport(scan, isPublic, opts = {}) {
           : `<ol start="${i + 1}"><li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span>
         <span class="fixline"><code>${escapeHtml(p.fix)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li></ol>`;
-      }).join('') + `</div>`
-    : `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`;
+      }).join('') + `</div></section>`
+    : goodHtml;
 
+  const rank = {fail: 0, warn: 1, pass: 2};
   const checkRow = (c, i) => `
-    <details class="check ${c.status}" style="animation-delay:${Math.min(0.2 + i * 0.03, 0.8).toFixed(2)}s">
+    <details class="check ${c.status}" id="chk-${escapeHtml(c.key)}" style="animation-delay:${Math.min(0.15 + i * 0.02, 0.6).toFixed(2)}s">
       <summary>${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>
+        ${c.status !== 'pass' ? `<span class="sev ${severityFor(c)}">${({high: _t('High'), medium: _t('Medium'), low: _t('Low')})[severityFor(c)]}</span>` : ''}
         <span class="pts">${c.score}/${c.max_score}</span>
         <span class="chev">▾</span></summary>
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${c.key === 'dnssec' ? dnssecParts(checks) : ''}
       ${(c.issues || []).map(x => `<p class="issue">• ${escapeHtml(x)}</p>`).join('')}
-      ${c.solutions_locked ? `<p class="fix-locked"><a href="#fix-guide-locked">${_t('How to fix: in the fix guide')}</a></p>` : ''}
+      ${c.status !== 'pass' && CHECK_IMPACT[c.key] ? `<p class="impact"><span class="fix-label">${_t('Impact')}</span>${escapeHtml(_t(CHECK_IMPACT[c.key]))}</p>` : ''}
+      ${c.solutions_locked ? `<p class="fix-locked">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>` : ''}
       ${c.guide && planned[c.title] ? `<p class="fix-see"><a href="#fix-${escapeHtml(c.key)}">${_t('How to fix: see step {0} above ↑', {0: planned[c.title]})}</a></p>`
         : c.guide ? `<div class="fix-in-check">${fixCard(c.guide, c, c.max_score - c.score, r.domain, pk, opts, 0)}</div>`
         : (c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button>${applyButton(f, opts)}</p>`).join('')}
     </details>`;
-  // Problems first, then what already passes, so the list reads as a to-do list.
-  const rank = {fail: 0, warn: 1};
-  const open = checks.filter(c => c.status !== 'pass').sort((a, b) => (rank[a.status] ?? 2) - (rank[b.status] ?? 2));
-  const passed = checks.filter(c => c.status === 'pass');
-  const checksHtml = (open.length ? `<p class="findings-group">${_t('Needs attention')} · ${open.length}</p>` + open.map(checkRow).join('') : '') +
-    (passed.length ? `<p class="findings-group">${_t('Passed')} · ${passed.length}</p>` + passed.map((c, i) => checkRow(c, open.length + i)).join('') : '');
+  let n = 0;
+  const groupsHtml = CATEGORIES.map(cat => {
+    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key)
+      .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
+    if (!cs.length) return '';
+    return `<p class="findings-group">${_t(cat.label)} · ${cs.length}</p>` + cs.map(c => checkRow(c, n++)).join('');
+  }).join('');
+
   const scanned = r.scanned_at ? new Date(r.scanned_at) : null;
   const scannedText = scanned && !isNaN(scanned)
     ? scanned.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : _t('just now');
+  const risk = riskLevel(r.score);
+  const verdict = verdictFor(r, checks);
+  const reportId = scan.id ? String(scan.id).slice(0, 8).toUpperCase() : '';
 
   return `
-  <div class="report">
-    <div class="scorehead">
-      ${scoreRing(r.score)}
+  <div class="report rpt">
+    <header class="rpt-head">
       <div>
+        <span class="rpt-kicker">${_t('Email security report')}</span>
         <h2>${escapeHtml(r.domain)}</h2>
-        <p class="muted" style="margin:0">${_t('Scanned {0}', {0: escapeHtml(scannedText)})}</p>
-        <div class="grade-line">
-          <span class="grade ${gradeClass(r.score)}">${_t('Grade {0}', {0: escapeHtml(r.grade)})}</span>
-          <span class="muted small">${_t('{0} failing · {1} warnings', {0: issues, 1: warnings})}</span>
-        </div>
-        ${trendLine(scan.history)}
-        ${reputationBadge(r.reputation)}
-        <div class="report-actions">
-          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${ICONS.download}${_t('Download PDF')}</a>` : ''}
-          ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${ICONS.download}${_t('Fix guide (PDF)')}</a>` : ''}
-          ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${ICONS.mail}${_t('Email me this report')}</button>` : ''}
+        <p class="rpt-meta">${_t('Scanned {0}', {0: escapeHtml(scannedText)})}${reportId ? ` · ${_t('Report')} ${escapeHtml(reportId)}` : ''}</p>
+      </div>
+      <div class="report-actions">
+        ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${ICONS.download}${_t('Download PDF')}</a>` : ''}
+        ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${ICONS.download}${_t('Fix guide (PDF)')}</a>` : ''}
+        ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${ICONS.mail}${_t('Email me this report')}</button>` : ''}
+      </div>
+    </header>
+    <section class="rpt-summary">
+      <div class="scorehead">
+        ${scoreRing(r.score)}
+        <div class="grade-col">
+          <span class="grade big ${gradeClass(r.score)}">${escapeHtml(r.grade)}</span>
+          <span class="muted small">${_t('Grade')}</span>
         </div>
       </div>
-    </div>
-    <div class="report-stats">
-      <div class="stat"><b>${r.score}<small class="muted" style="font-size:14px;font-weight:600">/100</small></b><span>${_t('Score')}</span></div>
-      <div class="stat fail"><b>${issues}</b><span>${_t('Failing')}</span></div>
-      <div class="stat warn"><b>${warnings}</b><span>${_t('Warnings')}</span></div>
-      <div class="stat pass"><b>${passed.length}</b><span>${_t('Passed')}</span></div>
-    </div>
+      <div class="verdict">
+        <span class="risk-badge ${risk.cls}">${risk.label}</span>
+        <h3>${verdict.head}</h3>
+        <p>${escapeHtml(verdict.sub)}</p>
+        ${trendLine(scan.history)}
+        ${reputationBadge(r.reputation)}
+      </div>
+      <div class="sum-stats">
+        <div class="stat fail"><b>${issues}</b><span>${_t('Failing')}</span></div>
+        <div class="stat warn"><b>${warnings}</b><span>${_t('Warnings')}</span></div>
+        <div class="stat pass"><b>${passedN}</b><span>${_t('Passed')}</span></div>
+        <div class="stat"><b>${checks.length}</b><span>${_t('Checks run')}</span></div>
+      </div>
+    </section>
+    <nav class="proto-strip" aria-label="${_t('Key protocols')}">${protocolStrip(checks)}</nav>
+    <section class="rpt-sec">
+      <div class="sec-head"><h3>${_t('Score by category')}</h3></div>
+      <div class="cat-grid">${categoryCards(checks)}</div>
+    </section>
     ${observationsTable(checks, locked)}
     ${complianceCard(r.compliance)}
     ${planHtml}
     ${recHtml}
-    <h3 class="findings-title">${_t('Findings')}</h3>
-    ${hasGuides && !plan.some(p => p.guide) ? providerPicker(pk, detected) : ''}
-    ${checksHtml}
+    <section class="rpt-sec">
+      <div class="sec-head"><h3>${_t('Detailed findings')}</h3><p>${_t('Every check, grouped by area. Open a row for the details.')}</p></div>
+      ${hasGuides && !plan.some(p => p.guide) ? providerPicker(pk, detected) : ''}
+      ${groupsHtml}
+    </section>
+    <footer class="rpt-foot">${_t('Read-only scan of public DNS, mail and web records. Results reflect the moment of the scan.')}</footer>
   </div>`;
 }
 
@@ -624,7 +720,7 @@ function bindReportInteractions(container) {
     });
   }
   bindFixCards(container);
-  container.querySelectorAll('form.guide-mail').forEach(f => f.addEventListener('submit', async (e) => {
+  container.querySelectorAll('form.plan-mail').forEach(f => f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = f.querySelector('button');
     btn.disabled = true;
@@ -634,7 +730,7 @@ function bindReportInteractions(container) {
                               scan_id: f.dataset.scan})});
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(errorText(d, _t('Sign-up failed')));
-      f.innerHTML = `<p class="sub">${_t('Check your inbox: the fix guide and your login details are on the way.')}</p>`;
+      f.innerHTML = `<p class="sub">${_t('Check your inbox: your login details are on the way.')}</p>`;
     } catch (err) { toast(err.message); btn.disabled = false; }
   }));
   container.querySelectorAll('.ring-wrap').forEach(ring => {
