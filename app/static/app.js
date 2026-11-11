@@ -740,12 +740,21 @@ function bindReportInteractions(container) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       fg.style.strokeDashoffset = fg.dataset.targetOffset;
     }));
-    const t0 = performance.now(), dur = 1400;
+    // The score climbs from 0, and the ring changes colour as it passes
+    // each grade (red, orange, amber, blue, green), then the grade lands.
+    const t0 = performance.now(), dur = 1600;
+    let shown = '';
     (function countUp(t) {
       const k = Math.min((t - t0) / dur, 1);
       const eased = 1 - Math.pow(1 - k, 3);
-      num.textContent = Math.round(target * eased);
+      const cur = Math.round(target * eased);
+      num.textContent = cur;
+      const g = gradeClass(cur);
+      if (g !== shown) { shown = g; fg.style.stroke = GRADE_COLORS[g]; }
       if (k < 1) requestAnimationFrame(countUp);
+      else {
+        ring.classList.add('landed');
+      }
     })(t0);
   });
 }
@@ -900,3 +909,65 @@ document.addEventListener('click', async (e) => {
     location.href = '/';
   }
 });
+
+/* ---------- motion: entrances, scroll reveals and count-ups ----------
+   Everything here is decoration. Content is visible without it: the hidden
+   start state only applies once this script adds .motion to <html>, and
+   nothing animates for people who ask for reduced motion. */
+(function motion() {
+  if (!('IntersectionObserver' in window)) return;
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const root = document.documentElement;
+  root.classList.add('motion');
+  const REVEAL = '.panel, .card, .check-tile, .kpi, .help-section, .rpt-sec, .cat-card, .section-head, .cta-band, .stat, .proto, .tool, .findings-group, details.check';
+  const seen = new WeakSet();
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    io.unobserve(e.target);
+    if (e.target.dataset.count) countUp(e.target); else e.target.classList.add('in');
+  }), {rootMargin: '0px 0px -6% 0px', threshold: 0.06});
+
+  // Numbers count up from zero: "42", "9/12", "96%", "1,248".
+  const NUM = /^\+?(\d[\d,]*)(%|\/\d+|\s?pts)?$/;
+  function markCounts(scope) {
+    scope.querySelectorAll('.kpi-num, .stat b, .cat-pct, .preview-ring b, .rr-pts, .stat-num').forEach(el => {
+      if (el.dataset.count || el.children.length || el.closest('.ring-wrap')) return;
+      const m = el.textContent.trim().match(NUM);
+      if (m) { el.dataset.count = m[1].replace(/,/g, ''); el.dataset.suffix = m[2] || ''; io.observe(el); }
+    });
+  }
+  function countUp(el) {
+    if (el.dataset.counted || el.closest('.ring-wrap')) return;
+    el.dataset.counted = '1';
+    const end = +el.dataset.count, suffix = el.dataset.suffix || '', t0 = performance.now(), dur = 900;
+    if (!end) return;
+    let last = el.textContent;
+    const step = now => {
+      if (el.textContent !== last) return;  // the page updated the number itself: stop
+      const p = Math.min(1, (now - t0) / dur), eased = 1 - Math.pow(1 - p, 3);
+      last = el.textContent = (el.classList.contains('rr-pts') ? '+' : '') + Math.round(end * eased).toLocaleString() + suffix;
+      if (p < 1) requestAnimationFrame(step);
+      else last = el.textContent = (el.classList.contains('rr-pts') ? '+' : '') + end.toLocaleString() + suffix;
+    };
+    requestAnimationFrame(step);
+  }
+  function scan(scope) {
+    markCounts(scope);
+    const items = scope.matches && scope.matches(REVEAL) ? [scope] : [];
+    items.push(...scope.querySelectorAll(REVEAL));
+    let i = 0;
+    items.forEach(el => {
+      if (seen.has(el)) return;
+      seen.add(el);
+      el.classList.add('reveal');
+      el.style.setProperty('--d', Math.min(i++, 8) * 60 + 'ms');
+      io.observe(el);
+    });
+  }
+  const start = () => {
+    scan(document.body);
+    new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) scan(n); })))
+      .observe(document.body, {childList: true, subtree: true});
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
