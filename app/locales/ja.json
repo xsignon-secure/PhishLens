@@ -1011,5 +1011,6 @@
  "Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.": "受信側メールサーバーにこのドメインの偽装メールを拒否する指示がないため、あなたの名前を使ったフィッシングが受信箱に届く可能性があります。",
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "無料アカウントを作成して改善プランを表示し、再スキャンして評価の向上を確認しましょう。",
  "HTTPS and browser protections": "HTTPSとブラウザー保護",
- "Check your inbox: your login details are on the way.": "受信箱を確認してください。ログイン情報を送信しました。"
+ "Check your inbox: your login details are on the way.": "受信箱を確認してください。ログイン情報を送信しました。",
+ "Available to signed-in users.": "サインインしたユーザーが利用できます。"
 }

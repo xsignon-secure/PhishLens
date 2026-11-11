@@ -1011,5 +1011,6 @@
  "Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.": "Los servidores receptores no reciben instrucciones de rechazar correo falsificado de este dominio, así que el phishing que usa su nombre puede llegar a las bandejas.",
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "Cree una cuenta gratuita para desbloquear su plan de corrección y vuelva a escanear para ver subir la nota.",
  "HTTPS and browser protections": "HTTPS y protecciones del navegador",
- "Check your inbox: your login details are on the way.": "Revise su bandeja de entrada: sus datos de acceso están en camino."
+ "Check your inbox: your login details are on the way.": "Revise su bandeja de entrada: sus datos de acceso están en camino.",
+ "Available to signed-in users.": "Disponible para usuarios con sesión iniciada."
 }

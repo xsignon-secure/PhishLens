@@ -1011,5 +1011,6 @@
  "Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.": "Empfangende Mailserver werden nicht angewiesen, gefälschte E-Mails dieser Domain abzulehnen, daher kann Phishing in Ihrem Namen Postfächer erreichen.",
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "Erstellen Sie ein kostenloses Konto, um Ihren Maßnahmenplan freizuschalten, und scannen Sie erneut, um die Note steigen zu sehen.",
  "HTTPS and browser protections": "HTTPS und Browserschutz",
- "Check your inbox: your login details are on the way.": "Prüfen Sie Ihr Postfach: Ihre Zugangsdaten sind unterwegs."
+ "Check your inbox: your login details are on the way.": "Prüfen Sie Ihr Postfach: Ihre Zugangsdaten sind unterwegs.",
+ "Available to signed-in users.": "Für angemeldete Nutzer verfügbar."
 }

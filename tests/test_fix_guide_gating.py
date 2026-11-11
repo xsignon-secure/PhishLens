@@ -225,3 +225,11 @@ def test_free_report_script_never_names_the_fix_method():
     card = src[src.index("return `", start):src.index("\n}\n", start)]  # the markup it shows
     for phrase in ("DNS record", "exact", "step", "copy", "paste", "guide"):
         assert phrase not in card.lower(), phrase
+
+
+def test_record_generators_are_for_signed_in_users_only(client, db):
+    html = client.get("/tools").text
+    assert 'id="gen-locked"' in html and "gen-kind" not in html and "v=DMARC1" not in html
+    login_as(client, make_user(db))
+    html = client.get("/tools").text
+    assert "gen-kind" in html and "gen-locked" not in html

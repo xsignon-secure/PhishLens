@@ -32,6 +32,7 @@
     <div id="chk-result" aria-live="polite"></div>
   </div>
 
+  {% if user %}
   <div class="panel">
     <h2><span class="dot"></span>{{ _("Record generator") }}</h2>
     <div class="scanbox small">
@@ -44,6 +45,14 @@
     <div id="gen-fields"></div>
     <div id="gen-out"></div>
   </div>
+  {% else %}
+  <div class="panel" id="gen-locked">
+    <h2><span class="dot"></span>{{ _("Record generator") }}</h2>
+    <p class="muted small">{{ _("Available to signed-in users.") }}</p>
+    <p class="locked-actions">{% if signup_on() %}<a class="btn" href="/signup?next=/tools">{{ _("Create a free account") }}</a>{% endif %}
+      <a class="btn ghost" href="/login?next=/tools">{{ _("Log in") }}</a></p>
+  </div>
+  {% endif %}
 
   <div class="panel">
     <h2><span class="dot"></span>{{ _("BIMI logo checker") }}</h2>
@@ -133,6 +142,7 @@ document.getElementById('chk-form').addEventListener('submit', async (e) => {
   } catch (err) { box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
 });
 
+{% if user %}
 const SPF_SERVICES = [
   ['Microsoft 365', 'include:spf.protection.outlook.com'],
   ['Google Workspace', 'include:_spf.google.com'],
@@ -233,6 +243,7 @@ function buildGen() {
 document.getElementById('gen-kind').addEventListener('change', renderGen);
 document.getElementById('gen-domain').addEventListener('input', buildGen);
 renderGen();
+{% endif %}
 
 document.getElementById('prop-form').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -1011,5 +1011,6 @@
  "Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.": "Ontvangende mailservers krijgen geen opdracht om vervalste mail van dit domein te weigeren, dus phishing onder uw naam kan inboxen bereiken.",
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "Maak een gratis account aan om uw herstelplan te ontgrendelen en scan opnieuw om het cijfer te zien stijgen.",
  "HTTPS and browser protections": "HTTPS en browserbeveiliging",
- "Check your inbox: your login details are on the way.": "Controleer uw inbox: uw inloggegevens zijn onderweg."
+ "Check your inbox: your login details are on the way.": "Controleer uw inbox: uw inloggegevens zijn onderweg.",
+ "Available to signed-in users.": "Beschikbaar voor ingelogde gebruikers."
 }

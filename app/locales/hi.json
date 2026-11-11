@@ -1011,5 +1011,6 @@
  "Receiving mail servers are not told to reject forged mail from this domain, so phishing that uses your name can reach inboxes.": "प्राप्त करने वाले मेल सर्वर को इस डोमेन से नकली मेल अस्वीकार करने को नहीं कहा गया है, इसलिए आपके नाम से फ़िशिंग इनबॉक्स तक पहुँच सकती है।",
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "अपनी सुधार योजना खोलने के लिए मुफ़्त खाता बनाएँ, फिर ग्रेड बढ़ता देखने के लिए दोबारा स्कैन करें।",
  "HTTPS and browser protections": "HTTPS और ब्राउज़र सुरक्षा",
- "Check your inbox: your login details are on the way.": "अपना इनबॉक्स देखें: आपके लॉगिन विवरण भेजे जा रहे हैं।"
+ "Check your inbox: your login details are on the way.": "अपना इनबॉक्स देखें: आपके लॉगिन विवरण भेजे जा रहे हैं।",
+ "Available to signed-in users.": "साइन-इन उपयोगकर्ताओं के लिए उपलब्ध।"
 }
