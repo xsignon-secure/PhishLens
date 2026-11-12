@@ -1550,7 +1550,7 @@ async function domainConnectFor(domain) {
 async function reportOpts(s) {
   const dc = await domainConnectFor(s.domain);
   window.DNS_LABEL = dc ? dc.provider : dashData.dnsLabel;
-  return {pdfUrl: '/api/scans/' + s.id + '/pdf', guideUrl: '/api/scans/' + s.id + '/guide.pdf', emailUrl: '/api/scans/' + s.id + '/email', applyFix: dashData.cfConnected || !!dc};
+  return {pdfUrl: '/api/scans/' + s.id + '/pdf', guideUrl: '/api/scans/' + s.id + '/guide.pdf', emailUrl: '/api/scans/' + s.id + '/email', summaryUrl: '/api/scans/' + s.id + '/summary', applyFix: dashData.cfConnected || !!dc};
 }
 async function domainConnectApply(name, type, value, btn) {
   if (btn) btn.disabled = true;

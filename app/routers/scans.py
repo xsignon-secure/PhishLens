@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from .. import audit, models, pdf_report, plans, schemas
+from .. import audit, models, pdf_report, plans, schemas, summary
 from ..config import settings
 from ..database import get_db
 from ..deps import client_ip, get_current_user, optional_user, public_scan_limit, rate_limit, tenant_scans
@@ -63,6 +63,13 @@ def get_public_scan(scan_id: str, request: Request, db: Session = Depends(get_db
     the visitor comes back to the same report with the fixes unlocked."""
     rate_limit(request, f"pdf:{client_ip(request)}", 30)
     return engine.scan_to_dict(_public_scan(db, scan_id), solutions=user is not None)
+
+
+@router.get("/public/{scan_id}/summary")
+def public_scan_summary(scan_id: str, request: Request, db: Session = Depends(get_db)):
+    """The plain-language summary: risk only, never how to fix (see app/summary.py)."""
+    rate_limit(request, f"summary:{client_ip(request)}", 30)
+    return summary.get(db, _public_scan(db, scan_id))
 
 
 @router.get("/public/{scan_id}/guide.pdf")
@@ -191,6 +198,23 @@ def email_scan(scan_id: str, request: Request, db: Session = Depends(get_db),
         raise HTTPException(status_code=502, detail="The email could not be sent")
     audit.log_request(db, request, "report.email", user, {"scan_id": scan.id, "domain": scan.domain})
     return {"ok": True, "to": user.email}
+
+
+@router.get("/shared/{scan_id}/summary")
+def shared_scan_summary(scan_id: str, request: Request, db: Session = Depends(get_db)):
+    rate_limit(request, f"summary:{client_ip(request)}", 30)
+    scan = db.query(models.Scan).filter(models.Scan.id == scan_id, models.Scan.is_public.is_(True)).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return summary.get(db, scan)
+
+
+@router.get("/{scan_id}/summary")
+def scan_summary(scan_id: str, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    scan = tenant_scans(db, user).filter(models.Scan.id == scan_id).first()
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return summary.get(db, scan)
 
 
 @router.get("/shared/{scan_id}")

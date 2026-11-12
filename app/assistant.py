@@ -100,6 +100,33 @@ def run(cfg: dict, history: list[dict], run_tool) -> dict:
     return chat_openai(base, cfg, history, run_tool)
 
 
+def complete(cfg: dict, system: str, prompt: str, max_tokens: int = 400) -> str:
+    """One short answer with no tools (used for report summaries)."""
+    if cfg["provider"] == "anthropic":
+        response = client_for(cfg["key"]).messages.create(
+            model=cfg["model"], max_tokens=max_tokens, system=system,
+            output_config={"effort": "low"},
+            messages=[{"role": "user", "content": prompt}])
+        if response.stop_reason == "refusal":
+            return ""
+        return "".join(b.text for b in response.content if b.type == "text").strip()
+    base = ai_providers.resolve(cfg["provider"], cfg.get("base_url"))
+    headers = {"Content-Type": "application/json"}
+    if cfg.get("key"):
+        headers["Authorization"] = f"Bearer {cfg['key']}"
+        if cfg["provider"] == "azure":
+            headers["api-key"] = cfg["key"]
+    r = _post(base + "/chat/completions", headers,
+              {"model": cfg["model"], "max_tokens": max_tokens,
+               "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]})
+    if r.status_code != 200:
+        raise _provider_error(r, ai_providers.PROVIDERS[cfg["provider"]]["label"])
+    text = r.json()["choices"][0]["message"].get("content")
+    if isinstance(text, list):
+        text = "".join(p.get("text", "") for p in text if isinstance(p, dict))
+    return (text or "").strip()
+
+
 def chat(client: anthropic.Anthropic, history: list[dict], run_tool, model: str | None = None) -> dict:
     """Run one user turn. `history` is [{role, content: str}], ending with the
     user's message. `run_tool(name, input)` returns a JSON-able result or

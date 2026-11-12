@@ -218,6 +218,7 @@ All settings are environment variables; `.env.example` lists every one.
 | `VIRUSTOTAL_API_KEY`, `SAFE_BROWSING_API_KEY`, `URLHAUS_AUTH_KEY`, `OPENPHISH_FEED` | Optional reputation and link-checker feeds. |
 | `RPKI_CHECK`, `GEOIP_DB` | Optional RPKI lookups and DMARC sender countries. |
 | `PQC_CHECK` | Post-quantum key exchange test (default on). |
+| `PUBLIC_AI_SUMMARY`, `PUBLIC_AI_SUMMARY_DAILY_LIMIT`, `SUMMARY_MODEL` | Plain-language "In plain words" summary on every report, written with the server's AI key (default model `claude-haiku-5-5`), capped per day; fixed text without a key. It describes risk only, never fixes. |
 | `MAX_MONITORS_PER_TEAM`, `SCAN_RATE_LIMIT_PER_HOUR` | Abuse brakes for public instances. |
 
 ### Deployment
