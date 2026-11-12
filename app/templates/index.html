@@ -143,7 +143,8 @@ function showReport(data) {
   // ?scan=<id> brings a visitor back to this report after logging in.
   document.querySelector('.hero').classList.add('has-report');
   box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf',
-    guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/?scan=' + data.id, scanId: data.id});
+    guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/?scan=' + data.id, scanId: data.id,
+    summaryUrl: '/api/scans/public/' + data.id + '/summary'});
   bindReportInteractions(box);
   box.scrollIntoView({behavior: 'smooth', block: 'start'});
 }

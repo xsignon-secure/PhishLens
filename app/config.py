@@ -98,6 +98,13 @@ class Settings(BaseSettings):
     # Or a server-wide key for any other provider (see app/ai_providers.py):
     # AI_PROVIDER=openai AI_API_KEY=... AI_MODEL=... (AI_BASE_URL for custom/azure).
     AI_PROVIDER: str = ""
+    # Plain-language summary on every report, written by the server's AI key
+    # (never a company's). Capped per day; above the cap, or with no key, a
+    # fixed-text summary is shown instead. SUMMARY_MODEL defaults to the
+    # provider's model, or claude-haiku-5-5 with ANTHROPIC_API_KEY.
+    PUBLIC_AI_SUMMARY: bool = True
+    PUBLIC_AI_SUMMARY_DAILY_LIMIT: int = 300
+    SUMMARY_MODEL: str = ""
     AI_API_KEY: str = ""
     AI_MODEL: str = ""
     AI_BASE_URL: str = ""

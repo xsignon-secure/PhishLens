@@ -1014,5 +1014,8 @@
  "Check your inbox: your login details are on the way.": "अपना इनबॉक्स देखें: आपके लॉगिन विवरण भेजे जा रहे हैं।",
  "Available to signed-in users.": "साइन-इन उपयोगकर्ताओं के लिए उपलब्ध।",
  "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "आज रिकॉर्ड किया गया एन्क्रिप्टेड ट्रैफ़िक भविष्य में क्वांटम कंप्यूटरों द्वारा डिक्रिप्ट किया जा सकता है।",
- "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "कोई और आपके किसी सबडोमेन, मेल होस्ट या नेमसर्वर पर कब्ज़ा करके उसे फ़िशिंग के लिए इस्तेमाल कर सकता है।"
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "कोई और आपके किसी सबडोमेन, मेल होस्ट या नेमसर्वर पर कब्ज़ा करके उसे फ़िशिंग के लिए इस्तेमाल कर सकता है।",
+ "In plain words": "सरल शब्दों में",
+ "Written by AI from the findings above.": "ऊपर दिए गए निष्कर्षों से AI द्वारा लिखा गया।",
+ "Writing a summary of this report…": "इस रिपोर्ट का सारांश लिखा जा रहा है…"
 }

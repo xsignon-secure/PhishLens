@@ -39,6 +39,7 @@ const GRADE_COLORS = { gA: 'var(--gA)', gB: 'var(--gB)', gC: 'var(--gC)', gD: 'v
 
 /* Small inline icons (stroke = currentColor). */
 const ICONS = {
+  spark: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></svg>',
   download: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
   mail: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
   lock: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
@@ -671,6 +672,10 @@ function renderReport(scan, isPublic, opts = {}) {
         <div class="stat"><b>${checks.length}</b><span>${_t('Checks run')}</span></div>
       </div>
     </section>
+    ${opts.summaryUrl ? `<section class="rpt-plain" data-summary-url="${escapeHtml(opts.summaryUrl)}">
+      <span class="plain-ico">${ICONS.spark}</span>
+      <div><span class="rpt-kicker">${_t('In plain words')}</span>
+      <p class="plain-text muted">${_t('Writing a summary of this report…')}</p></div></section>` : ''}
     <nav class="proto-strip" aria-label="${_t('Key protocols')}">${protocolStrip(checks)}</nav>
     <section class="rpt-sec">
       <div class="sec-head"><h3>${_t('Score by category')}</h3></div>
@@ -722,6 +727,18 @@ function bindReportInteractions(container) {
     });
   }
   bindFixCards(container);
+  container.querySelectorAll('[data-summary-url]').forEach(sec => {
+    const url = sec.dataset.summaryUrl;
+    const tenant = window.api && !/\/api\/scans\/(public|shared)\//.test(url);
+    (tenant ? window.api(url) : fetch(url).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))))
+      .then(d => {
+        const p = sec.querySelector('.plain-text');
+        p.textContent = d.text;
+        p.classList.remove('muted');
+        if (d.source === 'ai') p.insertAdjacentHTML('afterend', `<span class="muted small">${_t('Written by AI from the findings above.')}</span>`);
+      })
+      .catch(() => sec.remove());
+  });
   container.querySelectorAll('form.plan-mail').forEach(f => f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = f.querySelector('button');

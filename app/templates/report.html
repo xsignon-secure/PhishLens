@@ -19,7 +19,8 @@ document.getElementById('shared-report').innerHTML = renderReport(
   {domain: scanData.domain, score: scanData.score, grade: scanData.grade, result: scanData}, false,
   {pdfUrl: {{ ('/api/scans/shared/' ~ scan.id ~ '/pdf') | tojson }},
    guideUrl: {{ ('/api/scans/shared/' ~ scan.id ~ '/guide.pdf') | tojson }},
-   next: {{ ('/r/' ~ scan.id) | tojson }}}
+   next: {{ ('/r/' ~ scan.id) | tojson }},
+   summaryUrl: {{ ('/api/scans/shared/' ~ scan.id ~ '/summary') | tojson }}}
 );
 // Without this the score ring stays at 0 and the Copy buttons do nothing.
 bindReportInteractions(document.getElementById('shared-report'));

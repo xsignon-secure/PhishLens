@@ -1014,5 +1014,8 @@
  "Check your inbox: your login details are on the way.": "Consultez votre boîte de réception : vos identifiants sont en route.",
  "Available to signed-in users.": "Disponible pour les utilisateurs connectés.",
  "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "Le trafic chiffré enregistré aujourd'hui pourrait être déchiffré à l'avenir par des ordinateurs quantiques.",
- "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Quelqu'un d'autre pourrait prendre le contrôle d'un de vos sous-domaines, serveurs de messagerie ou serveurs de noms et l'utiliser pour du phishing."
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Quelqu'un d'autre pourrait prendre le contrôle d'un de vos sous-domaines, serveurs de messagerie ou serveurs de noms et l'utiliser pour du phishing.",
+ "In plain words": "En termes simples",
+ "Written by AI from the findings above.": "Rédigé par l'IA à partir des résultats ci-dessus.",
+ "Writing a summary of this report…": "Rédaction d'un résumé de ce rapport…"
 }

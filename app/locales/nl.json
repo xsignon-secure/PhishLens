@@ -1014,5 +1014,8 @@
  "Check your inbox: your login details are on the way.": "Controleer uw inbox: uw inloggegevens zijn onderweg.",
  "Available to signed-in users.": "Beschikbaar voor ingelogde gebruikers.",
  "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "Versleuteld verkeer dat vandaag wordt opgeslagen, kan in de toekomst door quantumcomputers worden ontsleuteld.",
- "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Iemand anders kan een van je subdomeinen, mailservers of nameservers overnemen en gebruiken voor phishing."
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Iemand anders kan een van je subdomeinen, mailservers of nameservers overnemen en gebruiken voor phishing.",
+ "In plain words": "In gewone woorden",
+ "Written by AI from the findings above.": "Door AI geschreven op basis van de bevindingen hierboven.",
+ "Writing a summary of this report…": "Samenvatting van dit rapport wordt geschreven…"
 }

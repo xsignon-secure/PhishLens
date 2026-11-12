@@ -1387,3 +1387,13 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .risk-rank li { transition: background .2s, transform .25s var(--ease); }
 .risk-rank li:hover { background: var(--surface-2); transform: translateX(4px); }
 @media print { .motion .reveal { opacity: 1 !important; transform: none !important; } }
+
+/* Plain-language summary under the report headline. */
+.rpt-plain { display: flex; gap: 14px; align-items: flex-start; margin-top: 18px; padding: 16px 18px;
+  border-radius: 16px; background: var(--surface); box-shadow: var(--card-shadow);
+  border-left: 5px solid var(--t2, #7c3aed); }
+.rpt-plain .plain-ico { flex: none; display: grid; place-items: center; width: 36px; height: 36px;
+  border-radius: 50%; color: #ffffff; background: var(--g-violet, linear-gradient(135deg, #7c3aed, #a855f7)); }
+.rpt-plain .rpt-kicker { display: block; margin-bottom: 4px; }
+.rpt-plain .plain-text { margin: 0 0 4px; font-size: 1.02rem; line-height: 1.55; color: var(--title); }
+.rpt-plain .plain-text.muted { color: var(--ink-faint); }
