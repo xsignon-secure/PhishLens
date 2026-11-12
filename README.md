@@ -51,6 +51,11 @@ for your DNS provider.
   certificate and web security headers.
 - Also reported: DANE/TLSA, reverse DNS (PTR/FCrDNS), IPv6 and optional RPKI
   for mail servers; BIMI certificates (VMC/CMC) and SVG Tiny PS logos.
+- Dangling DNS / subdomain takeover: CNAMEs pointing at deleted cloud resources (S3, Azure,
+  GitHub Pages, Heroku, Shopify and 15 more), and MX hosts or nameservers on unregistered
+  domains. Monitors also test every subdomain seen in Certificate Transparency logs.
+- Post-quantum readiness: whether the website accepts hybrid ML-KEM key exchange
+  (needs Python 3.15+ with OpenSSL 3.5+, as in the Docker image).
 - PDF export, score history, and observations ranked by risk, severity,
   impact and fix.
 
@@ -212,6 +217,7 @@ All settings are environment variables; `.env.example` lists every one.
 | `RATE_LIMIT_STORAGE` | `database` to share limits across several instances. |
 | `VIRUSTOTAL_API_KEY`, `SAFE_BROWSING_API_KEY`, `URLHAUS_AUTH_KEY`, `OPENPHISH_FEED` | Optional reputation and link-checker feeds. |
 | `RPKI_CHECK`, `GEOIP_DB` | Optional RPKI lookups and DMARC sender countries. |
+| `PQC_CHECK` | Post-quantum key exchange test (default on). |
 | `MAX_MONITORS_PER_TEAM`, `SCAN_RATE_LIMIT_PER_HOUR` | Abuse brakes for public instances. |
 
 ### Deployment

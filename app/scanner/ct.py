@@ -18,6 +18,7 @@ import httpx
 CRT_SH = "https://crt.sh/"
 TIMEOUT = 25
 MAX_LOOKALIKES = 10
+MAX_SUBDOMAINS = 200
 
 
 class CtError(Exception):
@@ -78,6 +79,9 @@ def check(domain: str, state: dict | None, lookalikes: list[str] | None,
                         f"used before, for {', '.join(names[:5])}{' and more' if len(names) > 5 else ''}. "
                         "If you didn't request it, revoke it and add a CAA record.")
     state["issuers"] = sorted(issuers)
+    # Hostnames seen in certificates: the dangling-DNS check tests these too.
+    names = {n.lstrip("*.") for c in own for n in c["names"]}
+    state["subdomains"] = sorted(n for n in names if n.endswith("." + domain))[:MAX_SUBDOMAINS]
     state["max_id"] = max([max_id] + [c["id"] for c in own])
     seen = dict(state.get("lookalike_max_id") or {})
     for look in (lookalikes or [])[:MAX_LOOKALIKES]:

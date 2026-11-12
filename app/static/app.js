@@ -405,8 +405,10 @@ const CHECK_IMPACT = {
   'tls-cert': N_('Visitors may see certificate warnings, or the site may stop working when it expires.'),
   'sec-headers': N_('Your website is easier to attack with clickjacking and content injection.'),
   parked: N_('Attackers can send mail that appears to come from this unused domain.'),
+  dangling: N_('Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.'),
+  pqc: N_('Encrypted traffic recorded today could be decrypted in future by quantum computers.'),
 };
-const LOW_SEVERITY = ['bimi', 'caa', 'ipv6', 'sec-headers', 'rpki', 'ptr', 'dane', 'tls-rpt'];
+const LOW_SEVERITY = ['bimi', 'caa', 'ipv6', 'sec-headers', 'rpki', 'ptr', 'dane', 'tls-rpt', 'pqc'];
 
 function severityFor(c) {
   if (c.status === 'fail') return 'high';
@@ -496,8 +498,8 @@ function lockedGuideCard(r, opts) {
 const CHECK_CATEGORY = {
   spf: 'auth', dkim: 'auth', dmarc: 'auth', bimi: 'auth',
   'smtp-tls': 'transport', 'mta-sts': 'transport', 'tls-rpt': 'transport', dane: 'transport',
-  mx: 'dns', dnssec: 'dns', caa: 'dns', ptr: 'dns', ipv6: 'dns', rpki: 'dns', parked: 'dns',
-  dnsbl: 'reputation', 'tls-cert': 'web', 'sec-headers': 'web',
+  mx: 'dns', dnssec: 'dns', caa: 'dns', ptr: 'dns', ipv6: 'dns', rpki: 'dns', parked: 'dns', dangling: 'dns',
+  dnsbl: 'reputation', 'tls-cert': 'web', 'sec-headers': 'web', pqc: 'web',
 };
 const CATEGORIES = [
   {key: 'auth', label: N_('Email authentication'), blurb: N_('Stops others sending email as you')},

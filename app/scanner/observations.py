@@ -16,8 +16,10 @@ IMPACT = {
     "tls-cert": "Visitors may see certificate warnings, or the site may stop working when it expires.",
     "sec-headers": "Your website is easier to attack with clickjacking and content injection.",
     "parked": "Attackers can send mail that appears to come from this unused domain.",
+    "dangling": "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.",
+    "pqc": "Encrypted traffic recorded today could be decrypted in future by quantum computers.",
 }
-LOW_SEVERITY = {"bimi", "caa", "ipv6", "sec-headers", "rpki", "ptr", "dane", "tls-rpt"}
+LOW_SEVERITY = {"bimi", "caa", "ipv6", "sec-headers", "rpki", "ptr", "dane", "tls-rpt", "pqc"}
 RANK = {"High": 0, "Medium": 1, "Low": 2}
 
 

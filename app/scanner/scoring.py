@@ -1,7 +1,8 @@
 """Scoring: weighted 0-100 aggregation + letter grade + prioritized action plan."""
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
-from . import dns_checks, mail_checks, web_checks
+from . import dns_checks, exposure, mail_checks, web_checks
 
 # (check_fn, applies_to) — web checks run against the domain's web presence
 EMAIL_CHECKS = [
@@ -21,10 +22,12 @@ EMAIL_CHECKS = [
     mail_checks.check_ipv6,
     mail_checks.check_rpki,
     mail_checks.check_parked,
+    exposure.check_dangling,
 ]
 WEB_CHECKS = [
     web_checks.check_tls_cert,
     web_checks.check_security_headers,
+    exposure.check_pqc,
 ]
 
 def grade_for(score: int) -> str:
@@ -56,12 +59,17 @@ def _run_check(fn, domain: str) -> dict:
         }
 
 
-def run_all_checks(domain: str) -> list[dict]:
+def run_all_checks(domain: str, known_names: list[str] | None = None) -> list[dict]:
     """Run every check concurrently; results keep the registry order.
 
     Checks are independent network probes (DNS, SMTP, HTTPS), so running them
     in parallel bounds scan time by the slowest check instead of the sum."""
     checks = list(EMAIL_CHECKS) + list(WEB_CHECKS)
+    if known_names:
+        # Subdomains seen in CT logs widen the dangling-DNS check for monitors.
+        dangling = partial(exposure.check_dangling, extra_names=known_names)
+        dangling.__name__ = "check_dangling"
+        checks = [dangling if fn is exposure.check_dangling else fn for fn in checks]
     with ThreadPoolExecutor(max_workers=len(checks) or 1) as pool:
         return list(pool.map(lambda fn: _run_check(fn, domain), checks))
 

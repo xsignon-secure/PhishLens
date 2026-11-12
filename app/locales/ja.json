@@ -1012,5 +1012,7 @@
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "無料アカウントを作成して改善プランを表示し、再スキャンして評価の向上を確認しましょう。",
  "HTTPS and browser protections": "HTTPSとブラウザー保護",
  "Check your inbox: your login details are on the way.": "受信箱を確認してください。ログイン情報を送信しました。",
- "Available to signed-in users.": "サインインしたユーザーが利用できます。"
+ "Available to signed-in users.": "サインインしたユーザーが利用できます。",
+ "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "現在記録された暗号化通信が、将来量子コンピューターによって解読される可能性があります。",
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "第三者があなたのサブドメイン、メールホスト、ネームサーバーを乗っ取り、フィッシングに悪用する可能性があります。"
 }

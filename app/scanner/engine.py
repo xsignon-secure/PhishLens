@@ -11,14 +11,16 @@ HISTORY_POINTS = 12
 TREND_WINDOW_DAYS = 30
 
 
-def run_scan(db: Session, domain: str, tenant_id: str | None = None) -> models.Scan:
+def run_scan(db: Session, domain: str, tenant_id: str | None = None,
+             known_names: list[str] | None = None) -> models.Scan:
     domain = deps.normalize_domain(domain)
     deps.assert_public_target(domain)
     # Reputation is an informational side lookup: run it alongside the checks.
     with ThreadPoolExecutor(max_workers=2) as pool:
         rep_future = pool.submit(reputation.lookup, domain)
         host_future = pool.submit(guides.dns_host, domain)
-        results = scoring.run_all_checks(domain)
+        results = (scoring.run_all_checks(domain, known_names) if known_names
+                   else scoring.run_all_checks(domain))
         try:
             rep = rep_future.result()
         except Exception:
@@ -193,7 +195,9 @@ def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool 
         {c.get("title") for c in (prev_scan.result or {}).get("checks", []) if c.get("status") == "fail"}
         if prev_scan else set()
     )
-    scan = run_scan(db, monitor.domain, tenant_id=monitor.tenant_id)
+    known = (monitor.ct_state or {}).get("subdomains")
+    scan = (run_scan(db, monitor.domain, tenant_id=monitor.tenant_id, known_names=known) if known
+            else run_scan(db, monitor.domain, tenant_id=monitor.tenant_id))
     alerts: list[models.Alert] = []
     # A scan where some checks could not run (DNS timeouts) is not comparable
     # to the baseline: record it, but don't alert on it or move the baseline.
