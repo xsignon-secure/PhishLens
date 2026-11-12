@@ -1052,5 +1052,16 @@
  "My domains": "マイドメイン",
  "View report": "レポートを表示",
  "No domains have been added for you yet.": "まだドメインが追加されていません。",
- "Recent alerts (30 days)": "最近のアラート（30日間）"
+ "Recent alerts (30 days)": "最近のアラート（30日間）",
+ "Compare again": "再比較",
+ "No website answered": "ウェブサイトの応答なし",
+ "Could not compare": "比較できませんでした",
+ "Comparing…": "比較中…",
+ "Copies your website": "あなたのサイトを模倣",
+ "Asks for a password": "パスワードを要求",
+ "Compare with my website": "自社サイトと比較",
+ "Looks different": "外観は異なる",
+ "Looks similar": "外観が似ている",
+ "{0} copying your site": "{0} 件があなたのサイトを模倣",
+ "Lookalike site copies yours": "類似サイトがあなたのサイトを模倣"
 }

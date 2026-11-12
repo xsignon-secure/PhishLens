@@ -782,6 +782,9 @@ input[type=file]::file-selector-button {
 .dm-row { padding: 10px 4px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
 .dm-row:last-child { border-bottom: 0; }
 .dm-row .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.visual-box { margin-top: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.visual-result { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.visual-reasons { margin: 2px 0 0; padding-left: 18px; color: var(--ink-faint); font-size: 13px; width: 100%; }
 .dm-row .top strong { color: var(--ink-strong); font-weight: 600; margin-right: auto; word-break: break-all; }
 .dm-row .meta { color: var(--ink-faint); font-size: 12.5px; margin-top: 3px; }
 .dm-row .meta.fix { color: var(--ink-dim); }

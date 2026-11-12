@@ -568,6 +568,7 @@ async function loadDashboard() {
         <strong>${escapeHtml(m.domain)}</strong>
         ${m.client ? `<span class="badge">${escapeHtml(m.client)}</span>` : ''}
         ${m.lookalikes ? `<span class="badge warn" title="Registered lookalike domains">${_t('{0} lookalike{1}', {0: m.lookalikes, 1: m.lookalikes > 1 ? 's' : ''})}</span>` : ''}
+        ${m.impersonating ? `<span class="badge fail">${_t('{0} copying your site', {0: m.impersonating})}</span>` : ''}
         ${sparkline(m.history && m.history.points, 64, 22)}
         <span class="grade g${(m.last_score??0) >= 80 ? 'A' : (m.last_score??0) >= 60 ? 'C' : 'F'}">${m.last_score ?? '—'}</span>
         <span class="row-actions">
@@ -1539,10 +1540,35 @@ document.getElementById('lookalike-form').addEventListener('submit', async (e) =
     box.innerHTML = `<p class="muted small">${_t('Checked {0} spellings of {1}: {2} registered, {3} can receive email.', {0: r.checked, 1: escapeHtml(r.domain), 2: r.registered.length, 3: r.high_risk})}</p>` +
       (r.registered.length ? r.registered.map(x => `<div class="dm-row"><div class="top"><strong>${escapeHtml(x.domain)}</strong>
         <span class="badge ${risk[x.risk]}">${_t('{0} risk', {0: escapeHtml(x.risk)})}</span></div>
-        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? (' ' + _t('· mail servers:') + ' ') + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? (' ' + _t('· has a website')) : ''}</div></div>`).join('')
+        <div class="meta">${escapeHtml(x.technique)}${x.mx.length ? (' ' + _t('· mail servers:') + ' ') + escapeHtml(x.mx.join(', ')) : ''}${x.has_web ? (' ' + _t('· has a website')) : ''}</div>
+        ${x.has_web && r.visual_enabled ? `<div class="visual-box" data-look="${escapeHtml(x.domain)}">${x.visual ? visualResult(x.visual) : ''}
+          <button class="btn tiny ghost" data-visual="${escapeHtml(x.domain)}">${x.visual ? _t('Compare again') : _t('Compare with my website')}</button></div>` : ''}</div>`).join('')
         + ('<p class="muted small">' + _t('High risk = the domain has mail servers and could send phishing as a look-alike of you. Check who owns it (WHOIS) and, if it is abusive, report it to the registrar\'s abuse contact.') + '</p>')
       : ('<p>' + _t('✓ No registered look-alikes found.') + '</p>'));
+    box.dataset.domain = r.domain;
   } catch (err) { if (err.message !== 'auth') box.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+});
+const VISUAL_VERDICT = {impersonating: ['fail', N_('Copies your website')], suspicious: ['warn', N_('Looks similar')],
+  different: ['pass', N_('Looks different')], no_site: ['pass', N_('No website answered')], unknown: ['warn', N_('Could not compare')]};
+function visualResult(v) {
+  const [cls, label] = VISUAL_VERDICT[v.verdict] || ['warn', v.verdict];
+  return `<div class="visual-result"><span class="badge ${cls}">${escapeHtml(_t(label))}${v.score ? ' · ' + v.score + '/100' : ''}</span>
+    ${v.login_form ? `<span class="badge fail">${_t('Asks for a password')}</span>` : ''}
+    ${v.reasons && v.reasons.length ? `<ul class="visual-reasons">${v.reasons.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : ''}</div>`;
+}
+document.getElementById('lookalike-result').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-visual]');
+  if (!b) return;
+  const box = b.closest('.visual-box');
+  b.disabled = true; b.textContent = _t('Comparing…');
+  try {
+    const v = await api('/api/tools/lookalikes/visual', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain: document.getElementById('lookalike-result').dataset.domain, lookalike: b.dataset.visual})});
+    box.querySelector('.visual-result')?.remove();
+    box.insertAdjacentHTML('afterbegin', visualResult(v));
+    b.textContent = _t('Compare again');
+  } catch (err) { if (err.message !== 'auth') { toast(err.message); b.textContent = _t('Compare with my website'); } }
+  b.disabled = false;
 });
 
 
@@ -1868,7 +1894,7 @@ const INT_FIELDS = {
          ['companies', N_('Client label = entity id (one per line)'), 'map', 'Acme = 3']],
 };
 const INT_KINDS = {score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
-                   lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs')};
+                   lookalike_registered: N_('Lookalike domain registered'), lookalike_impersonating: N_('Lookalike site copies yours'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs')};
 function intFieldsHtml(kind, cfg) {
   if (!kind) return '';
   const val = n => cfg && cfg.kind === kind && cfg[n] != null ? cfg[n] : '';

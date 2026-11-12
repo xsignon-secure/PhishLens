@@ -1052,5 +1052,16 @@
  "My domains": "Mijn domeinen",
  "View report": "Rapport bekijken",
  "No domains have been added for you yet.": "Er zijn nog geen domeinen voor u toegevoegd.",
- "Recent alerts (30 days)": "Recente meldingen (30 dagen)"
+ "Recent alerts (30 days)": "Recente meldingen (30 dagen)",
+ "Compare again": "Opnieuw vergelijken",
+ "No website answered": "Geen website antwoordde",
+ "Could not compare": "Vergelijken niet gelukt",
+ "Comparing…": "Vergelijken…",
+ "Copies your website": "Kopieert uw website",
+ "Asks for a password": "Vraagt om een wachtwoord",
+ "Compare with my website": "Vergelijken met mijn website",
+ "Looks different": "Ziet er anders uit",
+ "Looks similar": "Lijkt erop",
+ "{0} copying your site": "{0} kopiëren uw site",
+ "Lookalike site copies yours": "Lookalike-site kopieert de uwe"
 }

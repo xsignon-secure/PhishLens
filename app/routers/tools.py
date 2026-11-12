@@ -16,11 +16,12 @@ from .. import audit, bimi, header_analyzer, models, schemas, url_check
 from ..database import get_db
 from ..deps import (assert_public_target, client_ip, get_current_user, normalize_domain, optional_user,
                     public_scan_limit, rate_limit)
-from ..scanner import dns_checks, gating, lookalike, mail_checks, net, web_checks
+from ..scanner import dns_checks, gating, lookalike, mail_checks, net, visual, web_checks
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
 LOOKALIKE_LIMIT_PER_HOUR = 10
+VISUAL_LIMIT_PER_HOUR = 30
 
 
 @router.post("/headers")
@@ -53,7 +54,39 @@ def find_lookalikes(payload: schemas.LookalikeIn, request: Request, db: Session 
         monitor.lookalikes = sorted(r["domain"] for r in result["registered"])
         monitor.lookalikes_checked_at = datetime.utcnow()
         db.commit()
+    seen = (monitor.lookalike_visual or {}) if monitor else {}
+    for r in result["registered"]:
+        r["visual"] = seen.get(r["domain"])
+    result["visual_enabled"] = visual.enabled()
     return result
+
+
+class VisualIn(BaseModel):
+    domain: str = Field(min_length=1, max_length=253)
+    lookalike: str = Field(min_length=1, max_length=253)
+
+
+@router.post("/lookalikes/visual")
+def compare_lookalike(payload: VisualIn, request: Request, db: Session = Depends(get_db),
+                      user: models.User = Depends(get_current_user)):
+    """Does this lookalike's website copy yours? Only for a spelling the
+    lookalike finder generates for the domain, so it can't fetch any site."""
+    if not visual.enabled():
+        raise HTTPException(status_code=400, detail="The visual lookalike check is turned off on this server "
+                                                    "(VISUAL_LOOKALIKE_CHECK)")
+    domain, look = normalize_domain(payload.domain), normalize_domain(payload.lookalike)
+    if look not in {c["domain"] for c in lookalike.generate(domain)}:
+        raise HTTPException(status_code=400, detail="That isn't a lookalike spelling of the domain")
+    rate_limit(request, f"visual:{user.tenant_id}", VISUAL_LIMIT_PER_HOUR)
+    monitor = (db.query(models.Monitor)
+               .filter(models.Monitor.tenant_id == user.tenant_id, models.Monitor.domain == domain).first())
+    res = visual.check(domain, look, (monitor.client if monitor else None) or user.tenant.name)
+    if monitor:
+        monitor.lookalike_visual = {**(monitor.lookalike_visual or {}), look: res}
+    audit.log_request(db, request, "lookalike.visual", user,
+                      {"domain": domain, "lookalike": look, "verdict": res["verdict"], "score": res["score"]})
+    db.commit()
+    return res
 
 
 # ------------------------------------------------------------------ single-record checker

@@ -178,6 +178,9 @@ class Monitor(Base):
     # next check alerts only on newly registered ones.
     lookalikes = Column(JSON, nullable=True)
     lookalikes_checked_at = Column(DateTime, nullable=True)
+    # Visual check of lookalike websites (VISUAL_LOOKALIKE_CHECK):
+    # {lookalike: {score, verdict, reasons, login_form, title, checked_at}}.
+    lookalike_visual = Column(JSON, nullable=True)
     # Certificate Transparency baseline: {issuers, max_id, lookalike_max_id, checked_at}.
     ct_state = Column(JSON, nullable=True)
     client = Column(String(100), nullable=True)  # MSP: which customer this domain belongs to
