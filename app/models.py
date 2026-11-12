@@ -92,7 +92,10 @@ class User(Base):
     password_hash = Column(String(200), nullable=False)
     full_name = Column(String(200), nullable=True)
     # owner (created by the platform admin) | admin | member
-    role = Column(String(20), nullable=False, default="member")
+    role = Column(String(20), nullable=False, default="member")  # or "client" (MSP client portal)
+    # role "client": the client label (Monitor.client) whose domains this
+    # person may see, read-only, in the client portal. Nothing else.
+    client_scope = Column(String(100), nullable=True)
     # pending (temporary password not changed yet) | active | suspended
     status = Column(String(20), nullable=False, default="active", server_default="active")
     is_active = Column(Boolean, nullable=False, default=True)

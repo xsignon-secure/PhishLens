@@ -1040,5 +1040,17 @@
  "block the sender": "bloquer l'expéditeur",
  "Impersonates {0}": "Usurpe {0}",
  "Also report to Netcraft (free)": "Signaler aussi à Netcraft (gratuit)",
- "Last check {0}: {1}": "Dernière vérification {0} : {1}"
+ "Last check {0}: {1}": "Dernière vérification {0} : {1}",
+ "Read-only view of the domains {0} looks after for you.": "Vue en lecture seule des domaines que {0} gère pour vous.",
+ "Client: sees only one client's domains, read-only": "Client : voit uniquement les domaines d'un client, en lecture seule",
+ "A client label set on your domains": "Un libellé client défini sur vos domaines",
+ "Managed by {0}": "Géré par {0}",
+ "Not scanned yet": "Pas encore analysé",
+ "Client portal": "Portail client",
+ "Your domains": "Vos domaines",
+ "Open fixes in progress": "Corrections en cours",
+ "My domains": "Mes domaines",
+ "View report": "Voir le rapport",
+ "No domains have been added for you yet.": "Aucun domaine n'a encore été ajouté pour vous.",
+ "Recent alerts (30 days)": "Alertes récentes (30 jours)"
 }

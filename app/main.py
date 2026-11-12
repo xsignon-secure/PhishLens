@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from . import scheduler
 from .config import settings
 from .database import init_db
-from .routers import (assistant, auth, autopilot, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages,
+from .routers import (assistant, auth, autopilot, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, portal,
                       phish, platform, scans, signup, sso, tasks, team, tlsrpt, tools, users)
 
 # A ContextVar (not threading.local): concurrent async requests share one
@@ -207,6 +207,7 @@ app.include_router(autopilot.router)
 app.include_router(assistant.router)
 app.include_router(phish.router)
 app.include_router(tasks.router)
+app.include_router(portal.router)
 
 
 @app.get("/api/health")

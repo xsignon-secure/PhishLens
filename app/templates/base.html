@@ -18,7 +18,10 @@
     <a href="/tools/headers" class="{% if request.url.path == '/tools/headers' %}active{% endif %}">{{ _("Header check") }}</a>
     <a href="/help" class="{% if request.url.path == '/help' %}active{% endif %}">{{ _("Help") }}</a>
     <span class="nav-sep" aria-hidden="true"></span>
-    {% if user %}
+    {% if user and user.role == "client" %}
+      <a href="/portal" class="{% if request.url.path == '/portal' %}active{% endif %}">{{ _("My domains") }}</a>
+      <a href="#" id="logout">{{ _("Log out") }}</a>
+    {% elif user %}
       <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">{{ _("Dashboard") }}</a>
       <a href="/overview" class="{% if request.url.path == '/overview' %}active{% endif %}">{{ _("Overview") }}</a>
       <a href="#" id="logout">{{ _("Log out") }}</a>

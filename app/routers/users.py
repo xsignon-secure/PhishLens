@@ -27,7 +27,9 @@ MAX_IMPORT_ROWS = 200
 class UserIn(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     full_name: str = Field(default="", max_length=200)
-    role: Literal["admin", "member"] = "member"
+    role: Literal["admin", "member", "client"] = "member"
+    # role "client": which client's domains they see (a Monitor client label).
+    client: str = Field(default="", max_length=100)
     # Optional: the admin's own temporary password; otherwise a random one.
     temporary_password: str = Field(default="", max_length=128)
     send_email: bool = True
@@ -37,7 +39,8 @@ class UserIn(BaseModel):
 
 class UserPatch(BaseModel):
     full_name: str | None = Field(default=None, max_length=200)
-    role: Literal["admin", "member"] | None = None
+    role: Literal["admin", "member", "client"] | None = None
+    client: str | None = Field(default=None, max_length=100)
 
     model_config = {"extra": "forbid"}
 
@@ -52,6 +55,7 @@ class ImportIn(BaseModel):
 def user_out(u: models.User) -> dict:
     iso = lambda d: d.isoformat() + "Z" if d else None  # noqa: E731
     return {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role,
+            "client": u.client_scope if u.role == "client" else None,
             "status": "suspended" if not u.is_active else u.status, "mfa_enabled": bool(u.mfa_enabled),
             "last_login_at": iso(u.last_login_at), "created_at": iso(u.created_at),
             "temp_password_expires_at": iso(u.temp_password_expires_at) if u.must_change_password else None,
@@ -62,7 +66,22 @@ def user_out(u: models.User) -> dict:
 def can_manage(actor: models.User, role: str) -> bool:
     """Owners manage admins and members; admins manage members. Nobody here
     manages owners (the platform admin does)."""
-    return actor.role == "platform" or role == "member" or (role == "admin" and actor.role == "owner")
+    return actor.role == "platform" or role in ("member", "client") or (role == "admin" and actor.role == "owner")
+
+
+def _client_scope(db: Session, actor: models.User, client: str | None) -> str:
+    """A client portal login needs the MSP plan feature and an existing client label."""
+    if not plans.has(actor.tenant, "client_portal"):
+        raise HTTPException(status_code=403, detail="Client portal logins are part of the MSP plan")
+    client = (client or "").strip()
+    if not client:
+        raise HTTPException(status_code=400, detail="Choose which client this login is for")
+    exists = (db.query(models.Monitor.id)
+              .filter(models.Monitor.tenant_id == actor.tenant_id, models.Monitor.client == client).first())
+    if not exists:
+        raise HTTPException(status_code=400, detail="No domains are labelled with that client yet: "
+                                                    "set the client on its domains first")
+    return client
 
 
 def _target(db: Session, actor: models.User, user_id: str) -> models.User:
@@ -130,7 +149,9 @@ def _seats(db: Session, tenant_id: str) -> int:
 def create_user(payload: UserIn, request: Request, background: BackgroundTasks,
                 db: Session = Depends(get_db), actor: models.User = Depends(require_step_up)):
     plans.check_limit(actor.tenant, "users", _seats(db, actor.tenant_id), "users")
+    scope = _client_scope(db, actor, payload.client) if payload.role == "client" else None
     user, temp = _create(db, actor, payload.email, payload.full_name, payload.role, payload.temporary_password)
+    user.client_scope = scope
     _queue_credentials(request, background, user, temp, payload.send_email, db)
     audit.log_request(db, request, "user.create", actor,
                       {"target": user.email, "role": user.role, "emailed": payload.send_email})
@@ -144,16 +165,23 @@ def update_user(user_id: str, payload: UserPatch, request: Request, db: Session 
     target = _target(db, actor, user_id)
     if payload.full_name is not None:
         target.full_name = payload.full_name.strip() or None
-    if payload.role and payload.role != target.role:
-        if not can_manage(actor, payload.role):
-            raise HTTPException(status_code=403, detail="Only an owner can make someone an admin")
-        old, target.role = target.role, payload.role
+    role_changed = bool(payload.role) and payload.role != target.role
+    new_role = payload.role or target.role
+    new_scope = target.client_scope if new_role == "client" else None
+    if new_role == "client" and (role_changed or payload.client is not None):
+        new_scope = _client_scope(db, actor, payload.client if payload.client is not None else target.client_scope)
+    if role_changed and not can_manage(actor, new_role):
+        raise HTTPException(status_code=403, detail="Only an owner can make someone an admin")
+    if role_changed or new_scope != target.client_scope:
+        old, old_scope = target.role, target.client_scope
+        target.role, target.client_scope = new_role, new_scope
         target.token_version = (target.token_version or 0) + 1
         db.commit()
-        # New role, new sessions: nothing keeps running with the old rights.
+        # New role or client, new sessions: nothing keeps running with the old rights.
         sessions.revoke_user(db, target, "role_change")
         audit.log_request(db, request, "user.role_change", actor,
-                          {"target": target.email, "from": old, "to": target.role, "severity": "high"})
+                          {"target": target.email, "from": old, "to": target.role,
+                           "client_from": old_scope, "client_to": new_scope, "severity": "high"})
     db.commit()
     return user_out(target)
 

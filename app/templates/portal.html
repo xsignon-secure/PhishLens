@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ _("My domains") }} — PhishLens{% endblock %}
+{% block content %}
+<section class="dash portal">
+  <div id="pt-brand" class="brand-bar" style="max-width:none" hidden></div>
+  <span class="eyebrow">{{ _("Client portal") }}</span>
+  <h1 id="pt-title" style="margin-bottom:6px">{{ _("Your domains") }}</h1>
+  <p class="muted" id="pt-sub" style="margin-bottom:20px"></p>
+  <div id="pt-kpis" class="kpi-row" aria-live="polite"></div>
+  <div class="dash-grid">
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Domains") }}</h2>
+      <div id="pt-domains"></div>
+    </div>
+    <div class="panel">
+      <h2><span class="dot"></span>{{ _("Recent alerts (30 days)") }}</h2>
+      <div id="pt-alerts"></div>
+    </div>
+  </div>
+  <div id="pt-report"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+async function api(path) {
+  const r = await fetch(path, {headers: {'X-CSRF-Token': getCookie('csrf_token')}});
+  if (r.status === 401) { location.href = '/login?next=/portal'; throw new Error('auth'); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(errorText(d, _t('Request failed')));
+  return d;
+}
+window.api = window.api || api;
+const ALERT_KINDS = {
+  score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
+  lookalike_registered: N_('Lookalike domain registered'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs'),
+};
+const gradeChip = g => g ? `<span class="grade g${g[0]}">${escapeHtml(g)}</span>` : '';
+function kpi(color, num, label, glyph) {
+  return `<div class="kpi kpi-${color}"><div><div class="kpi-num">${num}</div><div class="kpi-label">${label}</div></div>
+    <span class="kpi-glyph" aria-hidden="true">${glyph}</span></div>`;
+}
+async function openReport(id) {
+  const box = document.getElementById('pt-report');
+  box.innerHTML = '<div class="panel"><p class="muted">' + _t('Loading…') + '</p></div>';
+  try {
+    const s = await api('/api/portal/scans/' + encodeURIComponent(id));
+    box.innerHTML = renderReport(s, false, {pdfUrl: '/api/portal/scans/' + id + '/pdf',
+                                            summaryUrl: '/api/portal/scans/' + id + '/summary'});
+    bindReportInteractions(box);
+    box.scrollIntoView({behavior: 'smooth', block: 'start'});
+  } catch (err) { if (err.message !== 'auth') box.innerHTML = '<div class="panel"><p class="muted">' + escapeHtml(err.message) + '</p></div>'; }
+}
+(async () => {
+  try {
+    const p = await api('/api/portal');
+    if (p.logo || p.provider) {
+      const b = document.getElementById('pt-brand');
+      if (p.brand_color) b.style.borderColor = p.brand_color;
+      b.innerHTML = (p.logo ? `<img src="${escapeHtml(p.logo)}" alt="" class="brand-logo">` : '')
+        + `<strong>${escapeHtml(_t('Managed by {0}', {0: p.provider}))}</strong>`;
+      b.hidden = false;
+    }
+    document.getElementById('pt-title').textContent = p.client;
+    document.getElementById('pt-sub').textContent = _t('Read-only view of the domains {0} looks after for you.', {0: p.provider});
+    const scored = p.domains.filter(d => d.score != null);
+    const avg = scored.length ? Math.round(scored.reduce((a, d) => a + d.score, 0) / scored.length) : null;
+    document.getElementById('pt-kpis').innerHTML =
+      kpi('blue', p.domains.length, _t('Domains'), ICONS.globe) +
+      kpi(avg == null ? 'blue' : avg >= 80 ? 'green' : avg >= 60 ? 'amber' : 'red', avg ?? '—', _t('Average score'), ICONS.gauge) +
+      kpi(p.open_tasks ? 'orange' : 'green', p.open_tasks, _t('Open fixes in progress'), ICONS.gauge) +
+      kpi(p.alerts.length ? 'orange' : 'green', p.alerts.length, _t('Alerts (30 days)'), ICONS.bell);
+    document.getElementById('pt-domains').innerHTML = p.domains.length
+      ? p.domains.map(d => `<div class="mon"><strong>${escapeHtml(d.domain)}</strong>
+          <span class="muted">${d.score ?? '—'}/100</span> ${gradeChip(d.grade)}
+          ${d.scan_id ? `<button class="btn tiny ghost" data-scan="${escapeHtml(d.scan_id)}">${_t('View report')}</button>` : `<span class="muted small">${_t('Not scanned yet')}</span>`}</div>`).join('')
+      : '<p class="muted">' + _t('No domains have been added for you yet.') + '</p>';
+    document.getElementById('pt-alerts').innerHTML = p.alerts.length
+      ? p.alerts.map(a => `<div class="mon"><strong>${escapeHtml(_t(ALERT_KINDS[a.kind] || a.kind))}</strong>
+          <span class="muted small">${escapeHtml(a.domain || '')} · ${new Date(a.at).toLocaleDateString()}</span></div>`).join('')
+      : '<p class="muted">' + _t('No alerts in the last 30 days.') + '</p>';
+    document.getElementById('pt-domains').addEventListener('click', e => {
+      const b = e.target.closest('[data-scan]');
+      if (b) openReport(b.dataset.scan);
+    });
+  } catch (err) { if (err.message !== 'auth') toast((_t('Could not load —') + ' ') + err.message); }
+})();
+</script>
+{% endblock %}
