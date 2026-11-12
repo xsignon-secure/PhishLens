@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_STORAGE: str = "memory"
     # RPKI check for mail server routes; asks RIPEstat (an external API), so opt-in.
     RPKI_CHECK: bool = False
+    # Post-quantum (ML-KEM) key exchange test against the website; needs Python 3.15+
+    # with OpenSSL 3.5+, and reports "not checked" elsewhere.
+    PQC_CHECK: bool = True
     # Optional GeoIP country database (.mmdb) for DMARC report senders; needs
     # `pip install maxminddb`. Free: DB-IP Lite Country or MaxMind GeoLite2 Country.
     GEOIP_DB: str = ""

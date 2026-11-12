@@ -1012,5 +1012,7 @@
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "Maak een gratis account aan om uw herstelplan te ontgrendelen en scan opnieuw om het cijfer te zien stijgen.",
  "HTTPS and browser protections": "HTTPS en browserbeveiliging",
  "Check your inbox: your login details are on the way.": "Controleer uw inbox: uw inloggegevens zijn onderweg.",
- "Available to signed-in users.": "Beschikbaar voor ingelogde gebruikers."
+ "Available to signed-in users.": "Beschikbaar voor ingelogde gebruikers.",
+ "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "Versleuteld verkeer dat vandaag wordt opgeslagen, kan in de toekomst door quantumcomputers worden ontsleuteld.",
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Iemand anders kan een van je subdomeinen, mailservers of nameservers overnemen en gebruiken voor phishing."
 }

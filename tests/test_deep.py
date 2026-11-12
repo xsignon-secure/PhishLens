@@ -118,7 +118,7 @@ def test_weights_still_sum_to_100():
     from app.scanner import scoring
     total = 0
     for fn in scoring.EMAIL_CHECKS + scoring.WEB_CHECKS:
-        if fn.__module__.endswith("mail_checks"):  # informational, never scored
+        if fn.__module__.endswith(("mail_checks", "exposure")):  # informational, never scored
             continue
         m = re.search(r"max_score\s*=\s*(\d+)", inspect.getsource(fn))
         assert m, f"no max_score found in {fn.__name__}"

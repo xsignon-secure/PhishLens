@@ -1012,5 +1012,7 @@
  "Create a free account to unlock your remediation plan, then rescan to watch the grade climb.": "Cree una cuenta gratuita para desbloquear su plan de corrección y vuelva a escanear para ver subir la nota.",
  "HTTPS and browser protections": "HTTPS y protecciones del navegador",
  "Check your inbox: your login details are on the way.": "Revise su bandeja de entrada: sus datos de acceso están en camino.",
- "Available to signed-in users.": "Disponible para usuarios con sesión iniciada."
+ "Available to signed-in users.": "Disponible para usuarios con sesión iniciada.",
+ "Encrypted traffic recorded today could be decrypted in future by quantum computers.": "El tráfico cifrado grabado hoy podría ser descifrado en el futuro por ordenadores cuánticos.",
+ "Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.": "Otra persona podría apropiarse de uno de sus subdominios, servidores de correo o servidores de nombres y usarlo para phishing."
 }
