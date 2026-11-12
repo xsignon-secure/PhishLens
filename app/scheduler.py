@@ -87,6 +87,13 @@ def _autopilot() -> None:
         tasks.remind_overdue(db)
     except Exception:
         log.exception("overdue task reminders failed")
+    try:
+        from . import takedowns
+        stats = takedowns.recheck_all(db)
+        if stats["checked"]:
+            log.info("takedown rechecks %s", stats)
+    except Exception:
+        log.exception("takedown rechecks failed")
     finally:
         db.close()
 

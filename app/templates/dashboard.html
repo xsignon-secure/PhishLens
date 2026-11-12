@@ -80,10 +80,13 @@
       </label>
       <p id="phish-msg" class="muted small"></p>
       <div id="phish-list"></div>
+      <h3 class="small-h">{{ _("Takedowns") }}</h3>
+      <p class="muted small">{{ _("Abuse reports against phishing sites, tracked until the site is gone. Sent reports are rechecked every day; you're emailed when a site goes down, or if it's still online after 3 days.") }}</p>
       <form id="takedown-form" class="scanbox small admin-only hidden">
         <input id="takedown-domain" type="text" placeholder="{{ _("Phishing domain, e.g. acme-login.top") }}" aria-label="{{ _("Phishing domain") }}">
-        <button class="btn tiny" type="submit">{{ _("Write takedown request") }}</button>
+        <button class="btn tiny" type="submit">{{ _("Start a takedown") }}</button>
       </form>
+      <div id="takedown-list"></div>
       <div id="takedown-out"></div>
     </div>
     <div class="panel" id="dmarc-panel">
@@ -857,6 +860,8 @@ document.getElementById('task-form').addEventListener('submit', async (e) => {
 const PHISH_VERDICT = {clean: ['pass', N_('Looks clean')], suspicious: ['warn', N_('Suspicious')],
   'likely phishing': ['fail', N_('Likely phishing')], dangerous: ['fail', N_('Dangerous')]};
 const PHISH_STATUS = {new: N_('New'), confirmed: N_('Confirmed phishing'), false_positive: N_('Not phishing')};
+const AI_ACTION = {takedown: N_('take the site down'), 'block sender': N_('block the sender'), 'no action': N_('no action')};
+const TD_STATUS = {draft: ['warn', N_('Draft')], sent: ['info', N_('Reported, still online')], down: ['pass', N_('Taken down')], closed: ['muted', N_('Closed')]};
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -869,6 +874,7 @@ async function loadPhish() {
       ${admin ? `<span class="sender-acts">${r.status !== 'confirmed' ? `<button class="btn tiny ghost" data-pstatus="confirmed">${_t('Confirm phishing')}</button>` : ''}${r.status !== 'false_positive' ? `<button class="btn tiny ghost" data-pstatus="false_positive">${_t('Not phishing')}</button>` : ''}</span>` : ''}</div>
       <div class="meta">${_t('From {0} · reported by {1} · {2}', {0: escapeHtml(r.sender || '?'), 1: escapeHtml(r.reported_by || '?'), 2: escapeHtml(r.created_at.slice(0, 10))})}</div>
       ${r.links.length ? `<div class="meta muted">${r.links.map(l => escapeHtml(l.domain || l.url) + ' (' + escapeHtml(_t((PHISH_VERDICT[l.verdict] || [0, l.verdict || '?'])[1])) + ')').join(' · ')}</div>` : ''}
+      ${r.ai && r.ai.summary ? `<div class="ai-note"><span class="badge info">${_t('AI triage')}</span> ${escapeHtml(r.ai.summary)}${r.ai.impersonates ? ` <span class="muted small">${_t('Impersonates {0}', {0: escapeHtml(r.ai.impersonates)})}</span>` : ''} <span class="muted small">${_t('Suggests: {0}', {0: escapeHtml(_t(AI_ACTION[r.ai.action] || r.ai.action))})} · ${r.ai.confidence}%</span></div>` : ''}
       ${admin ? bad.map(l => `<button class="btn tiny" data-takedown="${escapeHtml(l.domain)}" data-turl="${escapeHtml(l.url || '')}">${_t('Takedown request for {0}', {0: escapeHtml(l.domain)})}</button>`).join(' ') : ''}</div>`;
   }).join('') : '<p class="muted">' + _t('No reports yet.') + '</p>';
   list.querySelectorAll('[data-pstatus]').forEach(b => b.onclick = async () => {
@@ -883,17 +889,57 @@ async function showTakedown(req) {
   const out = document.getElementById('takedown-out');
   out.innerHTML = '<p class="muted small">' + _t('Looking up the registrar and hosting provider…') + '</p>';
   try {
-    const d = await api('/api/phish-reports/takedown', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(req)});
-    const mailto = 'mailto:' + d.to.map(encodeURIComponent).join(',') + '?subject=' + encodeURIComponent(d.subject) + '&body=' + encodeURIComponent(d.body);
-    out.innerHTML = `<div class="report"><h3 class="small-h">${_t('Takedown request for {0}', {0: escapeHtml(d.domain)})}</h3>
-      <p class="small">${_t('Registrar: {0}', {0: escapeHtml(d.registrar.name || '?')})} · ${_t('Hosting: {0}', {0: escapeHtml(d.hosting.name || '?')})}${d.ip ? ' (' + escapeHtml(d.ip) + ')' : ''}</p>
-      <p class="small">${_t('Send to:')} <code>${escapeHtml(d.to.join(', ') || _t('no abuse address found: use the registrar\'s abuse form'))}</code></p>
-      <p class="small"><b>${escapeHtml(d.subject)}</b></p><pre class="small" style="white-space:pre-wrap">${escapeHtml(d.body)}</pre>
-      ${d.to.length ? `<a class="btn tiny" href="${escapeHtml(mailto)}">${_t('Open in my email app')}</a>` : ''}
-      <button class="copy-btn" data-copy="${escapeHtml(d.body)}">${_t('Copy')}</button>
-      <p class="muted small">${_t('Also report it to:')} ${d.also.map(escapeHtml).join(' · ')}</p></div>`;
-    bindReportInteractions(out);
+    const t = await api('/api/phish-reports/takedowns', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(req)});
+    out.innerHTML = '';
+    await loadTakedowns(t.id);
   } catch (err) { out.innerHTML = '<p class="error">' + escapeHtml(err.message) + '</p>'; }
+}
+function takedownCard(t, admin, open) {
+  const d = t.draft || {};
+  const [cls, label] = TD_STATUS[t.status] || ['muted', t.status];
+  const mailto = 'mailto:' + (d.to || []).map(encodeURIComponent).join(',') + '?subject=' + encodeURIComponent(d.subject || '') + '&body=' + encodeURIComponent(d.body || '');
+  const check = t.last_check ? `<span class="muted small">${_t('Last check {0}: {1}', {0: escapeHtml((t.last_check.at || '').slice(0, 16).replace('T', ' ')), 1: escapeHtml(t.last_check.reason || '')})}</span>` : '';
+  return `<details class="dm-row td-row" data-td="${escapeHtml(t.id)}"${open ? ' open' : ''}><summary class="top"><strong>${escapeHtml(t.domain)}</strong>
+      <span class="badge ${cls}">${_t(label)}</span>${t.auto ? ` <span class="muted small">${_t('opened by triage')}</span>` : ''} ${check}</summary>
+    <p class="small">${_t('Registrar: {0}', {0: escapeHtml((d.registrar || {}).name || '?')})} · ${_t('Hosting: {0}', {0: escapeHtml((d.hosting || {}).name || '?')})}${d.ip ? ' (' + escapeHtml(d.ip) + ')' : ''}</p>
+    <p class="small">${_t('Send to:')} <code>${escapeHtml((d.to || []).join(', ') || _t('no abuse address found: use the registrar\'s abuse form'))}</code></p>
+    <p class="small"><b>${escapeHtml(d.subject || '')}</b></p><pre class="small" style="white-space:pre-wrap">${escapeHtml(d.body || '')}</pre>
+    ${(t.submissions || []).length ? `<ul class="small td-log">${t.submissions.map(s => `<li class="${s.ok ? 'ok' : 'bad'}">${escapeHtml((s.at || '').slice(0, 16).replace('T', ' '))} · ${escapeHtml(s.target)}: ${escapeHtml(s.detail || '')}</li>`).join('')}</ul>` : ''}
+    ${admin && (t.status === 'draft' || t.status === 'sent') ? `<div class="td-actions">
+      <label class="small"><input type="checkbox" data-opt="netcraft" checked> ${_t('Also report to Netcraft (free)')}</label>
+      <label class="small"><input type="checkbox" data-opt="apwg"> ${_t('Copy APWG')}</label>
+      <button class="btn tiny" data-td-act="send">${t.status === 'sent' ? _t('Send again') : _t('Send reports')}</button>
+      ${t.status === 'draft' && (d.to || []).length ? `<a class="btn tiny ghost" href="${escapeHtml(mailto)}">${_t('Open in my email app')}</a> <button class="btn tiny ghost" data-td-act="sent">${_t('I sent it myself')}</button>` : ''}
+      <button class="copy-btn" data-copy="${escapeHtml(d.body || '')}">${_t('Copy')}</button>
+      <button class="btn tiny ghost" data-td-act="check">${_t('Check now')}</button>
+      <button class="btn tiny ghost" data-td-act="closed">${_t('Close')}</button></div>` : ''}
+    <p class="muted small">${_t('Also report it to:')} ${(d.also || []).map(escapeHtml).join(' · ')}</p></details>`;
+}
+async function loadTakedowns(openId) {
+  const rows = await api('/api/phish-reports/takedowns');
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  const list = document.getElementById('takedown-list');
+  list.innerHTML = rows.length ? rows.map(t => takedownCard(t, admin, t.id === openId)).join('') : '<p class="muted small">' + _t('No takedowns yet.') + '</p>';
+  bindReportInteractions(list);
+  list.querySelectorAll('[data-td-act]').forEach(b => b.onclick = async (e) => {
+    e.preventDefault();
+    const row = b.closest('[data-td]'), id = row.dataset.td, act = b.dataset.tdAct;
+    b.disabled = true;
+    try {
+      if (act === 'send') {
+        const opt = k => row.querySelector(`[data-opt="${k}"]`).checked;
+        await api(`/api/phish-reports/takedowns/${id}/send`, {method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({netcraft: opt('netcraft'), apwg: opt('apwg')})});
+        toast(_t('Reports sent. PhishLens will check the site every day.'));
+      } else if (act === 'check') {
+        const t = await api(`/api/phish-reports/takedowns/${id}/check`, {method: 'POST'});
+        toast(t.last_check ? t.last_check.reason : _t('Checked'));
+      } else {
+        await api(`/api/phish-reports/takedowns/${id}`, {method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: act})});
+      }
+      loadTakedowns(id);
+    } catch (err) { if (err.message !== 'auth') toast(err.message); b.disabled = false; }
+  });
 }
 document.getElementById('takedown-form').addEventListener('submit', e => {
   e.preventDefault();
@@ -911,6 +957,7 @@ document.getElementById('phish-file').addEventListener('change', async (e) => {
   msg.textContent = n ? _t('{0} report(s) checked.', {0: n}) : '';
   e.target.value = '';
   loadPhish();
+  loadTakedowns().catch(() => {});
 });
 
 /* ---------------- workspace: api keys, webhooks, audit -------- */
@@ -927,6 +974,7 @@ async function loadEnterprise() {
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});
   loadPhish().catch(() => {});
+  loadTakedowns().catch(() => {});
   loadTasks().catch(() => {});
   // api keys
   const keys = await api('/api/team/keys');

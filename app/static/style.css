@@ -1397,3 +1397,13 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .rpt-plain .rpt-kicker { display: block; margin-bottom: 4px; }
 .rpt-plain .plain-text { margin: 0 0 4px; font-size: 1.02rem; line-height: 1.55; color: var(--title); }
 .rpt-plain .plain-text.muted { color: var(--ink-faint); }
+
+/* Takedown tracking and AI triage notes (Reports page). */
+.badge.muted { background: var(--surface-2); color: var(--ink-faint); }
+.ai-note { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-size: .92rem; }
+.td-row > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.td-row > summary::-webkit-details-marker { display: none; }
+.td-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.td-log { margin: 6px 0; padding-left: 18px; }
+.td-log li.ok { color: var(--green); }
+.td-log li.bad { color: var(--red, #b91c1c); }

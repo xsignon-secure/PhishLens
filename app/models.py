@@ -341,6 +341,31 @@ class PhishReport(Base):
     header = Column(JSON, nullable=True)
     links = Column(JSON, nullable=True)
     status = Column(String(20), nullable=False, default="new")  # new | confirmed | false_positive
+    # AI triage: {summary, impersonates, action, confidence, model}; None when AI is off.
+    ai = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class Takedown(Base):
+    """An abuse report against a phishing domain, from draft to taken down.
+    Sent reports are rechecked daily until the site is gone."""
+    __tablename__ = "takedowns"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    report_id = Column(String(32), ForeignKey("phish_reports.id"), nullable=True)
+    domain = Column(String(253), nullable=False)
+    url = Column(String(2000), nullable=True)
+    status = Column(String(20), nullable=False, default="draft")  # draft | sent | down | closed
+    auto = Column(Boolean, nullable=False, default=False)  # opened by triage, not a person
+    draft = Column(JSON, nullable=False)  # registrar, hosting, to, subject, body, also
+    submissions = Column(JSON, nullable=True)  # [{target, at, ok, detail}]
+    live = Column(Boolean, nullable=True)
+    last_check = Column(JSON, nullable=True)  # {at, live, reason}
+    sent_at = Column(DateTime, nullable=True)
+    down_at = Column(DateTime, nullable=True)
+    followed_up_at = Column(DateTime, nullable=True)
+    created_by = Column(String(320), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
