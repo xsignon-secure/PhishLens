@@ -72,8 +72,14 @@ for your DNS provider.
   domain, or when a registered lookalike gets a TLS certificate.
 - Phishing report inbox: staff upload a suspicious email (.eml) and PhishLens
   checks its sender authentication and every link against the blocklists. Only
-  headers and links are kept. Admins can draft a takedown request to the
-  registrar and hosting provider (abuse contacts found through RDAP).
+  headers and links are kept. With an AI key, each report also gets an AI
+  triage note (what it is, who it impersonates, suggested action).
+- Takedown tracking: reports judged phishing open a takedown draft for the
+  registrar and hosting provider (abuse contacts found through RDAP). An admin
+  sends it from the company's mail server, optionally also to Netcraft's free
+  reporting API and APWG. Sent takedowns are rechecked daily with scheduled
+  rescans: the team is emailed when the site goes down, or once if it's still
+  online after 3 days.
 - Remediation tasks: assign a finding to a person with a due date. A task
   closes itself when a later scan shows the check passing; overdue tasks email
   the assignee once, and MSPs see open and overdue counts per client.
