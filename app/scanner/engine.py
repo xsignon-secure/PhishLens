@@ -151,15 +151,30 @@ def check_monitor_lookalikes(monitor: models.Monitor) -> list[models.Alert]:
     monitor.lookalikes = sorted(found)
     monitor.lookalikes_checked_at = datetime.utcnow()
     new = [found[d] for d in sorted(set(found) - previous)]
-    if first_check or not new:
-        return []
-    listed = ", ".join(f"{r['domain']} ({'accepts mail' if r['mx'] else 'web only'})"
-                       for r in new[:10])
-    more = f" and {len(new) - 10} more" if len(new) > 10 else ""
-    return [models.Alert(
-        tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="lookalike_registered",
-        message=f"{monitor.domain}: newly registered lookalike domain(s): {listed}{more}.",
-    )]
+    alerts = []
+    if new and not first_check:
+        listed = ", ".join(f"{r['domain']} ({'accepts mail' if r['mx'] else 'web only'})"
+                           for r in new[:10])
+        more = f" and {len(new) - 10} more" if len(new) > 10 else ""
+        alerts.append(models.Alert(
+            tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="lookalike_registered",
+            message=f"{monitor.domain}: newly registered lookalike domain(s): {listed}{more}.",
+        ))
+    # Optional (VISUAL_LOOKALIKE_CHECK): does a lookalike show a copy of the site?
+    from . import visual
+    try:
+        copies = visual.check_monitor(monitor, monitor.client or (monitor.tenant.name if monitor.tenant else None),
+                                      result["registered"])
+    except Exception:
+        copies = []
+    for c in copies:
+        why = "; ".join(c["reasons"][:3])
+        alerts.append(models.Alert(
+            tenant_id=monitor.tenant_id, monitor_id=monitor.id, kind="lookalike_impersonating",
+            message=f"{monitor.domain}: {c['domain']} looks like a copy of your website "
+                    f"({c['score']}/100: {why}). Consider a takedown request.",
+        ))
+    return alerts
 
 
 def check_monitor_ct(monitor: models.Monitor) -> list[models.Alert]:
@@ -239,8 +254,9 @@ def rescan_monitor(db: Session, monitor: models.Monitor, check_lookalikes: bool 
     if check_lookalikes:
         try:
             found = check_monitor_lookalikes(monitor)
-            if level in ("balanced", "comprehensive"):
-                alerts.extend(found)
+            # A copy of the site is worth an alert at every level but "none".
+            alerts.extend(a for a in found if level in ("balanced", "comprehensive")
+                          or (level == "essential" and a.kind == "lookalike_impersonating"))
         except Exception:
             pass  # informational: a DNS hiccup must not fail the rescan
     if check_ct:

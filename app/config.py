@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # Post-quantum (ML-KEM) key exchange test against the website; needs Python 3.15+
     # with OpenSSL 3.5+, and reports "not checked" elsewhere.
     PQC_CHECK: bool = True
+    # Visual lookalike check: fetch registered lookalike domains' websites and
+    # compare logo, site icon, title and brand name with yours. Off by default
+    # (it fetches other people's websites). VISUAL_SCREENSHOTS also compares
+    # headless-browser screenshots; needs `pip install playwright` and
+    # `playwright install chromium`, and ~300 MB more RAM.
+    VISUAL_LOOKALIKE_CHECK: bool = False
+    VISUAL_SCREENSHOTS: bool = False
     # Optional GeoIP country database (.mmdb) for DMARC report senders; needs
     # `pip install maxminddb`. Free: DB-IP Lite Country or MaxMind GeoLite2 Country.
     GEOIP_DB: str = ""

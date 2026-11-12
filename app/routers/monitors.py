@@ -25,6 +25,7 @@ def list_monitors(db: Session = Depends(get_db), user: models.User = Depends(get
             "last_checked_at": m.last_checked_at.isoformat() + "Z" if m.last_checked_at else None,
             "is_active": m.is_active, "client": m.client, "alert_level": m.alert_level or "balanced",
             "lookalikes": len(m.lookalikes or []),
+            "impersonating": sum(1 for v in (m.lookalike_visual or {}).values() if v.get("verdict") == "impersonating"),
             "history": engine.score_history(db, user.tenant_id, m.domain),
         }
         for m in monitors

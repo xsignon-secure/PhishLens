@@ -1052,5 +1052,16 @@
  "My domains": "मेरे डोमेन",
  "View report": "रिपोर्ट देखें",
  "No domains have been added for you yet.": "आपके लिए अभी तक कोई डोमेन नहीं जोड़ा गया है।",
- "Recent alerts (30 days)": "हाल की चेतावनियाँ (30 दिन)"
+ "Recent alerts (30 days)": "हाल की चेतावनियाँ (30 दिन)",
+ "Compare again": "फिर से तुलना करें",
+ "No website answered": "कोई वेबसाइट नहीं मिली",
+ "Could not compare": "तुलना नहीं हो सकी",
+ "Comparing…": "तुलना हो रही है…",
+ "Copies your website": "आपकी वेबसाइट की नकल करता है",
+ "Asks for a password": "पासवर्ड माँगता है",
+ "Compare with my website": "मेरी वेबसाइट से तुलना करें",
+ "Looks different": "अलग दिखता है",
+ "Looks similar": "मिलता-जुलता दिखता है",
+ "{0} copying your site": "{0} आपकी साइट की नकल कर रहे हैं",
+ "Lookalike site copies yours": "मिलती-जुलती साइट आपकी नकल करती है"
 }

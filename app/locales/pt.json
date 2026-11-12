@@ -1052,5 +1052,16 @@
  "My domains": "Meus domínios",
  "View report": "Ver relatório",
  "No domains have been added for you yet.": "Ainda não foram adicionados domínios para si.",
- "Recent alerts (30 days)": "Alertas recentes (30 dias)"
+ "Recent alerts (30 days)": "Alertas recentes (30 dias)",
+ "Compare again": "Comparar novamente",
+ "No website answered": "Nenhum site respondeu",
+ "Could not compare": "Não foi possível comparar",
+ "Comparing…": "A comparar…",
+ "Copies your website": "Copia o seu site",
+ "Asks for a password": "Pede uma palavra-passe",
+ "Compare with my website": "Comparar com o meu site",
+ "Looks different": "Parece diferente",
+ "Looks similar": "Parece semelhante",
+ "{0} copying your site": "{0} a copiar o seu site",
+ "Lookalike site copies yours": "Site semelhante copia o seu"
 }

@@ -67,6 +67,11 @@ for your DNS provider.
 - Email, Slack, Microsoft Teams, Discord and signed webhooks.
 - Lookalike-domain watch: typo, homoglyph, keyword and TLD variants ranked by
   risk.
+- Visual lookalike check (opt-in, `VISUAL_LOOKALIKE_CHECK`): opens each
+  lookalike's website and compares its logo and site icon (perceptual hash),
+  page title, brand name and login form with yours. A copy of your site raises
+  an alert, even at the "essential" alert level. With `VISUAL_SCREENSHOTS` and
+  Playwright installed it also compares headless-browser screenshots.
 - Certificate Transparency watch (crt.sh, daily with scheduled rescans): alerts
   when a certificate authority you've never used issues a certificate for your
   domain, or when a registered lookalike gets a TLS certificate.
@@ -228,6 +233,8 @@ All settings are environment variables; `.env.example` lists every one.
 | `VIRUSTOTAL_API_KEY`, `SAFE_BROWSING_API_KEY`, `URLHAUS_AUTH_KEY`, `OPENPHISH_FEED` | Optional reputation and link-checker feeds. |
 | `RPKI_CHECK`, `GEOIP_DB` | Optional RPKI lookups and DMARC sender countries. |
 | `PQC_CHECK` | Post-quantum key exchange test (default on). |
+| `VISUAL_LOOKALIKE_CHECK` | Fetch lookalike domains' websites and compare them with yours (default off). |
+| `VISUAL_SCREENSHOTS` | Also compare screenshots; needs `pip install playwright` and `playwright install chromium` (~300 MB more RAM; default off). |
 | `PUBLIC_AI_SUMMARY`, `PUBLIC_AI_SUMMARY_DAILY_LIMIT`, `SUMMARY_MODEL` | Plain-language "In plain words" summary on every report, written with the server's AI key (default model `claude-haiku-5-5`), capped per day; fixed text without a key. It describes risk only, never fixes. |
 | `MAX_MONITORS_PER_TEAM`, `SCAN_RATE_LIMIT_PER_HOUR` | Abuse brakes for public instances. |
 
