@@ -96,6 +96,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     user = _user_or_none(request, db)
     if not user:
         return RedirectResponse("/login", status_code=302)
+    if user.role == "client":
+        return RedirectResponse("/portal", status_code=302)
     return templates.TemplateResponse(request, "dashboard.html", {"request": request, "user": user})
 
 
@@ -104,6 +106,8 @@ def setup_wizard(request: Request, db: Session = Depends(get_db)):
     user = _user_or_none(request, db)
     if not user:
         return RedirectResponse("/login", status_code=302)
+    if user.role == "client":
+        return RedirectResponse("/portal", status_code=302)
     return templates.TemplateResponse(request, "setup.html", {"request": request, "user": user})
 
 
@@ -112,7 +116,20 @@ def overview_page(request: Request, db: Session = Depends(get_db)):
     user = _user_or_none(request, db)
     if not user:
         return RedirectResponse("/login", status_code=302)
+    if user.role == "client":
+        return RedirectResponse("/portal", status_code=302)
     return templates.TemplateResponse(request, "overview.html", {"request": request, "user": user})
+
+
+@router.get("/portal", response_class=HTMLResponse)
+def client_portal(request: Request, db: Session = Depends(get_db)):
+    """An MSP client's own domains (role "client")."""
+    user = _user_or_none(request, db)
+    if not user:
+        return RedirectResponse("/login?next=/portal", status_code=302)
+    if user.role != "client":
+        return RedirectResponse("/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "portal.html", {"request": request, "user": user})
 
 
 @router.get("/terms", response_class=HTMLResponse)

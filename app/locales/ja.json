@@ -1040,5 +1040,17 @@
  "block the sender": "送信者をブロック",
  "Impersonates {0}": "{0} になりすまし",
  "Also report to Netcraft (free)": "Netcraft にも通報（無料）",
- "Last check {0}: {1}": "最終確認 {0}: {1}"
+ "Last check {0}: {1}": "最終確認 {0}: {1}",
+ "Read-only view of the domains {0} looks after for you.": "{0} が管理しているドメインの閲覧専用ビュー。",
+ "Client: sees only one client's domains, read-only": "クライアント：1つのクライアントのドメインのみを閲覧（読み取り専用）",
+ "A client label set on your domains": "ドメインに設定したクライアントラベル",
+ "Managed by {0}": "{0} が管理",
+ "Not scanned yet": "未スキャン",
+ "Client portal": "クライアントポータル",
+ "Your domains": "あなたのドメイン",
+ "Open fixes in progress": "対応中の修正",
+ "My domains": "マイドメイン",
+ "View report": "レポートを表示",
+ "No domains have been added for you yet.": "まだドメインが追加されていません。",
+ "Recent alerts (30 days)": "最近のアラート（30日間）"
 }

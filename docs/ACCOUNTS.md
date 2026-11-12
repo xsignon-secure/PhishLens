@@ -24,6 +24,10 @@ step-by-step fix cards, and the fix guide PDF) need a signed-in account; see
 | Owner | Email, password, authenticator app | Everything in their company: create admins and members, settings, mail server. |
 | Admin | Email, password, authenticator app | Create and manage members, company settings, mail server. Can't create admins or touch owners. |
 | Member | Email, password (authenticator optional) | Use the dashboard: monitors, scans, reports. No settings and no user management. |
+| Client (MSP customer) | Email, password (authenticator optional) | Only `/portal`: read-only scores, reports, PDFs and alerts for the domains labelled with their client name. Every other API answers 403, and API keys are refused. Changing their client or role signs them out. |
+
+To create a client login, set a client label on the customer's domains
+(dashboard, Monitors), then in Users choose **Client** and that label.
 
 Each account belongs to one company. An email address can only be used once
 on a server.

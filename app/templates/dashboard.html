@@ -297,7 +297,10 @@
       <label>{{ _("Role") }}<select name="role" id="user-role">
         <option value="member">{{ _("Member: uses the dashboard") }}</option>
         <option value="admin">{{ _("Admin: also manages members and settings") }}</option>
+        <option value="client">{{ _("Client: sees only one client's domains, read-only") }}</option>
       </select></label>
+      <label id="user-client-wrap" class="hidden">{{ _("Client") }}<input name="client" id="user-client" list="client-labels" maxlength="100"
+        placeholder="{{ _("A client label set on your domains") }}"><datalist id="client-labels"></datalist></label>
       <label class="check-inline"><input name="send_email" type="checkbox" checked> {{ _("Email the login details") }}</label>
       <button class="btn" type="submit">{{ _("Create account") }}</button>
     </form>
@@ -1064,7 +1067,7 @@ document.getElementById('export-btn').onclick = async () => {
 };
 
 /* ---------------- security: authenticator, password, sessions ---------------- */
-const ROLE_WORDS = {owner: N_('Owner'), admin: N_('Admin'), member: N_('Member')};
+const ROLE_WORDS = {owner: N_('Owner'), admin: N_('Admin'), member: N_('Member'), client: N_('Client')};
 const STATUS_WORDS = {active: N_('Active'), pending: N_('Waiting for first sign-in'), suspended: N_('Suspended')};
 function renderSecurity(me) {
   document.getElementById('me-line').textContent = _t('Signed in as {0} ({1}) at {2}.',
@@ -1124,13 +1127,13 @@ const CRED_WORDS = {sent: N_('Login details emailed'), sending: N_('Sending logi
   failed: N_('Login email failed'), manual: N_('Give the password yourself')};
 function userActions(u) {
   const me = dashData.me || {};
-  const mine = me.role === 'owner' ? ['admin', 'member'] : ['member'];
+  const mine = me.role === 'owner' ? ['admin', 'member', 'client'] : ['member', 'client'];
   if (u.id === me.id || !mine.includes(u.role)) return '';
   const b = (act, label) => `<button class="btn tiny ghost" data-uact="${act}" data-uid="${u.id}" data-email="${escapeHtml(u.email)}">${label}</button>`;
   return [
     u.status === 'suspended' ? b('reactivate', _t('Reactivate')) : b('resend', _t('New login details')),
     u.status !== 'suspended' ? b('suspend', _t('Suspend')) : '',
-    me.role === 'owner' ? b('role', u.role === 'admin' ? _t('Make member') : _t('Make admin')) : '',
+    me.role === 'owner' && u.role !== 'client' ? b('role', u.role === 'admin' ? _t('Make member') : _t('Make admin')) : '',
     u.mfa_enabled ? b('reset-mfa', _t('Reset authenticator')) : '',
     b('delete', _t('Delete')),
   ].join(' ');
@@ -1139,12 +1142,14 @@ async function loadUsers() {
   const users = await api('/api/users');
   const me = dashData.me || {};
   document.querySelector('#user-role option[value=admin]').disabled = me.role !== 'owner';
+  document.getElementById('client-labels').innerHTML = [...new Set(dashData.monitors.map(m => m.client).filter(Boolean))].sort()
+    .map(c => `<option value="${escapeHtml(c)}">`).join('');
   const pill = u => u.status === 'active' ? 'ok' : u.status === 'pending' ? 'warn' : 'bad';
   document.getElementById('users-list').innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>${_t('User')}</th><th>${_t('Role')}</th><th>${_t('Status')}</th><th>${_t('Last sign-in')}</th><th></th></tr></thead>
     <tbody>${users.map(u => `<tr>
       <td><strong>${escapeHtml(u.full_name || '')}</strong> ${escapeHtml(u.email)}</td>
-      <td>${escapeHtml(_t(ROLE_WORDS[u.role] || u.role))}${u.mfa_enabled ? ' 🔐' : ''}</td>
+      <td>${escapeHtml(_t(ROLE_WORDS[u.role] || u.role))}${u.client ? ' · ' + escapeHtml(u.client) : ''}${u.mfa_enabled ? ' 🔐' : ''}</td>
       <td><span class="pill ${pill(u)}">${escapeHtml(_t(STATUS_WORDS[u.status] || u.status))}</span>
         ${u.credentials_status && u.status === 'pending' ? `<br><span class="muted small">${escapeHtml(_t(CRED_WORDS[u.credentials_status] || ''))}${u.credentials_error ? ': ' + escapeHtml(u.credentials_error) : ''}</span>` : ''}</td>
       <td class="muted small">${u.last_login_at ? escapeHtml(new Date(u.last_login_at).toLocaleString()) : '—'}</td>
@@ -1172,18 +1177,25 @@ async function userAction(act, id, email, users) {
     loadUsers();
   } catch (err) { if (err.message !== 'auth') toast(err.message); }
 }
+document.getElementById('user-role').onchange = (e) => {
+  const on = e.target.value === 'client';
+  document.getElementById('user-client-wrap').classList.toggle('hidden', !on);
+  document.getElementById('user-client').required = on;
+};
 document.getElementById('user-form').onsubmit = async (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const msg = document.getElementById('user-msg');
   try {
     const d = await api('/api/users', {method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email: fd.get('email'), full_name: fd.get('full_name'), role: fd.get('role'), send_email: !!fd.get('send_email')})});
+      body: JSON.stringify({email: fd.get('email'), full_name: fd.get('full_name'), role: fd.get('role'),
+                            client: fd.get('role') === 'client' ? (fd.get('client') || '') : '', send_email: !!fd.get('send_email')})});
     const sent = d.credentials_status === 'sending' ? _t('Account created. The login details are on their way to {0}.', {0: d.email})
                                                     : _t('Give the password yourself');
     msg.innerHTML = escapeHtml(sent) + ' '
       + escapeHtml(tempPasswordNote(d.email, d)).replace(d.temporary_password, `<span class="temp-pw">${d.temporary_password}</span>`);
     e.target.reset();
+    document.getElementById('user-client-wrap').classList.add('hidden');
     loadUsers();
   } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
 };

@@ -84,6 +84,9 @@ for your DNS provider.
   closes itself when a later scan shows the check passing; overdue tasks email
   the assignee once, and MSPs see open and overdue counts per client.
 - Scheduled weekly or monthly PDF reports; a multi-domain overview for MSPs.
+- Client portal for MSPs: give a customer a read-only login that sees only
+  the domains labelled with their client name (scores, reports, alerts, PDF).
+  Every other API refuses client logins, so they never see other clients.
 
 ### DMARC and TLS reporting
 
@@ -167,6 +170,7 @@ downgrade never deletes data or breaks hosted DNS records.
 | White-label branding | | | ✓ |
 | SIEM and PSA / helpdesk tickets | | | ✓ |
 | AI assistant connection (MCP) | | | ✓ |
+| Client portal logins | | | ✓ |
 
 Security features are in every plan. Limits live in `app/plans.py`; details in
 [docs/PLANS.md](docs/PLANS.md).

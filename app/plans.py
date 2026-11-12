@@ -14,7 +14,7 @@ PRO_FEATURES = frozenset({
     "ruf", "tls_rpt", "lookalike_watch", "hosted", "dns_fixes",
     "scheduled_reports", "share", "webhook", "api_keys",
 })
-MSP_FEATURES = PRO_FEATURES | {"white_label", "siem_psa", "mcp"}
+MSP_FEATURES = PRO_FEATURES | {"white_label", "siem_psa", "mcp", "client_portal"}
 
 # None = unlimited. rescan_hours is the shortest gap between automatic rescans
 # (the scheduler's own RESCAN_INTERVAL_HOURS still sets how often it runs).
@@ -32,6 +32,7 @@ FEATURE_NAMES = {
     "hosted": "Hosted records", "dns_fixes": "One-click DNS fixes", "scheduled_reports": "Scheduled reports",
     "share": "Shared report links", "webhook": "Alert webhooks", "api_keys": "API keys",
     "white_label": "White-label", "siem_psa": "SIEM and PSA", "mcp": "AI assistant connection (MCP)",
+    "client_portal": "Client portal logins",
 }
 
 

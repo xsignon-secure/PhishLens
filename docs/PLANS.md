@@ -30,6 +30,7 @@ breaks a customer's mail.
 | White-label (name, colour, logo, footer) | – | – | ✓ |
 | SIEM and PSA / helpdesk tickets | – | – | ✓ |
 | AI assistant connection (MCP) | – | – | ✓ |
+| Client portal logins | – | – | ✓ |
 
 The public scanner, the free tools, email alerts, extra alert addresses,
 authenticator apps and every other security feature are in all plans.

@@ -1040,5 +1040,17 @@
  "block the sender": "de afzender blokkeren",
  "Impersonates {0}": "Doet zich voor als {0}",
  "Also report to Netcraft (free)": "Ook melden bij Netcraft (gratis)",
- "Last check {0}: {1}": "Laatste controle {0}: {1}"
+ "Last check {0}: {1}": "Laatste controle {0}: {1}",
+ "Read-only view of the domains {0} looks after for you.": "Alleen-lezen overzicht van de domeinen die {0} voor u beheert.",
+ "Client: sees only one client's domains, read-only": "Klant: ziet alleen de domeinen van één klant, alleen-lezen",
+ "A client label set on your domains": "Een klantlabel dat op uw domeinen staat",
+ "Managed by {0}": "Beheerd door {0}",
+ "Not scanned yet": "Nog niet gescand",
+ "Client portal": "Klantportaal",
+ "Your domains": "Uw domeinen",
+ "Open fixes in progress": "Lopende verbeteringen",
+ "My domains": "Mijn domeinen",
+ "View report": "Rapport bekijken",
+ "No domains have been added for you yet.": "Er zijn nog geen domeinen voor u toegevoegd.",
+ "Recent alerts (30 days)": "Recente meldingen (30 dagen)"
 }

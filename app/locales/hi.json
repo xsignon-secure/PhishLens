@@ -1040,5 +1040,17 @@
  "block the sender": "भेजने वाले को ब्लॉक करें",
  "Impersonates {0}": "{0} होने का दिखावा",
  "Also report to Netcraft (free)": "Netcraft को भी रिपोर्ट करें (मुफ़्त)",
- "Last check {0}: {1}": "अंतिम जाँच {0}: {1}"
+ "Last check {0}: {1}": "अंतिम जाँच {0}: {1}",
+ "Read-only view of the domains {0} looks after for you.": "{0} आपके लिए जिन डोमेन की देखरेख करता है, उनका केवल-पढ़ने योग्य दृश्य।",
+ "Client: sees only one client's domains, read-only": "क्लाइंट: केवल एक क्लाइंट के डोमेन देखता है, केवल पढ़ने के लिए",
+ "A client label set on your domains": "आपके डोमेन पर सेट किया गया क्लाइंट लेबल",
+ "Managed by {0}": "{0} द्वारा प्रबंधित",
+ "Not scanned yet": "अभी स्कैन नहीं हुआ",
+ "Client portal": "क्लाइंट पोर्टल",
+ "Your domains": "आपके डोमेन",
+ "Open fixes in progress": "प्रगति में सुधार",
+ "My domains": "मेरे डोमेन",
+ "View report": "रिपोर्ट देखें",
+ "No domains have been added for you yet.": "आपके लिए अभी तक कोई डोमेन नहीं जोड़ा गया है।",
+ "Recent alerts (30 days)": "हाल की चेतावनियाँ (30 दिन)"
 }

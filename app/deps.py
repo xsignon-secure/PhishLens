@@ -96,6 +96,19 @@ def assert_public_target(domain: str) -> None:
 # ---------------------------------------------------------------- auth
 # Owners and admins must have an authenticator app. Until they do, these are
 # the only things their session can reach.
+# A "client" (an MSP's customer) reaches the client portal API and its own
+# sign-in settings, nothing else: every other API answers 403, so a route that
+# forgets to filter by client can't leak other clients' data.
+CLIENT_API_PATHS = ("/api/portal", "/api/auth/me", "/api/auth/logout", "/api/auth/password",
+                    "/api/auth/mfa", "/api/auth/sessions", "/api/auth/step-up", "/api/auth/first-password")
+
+
+def client_path_allowed(path: str) -> bool:
+    if not (path.startswith("/api/") or path == "/mcp" or path.startswith("/mcp/")):
+        return True  # HTML pages: those that show company data redirect clients to /portal
+    return any(path == p or path.startswith(p + "/") for p in CLIENT_API_PATHS)
+
+
 MFA_SETUP_PATHS = {"/dashboard", "/api/auth/me", "/api/auth/mfa/setup", "/api/auth/mfa/enable",
                    "/api/auth/logout"}
 STEP_UP_MINUTES = 10
@@ -143,6 +156,8 @@ def get_current_user(
         # stops working when the user is suspended or removed.
         if not key or not user or user.tenant_id != key.tenant_id or not sessions.account_usable(user):
             raise _unauthorized("Invalid API key")
+        if user.role == "client":
+            raise HTTPException(status_code=403, detail="Client portal accounts can't use API keys")
         key.last_used_at = datetime.utcnow()
         db.commit()
         request.state.auth_method = "api_key"
@@ -185,6 +200,8 @@ def get_current_user(
     if now - row.last_used_at > timedelta(seconds=60):  # idle timer, without a write per request
         row.last_used_at = now
         db.commit()
+    if user.role == "client" and not client_path_allowed(request.url.path):
+        raise HTTPException(status_code=403, detail="client_portal_only")
     if user.role in ("owner", "admin") and not user.mfa_enabled and request.url.path not in MFA_SETUP_PATHS:
         raise HTTPException(status_code=403, detail="mfa_setup_required")
     request.state.auth_method = "cookie" if request.cookies.get("access_token") == token else "bearer"
