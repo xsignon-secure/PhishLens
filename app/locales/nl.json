@@ -1063,5 +1063,19 @@
  "Looks different": "Ziet er anders uit",
  "Looks similar": "Lijkt erop",
  "{0} copying your site": "{0} kopiëren uw site",
- "Lookalike site copies yours": "Lookalike-site kopieert de uwe"
+ "Lookalike site copies yours": "Lookalike-site kopieert de uwe",
+ "Make new add-in files? The button already installed stops working until you deploy the new ones.": "Nieuwe bestanden maken? De geïnstalleerde knop werkt niet meer totdat u de nieuwe uitrolt.",
+ "Outlook: Microsoft 365 admin center → Settings → Integrated apps → Upload custom apps → upload manifest.xml and assign it to everyone. It appears within a few hours.": "Outlook: Microsoft 365-beheercentrum → Instellingen → Geïntegreerde apps → Aangepaste apps uploaden → upload manifest.xml en wijs het aan iedereen toe. Het verschijnt binnen enkele uren.",
+ "Outlook add-in (manifest.xml)": "Outlook-invoegtoepassing (manifest.xml)",
+ "Gmail add-on (appsscript.json)": "Gmail-add-on (appsscript.json)",
+ "Create the add-in files": "Invoegtoepassingsbestanden maken",
+ "Turn off the button": "Knop uitschakelen",
+ "On since {0}. Creating new files turns off the old ones.": "Aan sinds {0}. Nieuwe bestanden maken schakelt de oude uit.",
+ "Turn off the report button? Installed add-ins stop working.": "Meldknop uitschakelen? Geïnstalleerde invoegtoepassingen werken niet meer.",
+ "Give everyone a Report phishing button in Outlook (desktop, web, Mac) and Gmail. Reports land here, with the same checks. The button's key can only send reports, never read them.": "Geef iedereen een knop 'Phishing melden' in Outlook (desktop, web, Mac) en Gmail. Meldingen komen hier binnen, met dezelfde controles. De sleutel van de knop kan alleen meldingen versturen, nooit lezen.",
+ "Off.": "Uit.",
+ "Download now: the key inside is shown only once.": "Nu downloaden: de sleutel erin wordt maar één keer getoond.",
+ "Gmail: create a project at script.google.com, paste Code.gs, replace appsscript.json (Project settings → show the manifest file), then Deploy → Test deployments, or publish it to your Workspace from the Google Cloud console.": "Gmail: maak een project op script.google.com, plak Code.gs, vervang appsscript.json (Projectinstellingen → manifestbestand tonen), daarna Implementeren → Testimplementaties, of publiceer het in je Workspace via de Google Cloud-console.",
+ "Gmail add-on (Code.gs)": "Gmail-add-on (Code.gs)",
+ "Report-phish button for Outlook and Gmail": "Knop Phishing melden voor Outlook en Gmail"
 }

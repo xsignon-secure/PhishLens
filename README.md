@@ -79,6 +79,10 @@ for your DNS provider.
   checks its sender authentication and every link against the blocklists. Only
   headers and links are kept. With an AI key, each report also gets an AI
   triage note (what it is, who it impersonates, suggested action).
+- Report-phish button: an Outlook add-in (desktop, web, Mac) and a Gmail
+  add-on, generated per company from the dashboard, send the open email to
+  the report inbox in one click. Their key can only submit reports. Setup:
+  [docs/REPORT-BUTTON.md](docs/REPORT-BUTTON.md).
 - Takedown tracking: reports judged phishing open a takedown draft for the
   registrar and hosting provider (abuse contacts found through RDAP). An admin
   sends it from the company's mail server, optionally also to Netcraft's free

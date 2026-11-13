@@ -1063,5 +1063,19 @@
  "Looks different": "外観は異なる",
  "Looks similar": "外観が似ている",
  "{0} copying your site": "{0} 件があなたのサイトを模倣",
- "Lookalike site copies yours": "類似サイトがあなたのサイトを模倣"
+ "Lookalike site copies yours": "類似サイトがあなたのサイトを模倣",
+ "Make new add-in files? The button already installed stops working until you deploy the new ones.": "新しいアドインファイルを作成しますか？新しいファイルを展開するまで、インストール済みのボタンは動作しません。",
+ "Outlook: Microsoft 365 admin center → Settings → Integrated apps → Upload custom apps → upload manifest.xml and assign it to everyone. It appears within a few hours.": "Outlook：Microsoft 365 管理センター → 設定 → 統合アプリ → カスタム アプリのアップロード → manifest.xml をアップロードして全員に割り当てます。数時間以内に表示されます。",
+ "Outlook add-in (manifest.xml)": "Outlook アドイン（manifest.xml）",
+ "Gmail add-on (appsscript.json)": "Gmail アドオン（appsscript.json）",
+ "Create the add-in files": "アドインファイルを作成",
+ "Turn off the button": "ボタンを無効にする",
+ "On since {0}. Creating new files turns off the old ones.": "{0} から有効。新しいファイルを作成すると古いものは無効になります。",
+ "Turn off the report button? Installed add-ins stop working.": "報告ボタンを無効にしますか？インストール済みのアドインは動作しなくなります。",
+ "Give everyone a Report phishing button in Outlook (desktop, web, Mac) and Gmail. Reports land here, with the same checks. The button's key can only send reports, never read them.": "Outlook（デスクトップ、Web、Mac）と Gmail で全員に「フィッシングを報告」ボタンを配布します。報告は同じチェック付きでここに届きます。ボタンのキーは報告の送信のみ可能で、読み取りはできません。",
+ "Off.": "オフ。",
+ "Download now: the key inside is shown only once.": "今すぐダウンロードしてください。含まれるキーは一度しか表示されません。",
+ "Gmail: create a project at script.google.com, paste Code.gs, replace appsscript.json (Project settings → show the manifest file), then Deploy → Test deployments, or publish it to your Workspace from the Google Cloud console.": "Gmail：script.google.com でプロジェクトを作成し、Code.gs を貼り付け、appsscript.json を置き換え（プロジェクトの設定 → マニフェスト ファイルを表示）、デプロイ → テスト デプロイ、または Google Cloud コンソールから Workspace に公開します。",
+ "Gmail add-on (Code.gs)": "Gmail アドオン（Code.gs）",
+ "Report-phish button for Outlook and Gmail": "Outlook と Gmail 用のフィッシング報告ボタン"
 }

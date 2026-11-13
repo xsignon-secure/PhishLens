@@ -79,6 +79,23 @@
         <input id="phish-file" type="file" accept=".eml,message/rfc822" multiple hidden>
       </label>
       <p id="phish-msg" class="muted small"></p>
+      <details class="admin-only hidden" id="rb-box">
+        <summary>{{ _("Report-phish button for Outlook and Gmail") }}</summary>
+        <p class="muted small">{{ _("Give everyone a Report phishing button in Outlook (desktop, web, Mac) and Gmail. Reports land here, with the same checks. The button's key can only send reports, never read them.") }}</p>
+        <p id="rb-status" class="muted small"></p>
+        <button class="btn tiny" type="button" id="rb-make">{{ _("Create the add-in files") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="rb-revoke">{{ _("Turn off the button") }}</button>
+        <div id="rb-files" class="hidden">
+          <p class="small"><strong>{{ _("Download now: the key inside is shown only once.") }}</strong></p>
+          <p><button class="btn tiny ghost" type="button" data-rb="outlook">{{ _("Outlook add-in (manifest.xml)") }}</button>
+             <button class="btn tiny ghost" type="button" data-rb="gmail">{{ _("Gmail add-on (Code.gs)") }}</button>
+             <button class="btn tiny ghost" type="button" data-rb="gmailjson">{{ _("Gmail add-on (appsscript.json)") }}</button></p>
+          <ol class="muted small">
+            <li>{{ _("Outlook: Microsoft 365 admin center → Settings → Integrated apps → Upload custom apps → upload manifest.xml and assign it to everyone. It appears within a few hours.") }}</li>
+            <li>{{ _("Gmail: create a project at script.google.com, paste Code.gs, replace appsscript.json (Project settings → show the manifest file), then Deploy → Test deployments, or publish it to your Workspace from the Google Cloud console.") }}</li>
+          </ol>
+        </div>
+      </details>
       <div id="phish-list"></div>
       <h3 class="small-h">{{ _("Takedowns") }}</h3>
       <p class="muted small">{{ _("Abuse reports against phishing sites, tracked until the site is gone. Sent reports are rechecked every day; you're emailed when a site goes down, or if it's still online after 3 days.") }}</p>
@@ -866,6 +883,44 @@ const PHISH_VERDICT = {clean: ['pass', N_('Looks clean')], suspicious: ['warn', 
 const PHISH_STATUS = {new: N_('New'), confirmed: N_('Confirmed phishing'), false_positive: N_('Not phishing')};
 const AI_ACTION = {takedown: N_('take the site down'), 'block sender': N_('block the sender'), 'no action': N_('no action')};
 const TD_STATUS = {draft: ['warn', N_('Draft')], sent: ['info', N_('Reported, still online')], down: ['pass', N_('Taken down')], closed: ['muted', N_('Closed')]};
+/* report-phish button (Outlook add-in, Gmail add-on) */
+let rbFiles = null;
+async function loadReportButton() {
+  const st = await api('/api/report-button');
+  document.getElementById('rb-status').textContent = st.enabled
+    ? _t('On since {0}. Creating new files turns off the old ones.', {0: new Date(st.created_at).toLocaleDateString()})
+    : _t('Off.');
+  document.getElementById('rb-revoke').classList.toggle('hidden', !st.enabled);
+}
+function saveText(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type}));
+  a.download = name;
+  a.click();
+}
+document.getElementById('rb-make').onclick = async () => {
+  if (document.getElementById('rb-revoke').classList.contains('hidden') === false
+      && !confirm(_t('Make new add-in files? The button already installed stops working until you deploy the new ones.'))) return;
+  try {
+    rbFiles = await api('/api/report-button/token', {method: 'POST'});
+    document.getElementById('rb-files').classList.remove('hidden');
+    loadReportButton();
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('rb-revoke').onclick = async () => {
+  if (!confirm(_t('Turn off the report button? Installed add-ins stop working.'))) return;
+  try { await api('/api/report-button/token', {method: 'DELETE'}); rbFiles = null;
+        document.getElementById('rb-files').classList.add('hidden'); loadReportButton(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('rb-files').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rb]');
+  if (!b || !rbFiles) return;
+  if (b.dataset.rb === 'outlook') saveText('phishlens-report-manifest.xml', rbFiles.outlook_manifest, 'application/xml');
+  else if (b.dataset.rb === 'gmail') saveText('Code.gs', rbFiles.gmail_script, 'text/plain');
+  else saveText('appsscript.json', rbFiles.gmail_manifest, 'application/json');
+});
+
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -974,6 +1029,7 @@ async function loadEnterprise() {
   loadPlan().catch(() => {});
   if (isOwner) { loadUsers().catch(() => {}); loadSmtp().catch(() => {}); }
   if (isOwner) loadPgp().catch(() => {});
+  if (isOwner) loadReportButton().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});

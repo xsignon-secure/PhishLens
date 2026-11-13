@@ -1063,5 +1063,19 @@
  "Looks different": "Sieht anders aus",
  "Looks similar": "Sieht ähnlich aus",
  "{0} copying your site": "{0} kopieren Ihre Seite",
- "Lookalike site copies yours": "Doppelgänger-Seite kopiert Ihre"
+ "Lookalike site copies yours": "Doppelgänger-Seite kopiert Ihre",
+ "Make new add-in files? The button already installed stops working until you deploy the new ones.": "Neue Add-in-Dateien erstellen? Die installierte Schaltfläche funktioniert erst wieder, wenn Sie die neuen bereitstellen.",
+ "Outlook: Microsoft 365 admin center → Settings → Integrated apps → Upload custom apps → upload manifest.xml and assign it to everyone. It appears within a few hours.": "Outlook: Microsoft 365 Admin Center → Einstellungen → Integrierte Apps → Benutzerdefinierte Apps hochladen → manifest.xml hochladen und allen zuweisen. Erscheint innerhalb weniger Stunden.",
+ "Outlook add-in (manifest.xml)": "Outlook-Add-in (manifest.xml)",
+ "Gmail add-on (appsscript.json)": "Gmail-Add-on (appsscript.json)",
+ "Create the add-in files": "Add-in-Dateien erstellen",
+ "Turn off the button": "Schaltfläche deaktivieren",
+ "On since {0}. Creating new files turns off the old ones.": "Aktiv seit {0}. Neue Dateien deaktivieren die alten.",
+ "Turn off the report button? Installed add-ins stop working.": "Melde-Schaltfläche deaktivieren? Installierte Add-ins funktionieren nicht mehr.",
+ "Give everyone a Report phishing button in Outlook (desktop, web, Mac) and Gmail. Reports land here, with the same checks. The button's key can only send reports, never read them.": "Geben Sie allen eine Schaltfläche „Phishing melden“ in Outlook (Desktop, Web, Mac) und Gmail. Meldungen landen hier, mit denselben Prüfungen. Der Schlüssel der Schaltfläche kann nur Meldungen senden, nie lesen.",
+ "Off.": "Aus.",
+ "Download now: the key inside is shown only once.": "Jetzt herunterladen: Der enthaltene Schlüssel wird nur einmal angezeigt.",
+ "Gmail: create a project at script.google.com, paste Code.gs, replace appsscript.json (Project settings → show the manifest file), then Deploy → Test deployments, or publish it to your Workspace from the Google Cloud console.": "Gmail: Projekt auf script.google.com anlegen, Code.gs einfügen, appsscript.json ersetzen (Projekteinstellungen → Manifestdatei anzeigen), dann Bereitstellen → Testbereitstellungen, oder über die Google Cloud Console in Ihrem Workspace veröffentlichen.",
+ "Gmail add-on (Code.gs)": "Gmail-Add-on (Code.gs)",
+ "Report-phish button for Outlook and Gmail": "Phishing-melden-Schaltfläche für Outlook und Gmail"
 }

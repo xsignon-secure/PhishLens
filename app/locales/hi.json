@@ -1063,5 +1063,19 @@
  "Looks different": "अलग दिखता है",
  "Looks similar": "मिलता-जुलता दिखता है",
  "{0} copying your site": "{0} आपकी साइट की नकल कर रहे हैं",
- "Lookalike site copies yours": "मिलती-जुलती साइट आपकी नकल करती है"
+ "Lookalike site copies yours": "मिलती-जुलती साइट आपकी नकल करती है",
+ "Make new add-in files? The button already installed stops working until you deploy the new ones.": "नई ऐड-इन फ़ाइलें बनाएँ? पहले से इंस्टॉल बटन तब तक काम नहीं करेगा जब तक आप नई फ़ाइलें तैनात नहीं करते।",
+ "Outlook: Microsoft 365 admin center → Settings → Integrated apps → Upload custom apps → upload manifest.xml and assign it to everyone. It appears within a few hours.": "Outlook: Microsoft 365 एडमिन सेंटर → Settings → Integrated apps → Upload custom apps → manifest.xml अपलोड करें और सभी को असाइन करें। यह कुछ घंटों में दिखाई देगा।",
+ "Outlook add-in (manifest.xml)": "Outlook ऐड-इन (manifest.xml)",
+ "Gmail add-on (appsscript.json)": "Gmail ऐड-ऑन (appsscript.json)",
+ "Create the add-in files": "ऐड-इन फ़ाइलें बनाएँ",
+ "Turn off the button": "बटन बंद करें",
+ "On since {0}. Creating new files turns off the old ones.": "{0} से चालू। नई फ़ाइलें बनाने पर पुरानी बंद हो जाती हैं।",
+ "Turn off the report button? Installed add-ins stop working.": "रिपोर्ट बटन बंद करें? इंस्टॉल किए गए ऐड-इन काम करना बंद कर देंगे।",
+ "Give everyone a Report phishing button in Outlook (desktop, web, Mac) and Gmail. Reports land here, with the same checks. The button's key can only send reports, never read them.": "Outlook (डेस्कटॉप, वेब, Mac) और Gmail में सभी को 'फ़िशिंग रिपोर्ट करें' बटन दें। रिपोर्ट यहीं आती हैं, उन्हीं जाँचों के साथ। बटन की कुंजी केवल रिपोर्ट भेज सकती है, कभी पढ़ नहीं सकती।",
+ "Off.": "बंद।",
+ "Download now: the key inside is shown only once.": "अभी डाउनलोड करें: अंदर की कुंजी केवल एक बार दिखाई जाती है।",
+ "Gmail: create a project at script.google.com, paste Code.gs, replace appsscript.json (Project settings → show the manifest file), then Deploy → Test deployments, or publish it to your Workspace from the Google Cloud console.": "Gmail: script.google.com पर प्रोजेक्ट बनाएँ, Code.gs चिपकाएँ, appsscript.json बदलें (Project settings → मैनिफ़ेस्ट फ़ाइल दिखाएँ), फिर Deploy → Test deployments करें, या Google Cloud कंसोल से अपने Workspace में प्रकाशित करें।",
+ "Gmail add-on (Code.gs)": "Gmail ऐड-ऑन (Code.gs)",
+ "Report-phish button for Outlook and Gmail": "Outlook और Gmail के लिए फ़िशिंग रिपोर्ट बटन"
 }
