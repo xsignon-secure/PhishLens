@@ -1132,5 +1132,21 @@
  "Scopes:": "スコープ:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "盗まれたパスワードが侵害につながるかを左右する読み取り専用チェック：多要素サインイン、レガシーサインイン、管理者アカウント、アプリの同意、外部へのメール転送。毎週再チェックします。",
  "Not connected yet.": "まだ接続されていません。",
- "Workspace domain": "Workspace ドメイン"
+ "Workspace domain": "Workspace ドメイン",
+ "Threat feed for your SIEM": "SIEM向け脅威フィード",
+ "an API key (create one above)": "APIキー（上で作成）",
+ "Collection ID": "コレクションID",
+ "URL block list": "URLブロックリスト",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → コンテンツハブ → Threat Intelligenceをインストールし、データコネクタ → Threat Intelligence - TAXII → コネクタページを開く。",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0}件のインジケーター：ドメイン{1}件、リンク{2}件、送信者{3}件（悪意あり{4}件）。",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "ポーリング頻度：1時間に1回。失効したインジケーターは自動的に削除されます。",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "PhishLensが御社向けに見つけたフィッシングのドメイン、リンク、送信者（類似ドメイン、報告されたメール、テイクダウン）をSTIX 2.1インジケーターとして提供します。Microsoft Sentinel、Splunk、Elastic、QRadar、OpenCTI、MISPはTAXII 2.1で取得でき、ファイアウォールはシンプルなブロックリストを使えます。自社ドメインや安全なリンクは含まれません。",
+ "CSV": "CSV",
+ "Domain block list": "ドメインブロックリスト",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "上記のAPIルートとコレクションID、ユーザー名、パスワードとしてAPIキーを貼り付けます。",
+ "API root": "APIルート",
+ "anything, e.g. phishlens": "任意（例：phishlens）",
+ "TAXII server": "TAXIIサーバー",
+ "STIX bundle": "STIXバンドル"
 }

@@ -1410,3 +1410,6 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .td-log { margin: 6px 0; padding-left: 18px; }
 .td-log li.ok { color: var(--green); }
 .td-log li.bad { color: var(--red, #b91c1c); }
+.feed-kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; font-size: 14px; margin: 8px 0 12px; }
+.feed-kv dt { color: var(--ink-faint); } .feed-kv dd { margin: 0; word-break: break-all; }
+@media (max-width: 600px) { .feed-kv { grid-template-columns: 1fr; } }

@@ -130,6 +130,26 @@ def _security_event(db: Session, request: Request, action: str, claims: dict) ->
                       "claimed_user": str(claims.get("sub"))[:40], "claimed_tenant": str(claims.get("tid"))[:40]})
 
 
+def api_key_user(db: Session, request: Request, api_key: str) -> models.User:
+    """The user an API key belongs to; 401 when it isn't a live key."""
+    from . import sessions
+    digest = hashlib.sha256(api_key.encode()).hexdigest()
+    key = (db.query(models.ApiKey)
+           .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True)).first())
+    user = db.get(models.User, key.user_id) if key else None
+    # The key acts as the user who made it, in that user's company, and
+    # stops working when the user is suspended or removed.
+    if not key or not user or user.tenant_id != key.tenant_id or not sessions.account_usable(user):
+        raise _unauthorized("Invalid API key")
+    if user.role == "client":
+        raise HTTPException(status_code=403, detail="Client portal accounts can't use API keys")
+    key.last_used_at = datetime.utcnow()
+    db.commit()
+    request.state.auth_method = "api_key"
+    request.state.session = None
+    return user
+
+
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
@@ -148,21 +168,7 @@ def get_current_user(
             and credentials.credentials.startswith("plk_"):
         api_key = credentials.credentials
     if api_key:
-        digest = hashlib.sha256(api_key.encode()).hexdigest()
-        key = (db.query(models.ApiKey)
-               .filter(models.ApiKey.key_hash == digest, models.ApiKey.is_active.is_(True)).first())
-        user = db.get(models.User, key.user_id) if key else None
-        # The key acts as the user who made it, in that user's company, and
-        # stops working when the user is suspended or removed.
-        if not key or not user or user.tenant_id != key.tenant_id or not sessions.account_usable(user):
-            raise _unauthorized("Invalid API key")
-        if user.role == "client":
-            raise HTTPException(status_code=403, detail="Client portal accounts can't use API keys")
-        key.last_used_at = datetime.utcnow()
-        db.commit()
-        request.state.auth_method = "api_key"
-        request.state.session = None
-        return user
+        return api_key_user(db, request, api_key)
     # 2) Session access token: Bearer header or httpOnly cookie (browser pages)
     token = getattr(request.state, "access_token", None)  # just refreshed by the middleware
     if not token and credentials and credentials.scheme.lower() == "bearer":

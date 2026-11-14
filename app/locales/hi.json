@@ -1132,5 +1132,21 @@
  "Scopes:": "स्कोप:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "केवल-पढ़ने वाली जाँचें जो तय करती हैं कि चोरी हुआ पासवर्ड सेंध बनेगा या नहीं: बहु-कारक साइन-इन, लेगेसी साइन-इन, एडमिन खाते, ऐप सहमति और बाहर फ़ॉरवर्ड होने वाला मेल। हर हफ़्ते दोबारा जाँचा जाता है।",
  "Not connected yet.": "अभी कनेक्ट नहीं।",
- "Workspace domain": "Workspace डोमेन"
+ "Workspace domain": "Workspace डोमेन",
+ "Threat feed for your SIEM": "आपके SIEM के लिए थ्रेट फ़ीड",
+ "an API key (create one above)": "एक API कुंजी (ऊपर बनाएँ)",
+ "Collection ID": "कलेक्शन ID",
+ "URL block list": "URL ब्लॉक सूची",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → Content hub → Threat Intelligence इंस्टॉल करें, फिर Data connectors → Threat Intelligence - TAXII → Open connector page।",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0} संकेतक: {1} डोमेन, {2} लिंक, {3} प्रेषक ({4} दुर्भावनापूर्ण)।",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "पोलिंग आवृत्ति: हर घंटे एक बार। रद्द किए गए संकेतक अपने आप हट जाते हैं।",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "PhishLens द्वारा आपकी कंपनी के लिए मिले फ़िशिंग डोमेन, लिंक और प्रेषक (मिलते-जुलते डोमेन, रिपोर्ट किए गए ईमेल, टेकडाउन) STIX 2.1 संकेतकों के रूप में। Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI और MISP इन्हें TAXII 2.1 से ले सकते हैं; फ़ायरवॉल सादी ब्लॉक सूचियों का उपयोग कर सकते हैं। आपके अपने डोमेन और सुरक्षित लिंक कभी शामिल नहीं होते।",
+ "CSV": "CSV",
+ "Domain block list": "डोमेन ब्लॉक सूची",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "ऊपर दिया API रूट और कलेक्शन ID, यूज़रनेम और पासवर्ड के रूप में एक API कुंजी पेस्ट करें।",
+ "API root": "API रूट",
+ "anything, e.g. phishlens": "कुछ भी, जैसे phishlens",
+ "TAXII server": "TAXII सर्वर",
+ "STIX bundle": "STIX बंडल"
 }

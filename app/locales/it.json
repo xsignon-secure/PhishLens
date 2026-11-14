@@ -1132,5 +1132,21 @@
  "Scopes:": "Ambiti:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "Controlli in sola lettura che decidono se una password rubata diventa una violazione: accesso a più fattori, accesso legacy, account amministratore, consenso alle app e posta inoltrata all'esterno. Ricontrollato ogni settimana.",
  "Not connected yet.": "Non ancora collegato.",
- "Workspace domain": "Dominio Workspace"
+ "Workspace domain": "Dominio Workspace",
+ "Threat feed for your SIEM": "Feed di minacce per il tuo SIEM",
+ "an API key (create one above)": "una chiave API (creane una qui sopra)",
+ "Collection ID": "ID raccolta",
+ "URL block list": "Elenco di blocco URL",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → Hub contenuti → installa Threat Intelligence, poi Connettori dati → Threat Intelligence - TAXII → Apri pagina connettore.",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0} indicatori: {1} domini, {2} link, {3} mittenti ({4} dannosi).",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "Frequenza di interrogazione: una volta all'ora. Gli indicatori revocati vengono rimossi automaticamente.",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "Domini, link e mittenti di phishing che PhishLens ha trovato per la tua azienda (domini simili, email segnalate, rimozioni) come indicatori STIX 2.1. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI e MISP possono scaricarli via TAXII 2.1; i firewall possono usare gli elenchi di blocco semplici. I tuoi domini e i link puliti non sono mai inclusi.",
+ "CSV": "CSV",
+ "Domain block list": "Elenco di blocco domini",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "Incolla la radice API e l'ID raccolta qui sopra, il nome utente e una chiave API come password.",
+ "API root": "Radice API",
+ "anything, e.g. phishlens": "qualsiasi, ad es. phishlens",
+ "TAXII server": "Server TAXII",
+ "STIX bundle": "Bundle STIX"
 }

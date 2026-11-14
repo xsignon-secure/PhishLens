@@ -1132,5 +1132,21 @@
  "Scopes:": "Ámbitos:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "Comprobaciones de solo lectura que deciden si una contraseña robada se convierte en una brecha: inicio de sesión multifactor, inicio de sesión heredado, cuentas de administrador, consentimiento de apps y correo reenviado fuera. Se revisa cada semana.",
  "Not connected yet.": "Aún no conectado.",
- "Workspace domain": "Dominio de Workspace"
+ "Workspace domain": "Dominio de Workspace",
+ "Threat feed for your SIEM": "Fuente de amenazas para su SIEM",
+ "an API key (create one above)": "una clave de API (cree una arriba)",
+ "Collection ID": "ID de colección",
+ "URL block list": "Lista de bloqueo de URL",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → Centro de contenido → instale Threat Intelligence, luego Conectores de datos → Threat Intelligence - TAXII → Abrir página del conector.",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0} indicadores: {1} dominios, {2} enlaces, {3} remitentes ({4} maliciosos).",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "Frecuencia de sondeo: una vez por hora. Los indicadores revocados se eliminan automáticamente.",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "Dominios, enlaces y remitentes de phishing que PhishLens encontró para su empresa (dominios similares, correos reportados, retiradas) como indicadores STIX 2.1. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI y MISP pueden obtenerlos por TAXII 2.1; los firewalls pueden usar las listas de bloqueo simples. Nunca se incluyen sus propios dominios ni enlaces limpios.",
+ "CSV": "CSV",
+ "Domain block list": "Lista de bloqueo de dominios",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "Pega la raíz de la API y el ID de colección de arriba, el usuario y una clave de API como contraseña.",
+ "API root": "Raíz de la API",
+ "anything, e.g. phishlens": "cualquiera, p. ej. phishlens",
+ "TAXII server": "Servidor TAXII",
+ "STIX bundle": "Paquete STIX"
 }
