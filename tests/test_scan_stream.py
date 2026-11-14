@@ -47,3 +47,17 @@ def test_run_all_checks_reports_progress_in_registry_order(monkeypatch):
     assert [r["key"] for r in out] == ["a", "b"] and sorted(calls) == ["a", "b"]
     # A broken progress callback never breaks the scan.
     assert len(scoring.run_all_checks("x.example", on_check=lambda r: 1 / 0)) == 2
+
+
+def test_scan_page_runs_scans_off_the_home_page(client):  # noqa: F811
+    """The home form goes to /scan, which holds the radar and the report."""
+    home = client.get("/").text
+    assert 'action="/scan"' in home and 'name="d"' in home
+    assert 'id="scan-radar"' not in home and 'id="scan-result"' not in home
+    page = client.get("/scan?d=Example.COM")
+    assert page.status_code == 200
+    assert 'id="scan-radar"' in page.text and 'id="scan-result"' in page.text
+    assert 'value="example.com"' in page.text
+    # Script-like input is escaped, never echoed raw.
+    assert "<script>alert" not in client.get("/scan?d=<script>alert(1)</script>").text
+    assert client.get("/scan?id=abcdefgh12").status_code == 200
