@@ -557,6 +557,76 @@ function protocolStrip(checks) {
     `<a class="proto ${c.status}" href="#chk-${escapeHtml(c.key)}"><span class="proto-ico">${icon[c.status] || '·'}</span>${escapeHtml(c.title)}</a>`).join('');
 }
 
+/* ---------------- threat dashboard report (design C) ---------------- */
+function threatRing(score) {
+  const g = gradeClass(score);
+  const C = 2 * Math.PI * 86;
+  return `
+  <div class="ring-wrap thr-ring" data-score="${score}">
+    <span class="thr-sweep" aria-hidden="true"></span>
+    <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="ring-bg" cx="100" cy="100" r="86"></circle>
+      <circle class="ring-fg" cx="100" cy="100" r="86" style="stroke:${GRADE_COLORS[g]}"
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"
+        data-target-offset="${(C * (1 - score / 100)).toFixed(1)}"></circle>
+    </svg>
+    <div class="ring-num" data-count="${score}">0</div>
+  </div>`;
+}
+
+/* How an attacker could use the gaps: one row per attack, from the checks. */
+const ATTACK_PATHS = [
+  {key: 'spoof', icon: '🎭', label: N_('Spoofing your domain'), checks: ['dmarc', 'spf', 'parked'],
+   open: N_('Forged mail that uses your domain can still land in inboxes.'), closed: N_('Forged mail using your domain is rejected.')},
+  {key: 'intercept', icon: '🕵️', label: N_('Mail interception'), checks: ['mta-sts', 'smtp-tls', 'dane'],
+   open: N_('An attacker in the middle can read or change mail sent to you.'), closed: N_('Mail to you is protected in transit.')},
+  {key: 'web', icon: '🪟', label: N_('Website attacks'), checks: ['sec-headers', 'tls-cert'],
+   open: N_('Your website is easier to clickjack or inject content into.'), closed: N_('Browser protections are in place.')},
+  {key: 'takeover', icon: '🧩', label: N_('Domain or subdomain takeover'), checks: ['dangling', 'dnssec', 'caa'],
+   open: N_('DNS records could be hijacked or spoofed to host phishing.'), closed: N_('No takeover paths found.')},
+  {key: 'blocklist', icon: '🚫', label: N_('Mail blocked as spam'), checks: ['dnsbl', 'mx'],
+   open: N_('Your mail is likely to be rejected or sent to spam.'), closed: N_('Not listed on the blocklists checked.')},
+];
+function attackPaths(checks) {
+  return ATTACK_PATHS.map(a => {
+    const cs = checks.filter(c => a.checks.includes(c.key) && c.status !== 'pass');
+    const hard = cs.filter(c => c.status === 'fail' || (c.status === 'warn' && severityFor(c) !== 'low'));
+    if (!checks.some(c => a.checks.includes(c.key))) return null;
+    const state = hard.some(c => c.status === 'fail') || (a.key === 'spoof' && hard.length) ? 'likely'
+      : hard.length ? 'possible' : cs.length ? 'limited' : 'closed';
+    return {...a, state};
+  }).filter(Boolean).sort((x, y) => ['likely', 'possible', 'limited', 'closed'].indexOf(x.state) - ['likely', 'possible', 'limited', 'closed'].indexOf(y.state));
+}
+const PATH_STATE = {likely: N_('likely'), possible: N_('possible'), limited: N_('limited'), closed: N_('blocked')};
+
+const HEAT_LABEL = {auth: N_('Authentication'), transport: N_('Encryption'), dns: N_('DNS'), reputation: N_('Reputation'), web: N_('Website')};
+function heatMap(checks) {
+  const cols = ['high', 'medium', 'low', 'pass'];
+  let i = 0;
+  const rows = CATEGORIES.map(cat => {
+    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key);
+    if (!cs.length) return '';
+    const n = {high: 0, medium: 0, low: 0, pass: 0};
+    cs.forEach(c => { n[c.status === 'pass' ? 'pass' : severityFor(c)]++; });
+    return `<div class="hm-label" title="${_t(cat.label)}">${_t(HEAT_LABEL[cat.key])}</div>` + cols.map(k =>
+      `<div class="hm-cell hm-${k}${n[k] ? ' on' : ''}" style="--i:${i++};--a:${Math.min(1, .35 + n[k] * .22)}">${n[k]}</div>`).join('');
+  }).join('');
+  return `<div class="heat"><div></div><div class="hm-h">${_t('High')}</div><div class="hm-h">${_t('Medium')}</div><div class="hm-h">${_t('Low')}</div><div class="hm-h">${_t('Passed')}</div>${rows}</div>`;
+}
+
+const PROTO_WORD = {pass: N_('pass'), warn: N_('weak'), fail: N_('failing')};
+function protocolTiles(checks) {
+  return KEY_PROTOCOLS.map(k => checks.find(c => c.key === k)).filter(Boolean).map((c, i) =>
+    `<a class="thr-proto ${c.status}" href="#chk-${escapeHtml(c.key)}" style="--i:${i}"><b>${escapeHtml(c.title)}</b><span>${_t(PROTO_WORD[c.status] || c.status)}</span></a>`).join('');
+}
+
+function exposureLevel(score) {
+  if (score >= 80) return {cls: 'low', label: _t('Low exposure')};
+  if (score >= 60) return {cls: 'moderate', label: _t('Moderate exposure')};
+  if (score >= 40) return {cls: 'high', label: _t('High exposure')};
+  return {cls: 'critical', label: _t('Critical exposure')};
+}
+
 function renderReport(scan, isPublic, opts = {}) {
   const r = scan.result || scan;
   const checks = r.checks || [];
@@ -632,51 +702,60 @@ function renderReport(scan, isPublic, opts = {}) {
   const scanned = r.scanned_at ? new Date(r.scanned_at) : null;
   const scannedText = scanned && !isNaN(scanned)
     ? scanned.toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : _t('just now');
-  const risk = riskLevel(r.score);
   const verdict = verdictFor(r, checks);
   const reportId = scan.id ? String(scan.id).slice(0, 8).toUpperCase() : '';
 
+  const expo = exposureLevel(r.score);
+  const paths = attackPaths(checks);
   return `
-  <div class="report rpt">
-    <header class="rpt-head">
+  <div class="report rpt rpt-threat">
+    <span class="thr-scanline" aria-hidden="true"></span>
+    <header class="rpt-head thr-head thr-anim">
       <div>
-        <span class="rpt-kicker">${_t('Email security report')}</span>
+        <span class="rpt-kicker">${_t('Threat exposure report')}</span>
         <h2>${escapeHtml(r.domain)}</h2>
-        <p class="rpt-meta">${_t('Scanned {0}', {0: escapeHtml(scannedText)})}${reportId ? ` · ${_t('Report')} ${escapeHtml(reportId)}` : ''}</p>
+        <p class="rpt-meta">${_t('Scanned {0}', {0: escapeHtml(scannedText)})} · ${_t('{0} checks', {0: checks.length})}${reportId ? ` · ${_t('Report')} ${escapeHtml(reportId)}` : ''}</p>
       </div>
-      <div class="report-actions">
-        ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${ICONS.download}${_t('Download PDF')}</a>` : ''}
-        ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${ICONS.download}${_t('Fix guide (PDF)')}</a>` : ''}
-        ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${ICONS.mail}${_t('Email me this report')}</button>` : ''}
-      </div>
-    </header>
-    <section class="rpt-summary">
-      <div class="scorehead">
-        ${scoreRing(r.score)}
-        <div class="grade-col">
-          <span class="grade big ${gradeClass(r.score)}">${escapeHtml(r.grade)}</span>
-          <span class="muted small">${_t('Grade')}</span>
+      <div class="thr-head-side">
+        <span class="thr-expo ${expo.cls}"><i></i>${expo.label}</span>
+        <div class="report-actions">
+          ${opts.pdfUrl ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.pdfUrl)}" download>${ICONS.download}${_t('Download PDF')}</a>` : ''}
+          ${opts.guideUrl && !locked ? `<a class="btn tiny ghost pdf-btn" href="${escapeHtml(opts.guideUrl)}" download>${ICONS.download}${_t('Fix guide (PDF)')}</a>` : ''}
+          ${opts.emailUrl ? `<button class="btn tiny ghost" data-email-report="${escapeHtml(opts.emailUrl)}">${ICONS.mail}${_t('Email me this report')}</button>` : ''}
         </div>
       </div>
-      <div class="verdict">
-        <span class="risk-badge ${risk.cls}">${risk.label}</span>
-        <h3>${verdict.head}</h3>
-        <p>${escapeHtml(verdict.sub)}</p>
+    </header>
+    <section class="thr-grid">
+      <div class="thr-card thr-score thr-anim" style="--i:0">
+        ${threatRing(r.score)}
+        <div class="thr-grade"><span class="grade big ${gradeClass(r.score)}">${escapeHtml(r.grade)}</span><span>${_t('Grade')}</span></div>
+        <div class="thr-counts">
+          <div class="stat fail"><b>${issues}</b><span>${_t('Failing')}</span></div>
+          <div class="stat warn"><b>${warnings}</b><span>${_t('Warnings')}</span></div>
+          <div class="stat pass"><b>${passedN}</b><span>${_t('Passed')}</span></div>
+        </div>
+      </div>
+      <div class="thr-card thr-anim" style="--i:1">
+        <h3>${_t('Open attack paths')}</h3>
+        <p class="thr-verdict">${verdict.head}</p>
+        <div class="thr-paths">${paths.map((a, i) => `<div class="thr-path ${a.state}" style="--i:${i}">
+          <span class="thr-ico" aria-hidden="true">${a.icon}</span>
+          <div><b>${_t(a.label)}</b> <span class="thr-state ${a.state}">${_t(PATH_STATE[a.state])}</span>
+          <div class="thr-sub">${_t(a.state === 'closed' ? a.closed : a.open)}</div></div></div>`).join('')}</div>
+      </div>
+      <div class="thr-card thr-anim" style="--i:2">
+        <h3>${_t('Risk heat map')}</h3>
+        <p class="thr-sub">${_t('Findings by area and severity')}</p>
+        ${heatMap(checks)}
         ${trendLine(scan.history)}
         ${reputationBadge(r.reputation)}
       </div>
-      <div class="sum-stats">
-        <div class="stat fail"><b>${issues}</b><span>${_t('Failing')}</span></div>
-        <div class="stat warn"><b>${warnings}</b><span>${_t('Warnings')}</span></div>
-        <div class="stat pass"><b>${passedN}</b><span>${_t('Passed')}</span></div>
-        <div class="stat"><b>${checks.length}</b><span>${_t('Checks run')}</span></div>
-      </div>
     </section>
-    ${opts.summaryUrl ? `<section class="rpt-plain" data-summary-url="${escapeHtml(opts.summaryUrl)}">
+    <nav class="thr-protos thr-anim" aria-label="${_t('Key protocols')}">${protocolTiles(checks)}</nav>
+    ${opts.summaryUrl ? `<section class="rpt-plain thr-anim" data-summary-url="${escapeHtml(opts.summaryUrl)}">
       <span class="plain-ico">${ICONS.spark}</span>
       <div><span class="rpt-kicker">${_t('In plain words')}</span>
       <p class="plain-text muted">${_t('Writing a summary of this report…')}</p></div></section>` : ''}
-    <nav class="proto-strip" aria-label="${_t('Key protocols')}">${protocolStrip(checks)}</nav>
     <section class="rpt-sec">
       <div class="sec-head"><h3>${_t('Score by category')}</h3></div>
       <div class="cat-grid">${categoryCards(checks)}</div>
@@ -727,6 +806,14 @@ function bindReportInteractions(container) {
     });
   }
   bindFixCards(container);
+  // Threat dashboard: each block plays its entrance when it scrolls into view.
+  const anims = container.querySelectorAll('.thr-anim:not(.go)');
+  if ('IntersectionObserver' in window && anims.length) {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('go'); io.unobserve(e.target); }
+    }), {threshold: 0.15});
+    anims.forEach(el => io.observe(el));
+  } else anims.forEach(el => el.classList.add('go'));
   container.querySelectorAll('[data-summary-url]').forEach(sec => {
     const url = sec.dataset.summaryUrl;
     const tenant = window.api && !/\/api\/scans\/(public|shared)\//.test(url);
