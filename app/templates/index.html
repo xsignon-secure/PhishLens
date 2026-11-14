@@ -9,7 +9,7 @@
       <p class="sub">{{ _("Type your domain below. We'll check its email security posture, show you what's wrong and what to fix first.") }}</p>
       <form id="scan-form" class="scanbox" autocomplete="off">
         <input id="scan-domain" type="text" placeholder="example.com" spellcheck="false" aria-label="Domain to scan">
-        <button type="submit" class="btn big">{{ _("Scan my domain") }}</button>
+        <button type="submit" class="btn big" id="scan-btn">{{ _("Scan my domain") }}</button>
       </form>
       <ul class="trust">
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ _("No signup needed") }}</li>
@@ -152,11 +152,33 @@ const returning = new URLSearchParams(location.search).get('scan');
 if (returning && /^[A-Za-z0-9_-]{8,64}$/.test(returning)) {
   fetch('/api/scans/public/' + returning).then(r => r.ok ? r.json() : null).then(d => { if (d) showReport(d); });
 }
+/* Scan button: "Scanning…" while a scan runs, then faded until a different domain is typed. */
+const scanBtn = document.getElementById('scan-btn');
+const scanInput = document.getElementById('scan-domain');
+let scanning = false, scannedDomain = null;
+function setScanButton(state) {
+  scanBtn.classList.toggle('is-scanning', state === 'scanning');
+  scanBtn.classList.toggle('is-done', state === 'done');
+  scanBtn.disabled = state !== 'ready';
+  scanBtn.setAttribute('aria-busy', state === 'scanning' ? 'true' : 'false');
+  scanBtn.innerHTML = state === 'scanning'
+    ? '<span class="btn-spinner" aria-hidden="true"></span>' + escapeHtml(_t('Scanning…'))
+    : escapeHtml(_t('Scan my domain'));
+  if (state === 'done') scanBtn.title = _t('Type another domain to scan again');
+  else scanBtn.removeAttribute('title');
+}
+scanInput.addEventListener('input', () => {
+  if (scanning) return;
+  const v = scanInput.value.trim().toLowerCase();
+  setScanButton(v && v === scannedDomain ? 'done' : 'ready');
+});
 document.getElementById('scan-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const domain = document.getElementById('scan-domain').value.trim().toLowerCase();
+  const domain = scanInput.value.trim().toLowerCase();
   const box = document.getElementById('scan-result');
-  if (!domain) return;
+  if (!domain || scanning) return;
+  scanning = true;
+  setScanButton('scanning');
   box.innerHTML = '';
   const prog = runScanProgress('scan-progress', 'phase-text', 'progress-fill');
   try {
@@ -168,8 +190,12 @@ document.getElementById('scan-form').addEventListener('submit', async (e) => {
     if (!r.ok) throw new Error(data.detail || _t('Scan failed'));
     prog.done();
     showReport(data);
+    scanning = false; scannedDomain = domain;
+    setScanButton(scanInput.value.trim().toLowerCase() === domain ? 'done' : 'ready');
   } catch (err) {
     prog.done();
+    scanning = false; scannedDomain = null;
+    setScanButton('ready');
     box.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p>' +
       ('<p class="muted">' + _t('Tip: enter a bare domain like') + ' ' + '<code>example.com</code>' + ' ' + _t('— no http://, no paths.') + '</p>' + '</div>');
   }

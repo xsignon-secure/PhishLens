@@ -1415,3 +1415,11 @@ details[open] > summary .chev { transform: rotate(180deg); }
 @media (max-width: 600px) { .feed-kv { grid-template-columns: 1fr; } }
 .sim-consent { grid-column: 1 / -1; display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin-top: 10px; }
 .sim-consent input { width: auto; margin-top: 3px; }
+/* Home scan button states */
+#scan-btn { transition: opacity .35s ease, filter .35s ease, transform .2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+#scan-btn.is-scanning { cursor: progress; opacity: .9; }
+#scan-btn.is-done { opacity: .4; filter: saturate(.4); cursor: default; transform: none; box-shadow: none; }
+#scan-btn:disabled:hover { transform: none; }
+.btn-spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: btn-spin .7s linear infinite; flex: none; }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 2s; } }
