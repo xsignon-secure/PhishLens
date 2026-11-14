@@ -32,6 +32,12 @@ every feature. XSignOn also runs a hosted service with
 - **Nine languages.** English, Spanish, French, German, Portuguese, Hindi,
   Italian, Dutch and Japanese (machine-translated; corrections welcome).
 
+### Demo (75 seconds, with narration)
+
+[![Watch the PhishLens demo: live scan, threat report and dashboard](app/static/demo/phishlens-demo-poster.jpg)](https://github.com/xsignon-secure/PhishLens/raw/main/app/static/demo/phishlens-demo.mp4)
+
+▶ [Watch the demo video](https://github.com/xsignon-secure/PhishLens/raw/main/app/static/demo/phishlens-demo.mp4) (MP4, 4 MB, [captions](app/static/demo/phishlens-demo.vtt)). It also plays on the home page of every PhishLens server.
+
 | Scan report | Dashboard |
 |---|---|
 | ![Scan report with prioritized fixes](docs/screenshots/scan-report.png) | ![Dashboard with monitored domains](docs/screenshots/dashboard.png) |

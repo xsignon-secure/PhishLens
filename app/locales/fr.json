@@ -1254,5 +1254,8 @@
  "An attacker between mail servers could strip encryption and read or change mail sent to you.": "Un attaquant placé entre les serveurs de messagerie pourrait retirer le chiffrement et lire ou modifier les e-mails qui vous sont envoyés.",
  "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "Les e-mails de vos serveurs paraissent moins fiables et risquent davantage d'être rejetés ou classés en spam.",
  "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "Le trafic vers vos serveurs de messagerie pourrait être détourné par un piratage du routage (BGP).",
- "Some receivers over IPv6 may delay or reject your mail.": "Certains destinataires en IPv6 peuvent retarder ou refuser vos e-mails."
+ "Some receivers over IPv6 may delay or reject your mail.": "Certains destinataires en IPv6 peuvent retarder ou refuser vos e-mails.",
+ "See PhishLens in action": "Découvrez PhishLens en action",
+ "PhishLens product demo with narration": "Démo de PhishLens avec narration",
+ "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "Une visite de 75 secondes : une analyse en direct, le rapport de menaces et le tableau de bord, avec narration."
 }

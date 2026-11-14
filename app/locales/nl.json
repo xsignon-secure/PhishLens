@@ -1254,5 +1254,8 @@
  "An attacker between mail servers could strip encryption and read or change mail sent to you.": "Een aanvaller tussen mailservers kan de versleuteling weghalen en mail aan jou lezen of wijzigen.",
  "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "Mail van je servers lijkt minder betrouwbaar en wordt eerder geweigerd of als spam gezien.",
  "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "Verkeer naar je mailservers kan via een netwerkkaping (BGP) worden omgeleid.",
- "Some receivers over IPv6 may delay or reject your mail.": "Sommige ontvangers via IPv6 kunnen je mail vertragen of weigeren."
+ "Some receivers over IPv6 may delay or reject your mail.": "Sommige ontvangers via IPv6 kunnen je mail vertragen of weigeren.",
+ "See PhishLens in action": "Bekijk PhishLens in actie",
+ "PhishLens product demo with narration": "PhishLens-productdemo met voice-over",
+ "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "Een rondleiding van 75 seconden: een live scan, het dreigingsrapport en het dashboard, met voice-over."
 }
