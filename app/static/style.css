@@ -1413,3 +1413,5 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .feed-kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; font-size: 14px; margin: 8px 0 12px; }
 .feed-kv dt { color: var(--ink-faint); } .feed-kv dd { margin: 0; word-break: break-all; }
 @media (max-width: 600px) { .feed-kv { grid-template-columns: 1fr; } }
+.sim-consent { grid-column: 1 / -1; display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin-top: 10px; }
+.sim-consent input { width: auto; margin-top: 3px; }

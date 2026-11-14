@@ -66,7 +66,7 @@ Office.onReady(() => {
                   'X-Reporter': (Office.context.mailbox.userProfile || {}).emailAddress || ''}, body: eml});
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.detail || ('HTTP ' + r.status));
-      show('Thanks, your security team has it. First check: ' + (VERDICTS[d.verdict] || d.verdict) + '.', true);
+      show(d.simulation ? d.message : 'Thanks, your security team has it. First check: ' + (VERDICTS[d.verdict] || d.verdict) + '.', true);
       btn.textContent = 'Reported';
     } catch (err) {
       show('Could not send the report: ' + err.message, false);

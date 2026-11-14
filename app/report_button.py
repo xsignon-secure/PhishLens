@@ -198,7 +198,10 @@ function reportMessage(e) {{
   var ok = res.getResponseCode() < 300;
   var text = ok ? 'Thanks, your security team has it.' : 'Could not send the report (' + res.getResponseCode() + ').';
   if (ok) {{
-    try {{ text += ' Verdict: ' + JSON.parse(res.getContentText()).verdict + '.'; }} catch (err) {{}}
+    try {{
+      var d = JSON.parse(res.getContentText());
+      text = d.simulation ? d.message : text + ' Verdict: ' + d.verdict + '.';
+    }} catch (err) {{}}
   }}
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification().setText(text)).build();

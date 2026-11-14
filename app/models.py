@@ -59,6 +59,8 @@ class Tenant(Base):
     # Microsoft 365 / Google Workspace security check (app/cloud_posture.py):
     # {m365: {directory, result}, gws: {domain, admin, result}, checked_at}.
     posture = Column(JSON, nullable=True)
+    # Phishing simulations: domains the company proved it controls {domain: {how, at}}.
+    sim_domains = Column(JSON, nullable=True)
     # PGP public key: failure (RUF) report details are stored encrypted to it.
     ruf_pgp_key = Column(Text, nullable=True)
     ruf_pgp_fingerprint = Column(String(64), nullable=True)
@@ -527,3 +529,32 @@ class ThreatIndicator(Base):
     last_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
     modified = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     revoked = Column(Boolean, nullable=False, default=False)
+
+
+class SimCampaign(Base):
+    """A phishing simulation: one practice email sent to a list of staff."""
+    __tablename__ = "sim_campaigns"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    template = Column(String(40), nullable=False)
+    status = Column(String(20), nullable=False, default="sending")  # sending | sent | failed
+    authorized_by = Column(String(320), nullable=False)  # owner who confirmed they may test these people
+    authorized_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class SimRecipient(Base):
+    __tablename__ = "sim_recipients"
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    campaign_id = Column(String(32), ForeignKey("sim_campaigns.id"), nullable=False, index=True)
+    email = Column(String(320), nullable=False)
+    token = Column(String(64), nullable=False, unique=True, index=True)
+    sent_at = Column(DateTime, nullable=True)
+    error = Column(String(300), nullable=True)
+    clicked_at = Column(DateTime, nullable=True)
+    reported_at = Column(DateTime, nullable=True)

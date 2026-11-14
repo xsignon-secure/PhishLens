@@ -11,6 +11,7 @@
       <a href="#dns" data-nav="dns" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg><span>{{ _("DNS &amp; hosting") }}</span></a>
       <a href="#assistant" data-nav="assistant" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg><span>{{ _("Assistant") }}</span></a>
       <a href="#tasks" data-nav="tasks" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8l1.5 1.5L12 7M8 14l1.5 1.5L12 13M14.5 8.5H17M14.5 14.5H17"/></svg><span>{{ _("Tasks") }}</span><span id="tasks-badge" class="badge fail hidden" style="margin-left:auto"></span></a>
+      <a href="#simulations" data-nav="simulations" class="side-link admin-only hidden"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span>{{ _("Simulations") }}</span></a>
       <a href="#integrations" data-nav="integrations" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg><span>{{ _("Integrations") }}</span></a>
       <a href="#users" data-nav="users" class="side-link admin-only hidden"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg><span>{{ _("Users") }}</span></a>
       <a href="#security" data-nav="security" class="side-link"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>{{ _("Security") }}</span></a>
@@ -246,6 +247,51 @@
         <button class="btn tiny" type="submit">{{ _("Add task") }}</button>
       </form>
       <p id="task-msg" class="muted small"></p>
+    </div>
+  </div>
+
+  <div data-section="simulations" class="hidden">
+    <div class="panel admin-only hidden" id="sim-panel">
+      <h2 data-feature="simulations"><span class="dot"></span>{{ _("Phishing simulations") }}</h2>
+      <p class="muted small">{{ _("Send staff a harmless practice phishing email and see who clicks and who reports it. Anyone who clicks lands on a page that explains it was a test and shows the warning signs. It never asks for a password.") }}</p>
+      <details>
+        <summary>{{ _("Safeguards") }}</summary>
+        <ul class="muted small">
+          <li>{{ _("Only an owner can launch one, after entering an authenticator code and confirming they are authorised.") }}</li>
+          <li>{{ _("People can only be tested on domains you have proved you control.") }}</li>
+          <li>{{ _("Emails go out through your own mail server, from your own address, never through PhishLens.") }}</li>
+          <li>{{ _("Built-in templates only: no real brands, no attachments, no password forms.") }}</li>
+          <li>{{ _("Each email carries an X-PhishLens-Simulation header so your mail filters can recognise it.") }}</li>
+        </ul>
+      </details>
+      <p id="sim-mail" class="small"></p>
+      <h3>{{ _("Verified domains") }}</h3>
+      <div id="sim-domains"></div>
+      <div class="owner-only hidden">
+        <p class="muted small">{{ _("To add a domain, publish this TXT record (or connect the Microsoft 365 / Google Workspace check in Security):") }}</p>
+        <dl class="feed-kv"><dt>{{ _("Name") }}</dt><dd><code id="sim-txt-name"></code></dd><dt>{{ _("Value") }}</dt><dd><code id="sim-txt-value"></code></dd></dl>
+        <form id="sim-domain-form" class="scanbox small">
+          <input id="sim-domain" placeholder="example.com" aria-label="{{ _("Domain") }}" required>
+          <button class="btn tiny" type="submit">{{ _("Verify") }}</button>
+        </form>
+      </div>
+    </div>
+    <div class="panel owner-only hidden" id="sim-new">
+      <h2><span class="dot"></span>{{ _("New simulation") }}</h2>
+      <form id="sim-form" class="form-grid">
+        <label>{{ _("Name") }}<input id="sim-name" maxlength="120" required placeholder="{{ _("e.g. Q1 awareness test") }}"></label>
+        <label>{{ _("Template") }}<select id="sim-template"></select></label>
+        <p id="sim-preview" class="muted small" style="grid-column:1/-1"></p>
+        <label style="grid-column:1/-1">{{ _("Recipients (one email per line)") }}<textarea id="sim-recipients" rows="5" required placeholder="jane@example.com"></textarea></label>
+        <label class="sim-consent"><input id="sim-auth" type="checkbox" required> {{ _("I am authorised by my company to send phishing tests to these people, and our security awareness policy covers it.") }}</label>
+        <div style="grid-column:1/-1"><button class="btn" type="submit">{{ _("Send simulation") }}</button></div>
+      </form>
+      <p id="sim-msg" class="muted small"></p>
+    </div>
+    <div class="panel admin-only hidden">
+      <h2><span class="dot"></span>{{ _("Results") }}</h2>
+      <div id="sim-list"></div>
+      <div id="sim-detail"></div>
     </div>
   </div>
 
@@ -610,7 +656,7 @@ window.addEventListener('hashchange', () => { showSection(location.hash.slice(1)
 showSection(location.hash.slice(1));
 
 /* Hosted plans: show the company's plan and mark what it doesn't include. */
-const PRO_ONLY = ['ruf', 'tls_rpt', 'lookalike_watch', 'hosted', 'dns_fixes', 'scheduled_reports', 'share', 'webhook', 'api_keys'];
+const PRO_ONLY = ['ruf', 'tls_rpt', 'lookalike_watch', 'hosted', 'dns_fixes', 'scheduled_reports', 'share', 'webhook', 'api_keys', 'simulations'];
 async function loadPlan() {
   const p = await api('/api/team/plan');
   if (!p.enabled) return;
@@ -1129,6 +1175,86 @@ async function loadFeed() {
     `<a class="btn tiny ghost" href="${escapeHtml(new URL(d.downloads[k]).pathname)}" download>${escapeHtml(_t(label))}</a>`).join(' ');
 }
 
+/* ---------------- phishing simulations ---------------- */
+const SIM_DIFF = {easy: N_('easy'), medium: N_('medium'), hard: N_('hard')};
+let simData = null;
+function renderSims(d) {
+  simData = d;
+  const owner = dashData.me && dashData.me.role === 'owner';
+  document.getElementById('sim-mail').innerHTML = d.mail_server
+    ? `<span class="badge pass">✓</span> ${escapeHtml(_t('Sent from {0} through your mail server.', {0: d.from_address || ''}))}`
+    : `<span class="badge warn">!</span> ${escapeHtml(_t('Connect your mail server first (Users → Email server). Simulations are never sent through PhishLens.'))}`;
+  document.getElementById('sim-txt-name').textContent = d.verify.name;
+  document.getElementById('sim-txt-value').textContent = d.verify.value;
+  document.getElementById('sim-domains').innerHTML = d.domains.length
+    ? d.domains.map(x => `<div class="mon"><strong>${escapeHtml(x.domain)}</strong>
+        <span class="muted small">${escapeHtml(x.how === 'cloud' ? _t('verified by Microsoft 365 / Google Workspace') : _t('verified by DNS'))}</span>
+        ${owner ? `<span class="row-actions"><button class="btn tiny ghost" data-simdom="${escapeHtml(x.domain)}">${_t('Remove')}</button></span>` : ''}</div>`).join('')
+    : `<p class="muted small">${_t('No verified domains yet.')}</p>`;
+  const sel = document.getElementById('sim-template');
+  if (!sel.options.length) {
+    sel.innerHTML = d.templates.map(t => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.name)} (${escapeHtml(_t(SIM_DIFF[t.difficulty] || t.difficulty))})</option>`).join('');
+    sel.onchange = simPreview;
+  }
+  simPreview();
+  document.getElementById('sim-list').innerHTML = d.campaigns.length
+    ? `<table class="audit-table"><thead><tr><th>${_t('Name')}</th><th>${_t('Template')}</th><th>${_t('Sent')}</th><th>${_t('Clicked')}</th><th>${_t('Reported')}</th><th></th></tr></thead><tbody>` +
+      d.campaigns.map(c => `<tr><td><strong>${escapeHtml(c.name)}</strong><br><span class="muted small">${escapeHtml(new Date(c.created_at).toLocaleDateString())}${c.status === 'sending' ? ' · ' + escapeHtml(_t('sending…')) : ''}${c.failed ? ' · ' + escapeHtml(_t('{0} failed', {0: c.failed})) : ''}</span></td>
+        <td>${escapeHtml(c.template_name)}</td><td>${c.sent} / ${c.recipients}</td>
+        <td><span class="badge ${c.click_rate > 20 ? 'fail' : c.click_rate > 5 ? 'warn' : 'pass'}">${c.click_rate}%</span> <span class="muted small">(${c.clicked})</span></td>
+        <td><span class="badge ${c.report_rate >= 50 ? 'pass' : c.report_rate >= 20 ? 'warn' : 'fail'}">${c.report_rate}%</span> <span class="muted small">(${c.reported})</span></td>
+        <td style="text-align:right"><button class="btn tiny ghost" data-simview="${escapeHtml(c.id)}">${_t('People')}</button>${owner ? ` <button class="btn tiny ghost" data-simdel="${escapeHtml(c.id)}">${_t('Delete')}</button>` : ''}</td></tr>`).join('') + '</tbody></table>'
+    : `<p class="muted small">${_t('No simulations yet.')}</p>`;
+}
+function simPreview() {
+  const t = (simData.templates || []).find(x => x.key === document.getElementById('sim-template').value);
+  document.getElementById('sim-preview').textContent = t ? _t('From “{0}”, subject “{1}”', {0: t.from_name, 1: t.subject}) : '';
+}
+async function loadSims() { renderSims(await api('/api/simulations')); }
+document.getElementById('sim-domain-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('/api/simulations/domains', {method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({domain: document.getElementById('sim-domain').value.trim()})});
+        document.getElementById('sim-domain').value = ''; toast(_t('✓ Domain verified')); loadSims(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('sim-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const n = document.getElementById('sim-recipients').value.split(/[\s,;]+/).filter(Boolean).length;
+  if (!confirm(_t('Send a practice phishing email to {0} people now?', {0: n}))) return;
+  const msg = document.getElementById('sim-msg');
+  try {
+    await api('/api/simulations', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
+      name: document.getElementById('sim-name').value.trim(), template: document.getElementById('sim-template').value,
+      recipients: document.getElementById('sim-recipients').value, authorized: document.getElementById('sim-auth').checked})});
+    msg.textContent = _t('Sending. Results appear below as people click or report it.');
+    e.target.reset(); simPreview();
+    loadSims(); setTimeout(() => loadSims().catch(() => {}), 8000);
+  } catch (err) { if (err.message !== 'auth') msg.textContent = err.message; }
+};
+document.getElementById('sim-panel').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-simdom]');
+  if (!b || !confirm(_t('Stop allowing simulations to {0}?', {0: b.dataset.simdom}))) return;
+  try { await api('/api/simulations/domains/' + encodeURIComponent(b.dataset.simdom), {method: 'DELETE'}); loadSims(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+});
+document.getElementById('sim-list').addEventListener('click', async (e) => {
+  const del = e.target.closest('[data-simdel]'), view = e.target.closest('[data-simview]');
+  try {
+    if (del && confirm(_t('Delete this simulation and its results?'))) {
+      await api('/api/simulations/' + del.dataset.simdel, {method: 'DELETE'});
+      document.getElementById('sim-detail').innerHTML = ''; loadSims();
+    } else if (view) {
+      const d = await api('/api/simulations/' + view.dataset.simview);
+      const st = p => p.error ? `<span class="badge fail">${_t('not sent')}</span> <span class="muted small">${escapeHtml(p.error)}</span>`
+        : p.reported_at ? `<span class="badge pass">${_t('reported')}</span>${p.clicked_at ? ` <span class="badge warn">${_t('clicked')}</span>` : ''}`
+        : p.clicked_at ? `<span class="badge fail">${_t('clicked')}</span>` : p.sent_at ? `<span class="muted small">${_t('no action')}</span>` : `<span class="muted small">${_t('sending…')}</span>`;
+      document.getElementById('sim-detail').innerHTML = `<h3>${escapeHtml(d.name)}</h3>` +
+        d.people.map(p => `<div class="dm-row"><div class="top"><span>${escapeHtml(p.email)}</span> ${st(p)}</div></div>`).join('');
+    }
+  } catch (err) { if (err.message !== 'auth') toast(err.message); }
+});
+
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -1218,7 +1344,8 @@ document.getElementById('phish-file').addEventListener('change', async (e) => {
   let n = 0;
   for (const f of e.target.files) {
     msg.textContent = _t('Checking {0}…', {0: f.name});
-    try { await api('/api/phish-reports', {method: 'POST', headers: {'Content-Type': 'message/rfc822'}, body: f}); n++; }
+    try { const d = await api('/api/phish-reports', {method: 'POST', headers: {'Content-Type': 'message/rfc822'}, body: f}); n++;
+          if (d.simulation) toast(_t('This was a phishing test from your IT team. Well done for reporting it!')); }
     catch (err) { if (err.message !== 'auth') toast(f.name + ': ' + err.message); }
   }
   msg.textContent = n ? _t('{0} report(s) checked.', {0: n}) : '';
@@ -1241,6 +1368,7 @@ async function loadEnterprise() {
   loadReputation().catch(() => {});
   loadPosture().catch(() => {});
   loadFeed().catch(() => {});
+  if (isOwner) loadSims().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});

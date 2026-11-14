@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .. import assistant, audit, models, phish_reports, takedowns
+from .. import assistant, audit, models, phish_reports, simulations, takedowns
 from ..database import get_db
 from ..deps import get_current_user, normalize_domain, rate_limit, require_admin
 
@@ -38,6 +38,16 @@ def ingest(db: Session, request: Request, tenant: models.Tenant, reporter: str, 
         parsed = phish_reports.parse(blob)
     except phish_reports.ReportError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    sim = simulations.match_report(db, tenant.id, parsed)
+    if sim is not None:
+        # One of the company's own phishing tests: count it as reported and
+        # don't open an incident or takedowns for it.
+        if not sim.reported_at:
+            sim.reported_at = datetime.utcnow()
+            db.commit()
+        audit.log_request(db, request, "simulation.reported", user, {"campaign": sim.campaign_id, "source": source})
+        return {"id": sim.id, "verdict": "simulation", "simulation": True,
+                "message": "This was a phishing test from your IT team. Well done for reporting it!"}
     result = phish_reports.triage(parsed)
     ai = phish_reports.ai_triage(assistant.config(tenant), parsed, result)
     row = models.PhishReport(tenant_id=tenant.id, reported_by=reporter, subject=parsed["subject"],

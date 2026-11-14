@@ -92,6 +92,12 @@ for your DNS provider.
   a TAXII 2.1 server (Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI,
   MISP), plus CSV and firewall block lists. Indicators that go away are
   revoked. Setup: [docs/THREAT-FEED.md](docs/THREAT-FEED.md).
+- Phishing simulations: send staff a practice phishing email from built-in,
+  brand-free templates and see click and report rates. Only owners can launch,
+  only to domains the company proved it controls, only through the company's
+  own mail server; the landing page explains the warning signs and never asks
+  for a password. Reports of a test through the report button count as
+  "reported". See [docs/SIMULATIONS.md](docs/SIMULATIONS.md).
 - Report-phish button: an Outlook add-in (desktop, web, Mac) and a Gmail
   add-on, generated per company from the dashboard, send the open email to
   the report inbox in one click. Their key can only submit reports. Setup:
@@ -338,6 +344,7 @@ Run the tests with `.venv/bin/python -m pytest tests/ -q`.
 | [HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md) | Hosted DMARC, SPF, MTA-STS, BIMI, DKIM |
 | [DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md) | One-click publishing |
 | [INTEGRATIONS.md](docs/INTEGRATIONS.md) | Report mailboxes, SIEM, PSA, helpdesks |
+| [SIMULATIONS.md](docs/SIMULATIONS.md) | Phishing simulations and their safeguards |
 | [THREAT-FEED.md](docs/THREAT-FEED.md) | STIX/TAXII threat feed for Sentinel, Splunk, Elastic, firewalls |
 | [MCP.md](docs/MCP.md) | AI assistant connection |
 | [ENTERPRISE.md](docs/ENTERPRISE.md) | Database migrations and operations |
