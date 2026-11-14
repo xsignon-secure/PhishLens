@@ -557,7 +557,6 @@
  "Site URL": "URL del sito",
  "Skip tour": "Salta il tour",
  "Source code": "Codice sorgente",
- "Starting…": "Avvio…",
  "Status": "Stato",
  "Step {0} of {1}": "Passo {0} di {1}",
  "Steps": "Passaggi",
@@ -1232,5 +1231,13 @@
  "Your mail is likely to be rejected or sent to spam.": "La tua posta rischia di essere rifiutata o finire nello spam.",
  "Mail interception": "Intercettazione della posta",
  "limited": "limitato",
- "DNS": "DNS"
+ "DNS": "DNS",
+ "checks": "controlli",
+ "Live scan": "Scansione dal vivo",
+ "Web headers": "Header web",
+ "Post-quantum": "Post-quantistico",
+ "TLS cert": "Cert. TLS",
+ "Parked": "Parcheggiato",
+ "Blacklists": "Blacklist",
+ "Dangling DNS": "DNS orfano"
 }

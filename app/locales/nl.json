@@ -557,7 +557,6 @@
  "Site URL": "Site-URL",
  "Skip tour": "Rondleiding overslaan",
  "Source code": "Broncode",
- "Starting…": "Starten…",
  "Status": "Status",
  "Step {0} of {1}": "Stap {0} van {1}",
  "Steps": "Stappen",
@@ -1232,5 +1231,13 @@
  "Your mail is likely to be rejected or sent to spam.": "Uw mail wordt waarschijnlijk geweigerd of als spam gemarkeerd.",
  "Mail interception": "Onderschepping van mail",
  "limited": "beperkt",
- "DNS": "DNS"
+ "DNS": "DNS",
+ "checks": "controles",
+ "Live scan": "Live scan",
+ "Web headers": "Webheaders",
+ "Post-quantum": "Post-kwantum",
+ "TLS cert": "TLS-cert.",
+ "Parked": "Geparkeerd",
+ "Blacklists": "Blokkadelijsten",
+ "Dangling DNS": "Zwevende DNS"
 }

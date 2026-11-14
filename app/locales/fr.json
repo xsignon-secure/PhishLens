@@ -18,7 +18,6 @@
  "Free domain check": "Vérification de domaine gratuite",
  "Is your domain <span class=\"grad-text\">phish-proof?</span>": "Votre domaine est-il <span class=\"grad-text\">à l'abri du phishing ?</span>",
  "Scan my domain": "Analyser mon domaine",
- "Starting…": "Démarrage…",
  "How it works": "Comment ça marche",
  "Enter your domain": "Saisissez votre domaine",
  "One field, one click. We read only public records — nothing is installed and no email is ever sent.": "Un champ, un clic. Nous lisons uniquement des enregistrements publics : rien n'est installé et aucun e-mail n'est envoyé.",
@@ -1232,5 +1231,13 @@
  "Your mail is likely to be rejected or sent to spam.": "Vos e-mails risquent d'être rejetés ou classés en spam.",
  "Mail interception": "Interception des e-mails",
  "limited": "limité",
- "DNS": "DNS"
+ "DNS": "DNS",
+ "checks": "contrôles",
+ "Live scan": "Analyse en direct",
+ "Web headers": "En-têtes web",
+ "Post-quantum": "Post-quantique",
+ "TLS cert": "Cert. TLS",
+ "Parked": "Parqué",
+ "Blacklists": "Listes noires",
+ "Dangling DNS": "DNS orphelin"
 }

@@ -12,15 +12,16 @@ TREND_WINDOW_DAYS = 30
 
 
 def run_scan(db: Session, domain: str, tenant_id: str | None = None,
-             known_names: list[str] | None = None) -> models.Scan:
+             known_names: list[str] | None = None, on_check=None) -> models.Scan:
     domain = deps.normalize_domain(domain)
     deps.assert_public_target(domain)
     # Reputation is an informational side lookup: run it alongside the checks.
     with ThreadPoolExecutor(max_workers=2) as pool:
         rep_future = pool.submit(reputation.lookup, domain)
         host_future = pool.submit(guides.dns_host, domain)
-        results = (scoring.run_all_checks(domain, known_names) if known_names
-                   else scoring.run_all_checks(domain))
+        extra = {"on_check": on_check} if on_check else {}
+        results = (scoring.run_all_checks(domain, known_names, **extra) if known_names
+                   else scoring.run_all_checks(domain, **extra))
         try:
             rep = rep_future.result()
         except Exception:

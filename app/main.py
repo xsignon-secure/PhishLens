@@ -56,7 +56,7 @@ app = FastAPI(title=settings.APP_NAME, docs_url="/api/docs", redoc_url=None, lif
 # Endpoints that establish a session/credential, or need no session at all
 # (they are authorized by credentials/tokens in the body, not by cookies)
 _CSRF_EXEMPT = {
-    "/api/auth/login", "/api/auth/first-password", "/api/auth/mfa", "/api/platform/login", "/api/scans/public", "/api/tools/headers", "/api/tools/check",
+    "/api/auth/login", "/api/auth/first-password", "/api/auth/mfa", "/api/platform/login", "/api/scans/public", "/api/scans/public/stream", "/api/tools/headers", "/api/tools/check",
     "/api/tools/propagation", "/api/tools/url", "/api/tools/spf-tree", "/api/tools/bimi-svg",
     "/api/auth/signup",
     "/api/auth/saml/acs",  # cross-site POST from the IdP; the signed assertion authorizes it

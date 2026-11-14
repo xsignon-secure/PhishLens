@@ -40,10 +40,7 @@
     </div>
   </div>
 
-  <div id="scan-progress" class="scan-progress hidden" aria-live="polite">
-    <div class="phase"><span class="spinner"></span><span id="phase-text">{{ _("Starting…") }}</span></div>
-    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-  </div>
+  <div id="scan-radar" class="scan-radar hidden"></div>
 
   <div id="scan-result"></div>
 </section>
@@ -152,6 +149,43 @@ const returning = new URLSearchParams(location.search).get('scan');
 if (returning && /^[A-Za-z0-9_-]{8,64}$/.test(returning)) {
   fetch('/api/scans/public/' + returning).then(r => r.ok ? r.json() : null).then(d => { if (d) showReport(d); });
 }
+/* Streams the scan so the radar fills in check by check; falls back to the
+   plain request when the browser or a proxy can't stream. */
+async function streamScan(domain, radar) {
+  const body = JSON.stringify({domain});
+  const headers = {'Content-Type': 'application/json'};
+  let r;
+  try { r = await fetch('/api/scans/public/stream', {method: 'POST', headers, body}); } catch (e) { r = null; }
+  if (!r || !r.body || !r.body.getReader || r.status === 404 || r.status === 405) {
+    const p = await fetch('/api/scans/public', {method: 'POST', headers, body});
+    const d = await p.json();
+    if (!p.ok) throw new Error(d.detail || _t('Scan failed'));
+    radar.start(d.domain, d.checks.length);
+    d.checks.forEach(c => radar.check(c));
+    return d;
+  }
+  if (!r.ok) {
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    throw new Error(d.detail || _t('Scan failed'));
+  }
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const {value, done} = await reader.read();
+    if (value) buf += dec.decode(value, {stream: true});
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line) continue;
+      const ev = JSON.parse(line);
+      if (ev.type === 'start') radar.start(ev.domain, ev.total);
+      else if (ev.type === 'check') radar.check(ev);
+      else if (ev.type === 'done') return ev.report;
+      else if (ev.type === 'error') throw new Error(ev.detail || _t('Scan failed'));
+    }
+    if (done) throw new Error(_t('Scan failed'));
+  }
+}
 /* Scan button: "Scanning…" while a scan runs, then faded until a different domain is typed. */
 const scanBtn = document.getElementById('scan-btn');
 const scanInput = document.getElementById('scan-domain');
@@ -180,20 +214,18 @@ document.getElementById('scan-form').addEventListener('submit', async (e) => {
   scanning = true;
   setScanButton('scanning');
   box.innerHTML = '';
-  const prog = runScanProgress('scan-progress', 'phase-text', 'progress-fill');
+  const radar = runScanRadar('scan-radar');
+  radar.wrap = document.getElementById('scan-radar');
+  radar.wrap.scrollIntoView({behavior: 'smooth', block: 'center'});
   try {
-    const r = await fetch('/api/scans/public', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({domain})
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || _t('Scan failed'));
-    prog.done();
+    const data = await streamScan(domain, radar);
+    await radar.settle();
+    radar.hide();
     showReport(data);
     scanning = false; scannedDomain = domain;
     setScanButton(scanInput.value.trim().toLowerCase() === domain ? 'done' : 'ready');
   } catch (err) {
-    prog.done();
+    radar.hide();
     scanning = false; scannedDomain = null;
     setScanButton('ready');
     box.innerHTML = '<div class="report"><p class="error">' + escapeHtml(err.message) + '</p>' +
