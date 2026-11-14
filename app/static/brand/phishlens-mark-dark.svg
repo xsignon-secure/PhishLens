@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PhishLens"><defs>
+<linearGradient id="pllid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b7280"/><stop offset=".38" stop-color="#1f2937"/><stop offset=".62" stop-color="#0b0f19"/><stop offset="1" stop-color="#374151"/></linearGradient>
+<linearGradient id="plrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></linearGradient>
+<radialGradient id="plir" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000"/><stop offset=".32" stop-color="#000"/><stop offset=".42" stop-color="#ff2d2d"/><stop offset=".7" stop-color="#7f0000"/><stop offset=".92" stop-color="#ff2d2d"/><stop offset="1" stop-color="#7f0000"/></radialGradient>
+<radialGradient id="plgl" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff1a1a" stop-opacity=".8"/><stop offset="1" stop-color="#ff1a1a" stop-opacity="0"/></radialGradient>
+<linearGradient id="pldome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".55" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="plcor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111827"/><stop offset="1" stop-color="#111827" stop-opacity=".7"/></linearGradient>
+<clipPath id="plcl"><path d="M6 32C13 21 22 16 32 16s19 5 26 16c-7 11-16 16-26 16S13 43 6 32z"/></clipPath>
+<filter id="plf" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g fill="none" stroke="url(#plcor)" stroke-width="3.2" stroke-linecap="square"><path d="M3 13V4h9M52 4h9v9M61 51v9h-9M12 60H3v-9"/></g>
+<path d="M4 32C11.5 19.5 21 13.5 32 13.5S52.5 19.5 60 32c-7.5 12.5-17 18.5-28 18.5S11.5 44.5 4 32z" fill="url(#pllid)"/>
+<path d="M4 32C11.5 19.5 21 13.5 32 13.5S52.5 19.5 60 32c-7.5 12.5-17 18.5-28 18.5S11.5 44.5 4 32z" fill="none" stroke="url(#plrim)" stroke-width=".9"/>
+<path d="M6 32C13 21 22 16 32 16s19 5 26 16c-7 11-16 16-26 16S13 43 6 32z" fill="#0b0f19"/>
+<g clip-path="url(#plcl)">
+<circle cx="32" cy="32" r="22" fill="url(#plgl)"/>
+<circle cx="32" cy="32" r="15" fill="url(#plir)" filter="url(#plf)"/>
+<g stroke="#ff2d2d" stroke-opacity=".85" stroke-width=".8"><line x1="44.20" y1="32.00" x2="46.60" y2="32.00"/><line x1="44.10" y1="33.59" x2="45.48" y2="33.78"/><line x1="43.78" y1="35.16" x2="45.14" y2="35.52"/><line x1="43.27" y1="36.67" x2="44.56" y2="37.20"/><line x1="42.57" y1="38.10" x2="44.64" y2="39.30"/><line x1="41.68" y1="39.43" x2="42.79" y2="40.28"/><line x1="40.63" y1="40.63" x2="41.62" y2="41.62"/><line x1="39.43" y1="41.68" x2="40.28" y2="42.79"/><line x1="38.10" y1="42.57" x2="39.30" y2="44.64"/><line x1="36.67" y1="43.27" x2="37.20" y2="44.56"/><line x1="35.16" y1="43.78" x2="35.52" y2="45.14"/><line x1="33.59" y1="44.10" x2="33.78" y2="45.48"/><line x1="32.00" y1="44.20" x2="32.00" y2="46.60"/><line x1="30.41" y1="44.10" x2="30.22" y2="45.48"/><line x1="28.84" y1="43.78" x2="28.48" y2="45.14"/><line x1="27.33" y1="43.27" x2="26.80" y2="44.56"/><line x1="25.90" y1="42.57" x2="24.70" y2="44.64"/><line x1="24.57" y1="41.68" x2="23.72" y2="42.79"/><line x1="23.37" y1="40.63" x2="22.38" y2="41.62"/><line x1="22.32" y1="39.43" x2="21.21" y2="40.28"/><line x1="21.43" y1="38.10" x2="19.36" y2="39.30"/><line x1="20.73" y1="36.67" x2="19.44" y2="37.20"/><line x1="20.22" y1="35.16" x2="18.86" y2="35.52"/><line x1="19.90" y1="33.59" x2="18.52" y2="33.78"/><line x1="19.80" y1="32.00" x2="17.40" y2="32.00"/><line x1="19.90" y1="30.41" x2="18.52" y2="30.22"/><line x1="20.22" y1="28.84" x2="18.86" y2="28.48"/><line x1="20.73" y1="27.33" x2="19.44" y2="26.80"/><line x1="21.43" y1="25.90" x2="19.36" y2="24.70"/><line x1="22.32" y1="24.57" x2="21.21" y2="23.72"/><line x1="23.37" y1="23.37" x2="22.38" y2="22.38"/><line x1="24.57" y1="22.32" x2="23.72" y2="21.21"/><line x1="25.90" y1="21.43" x2="24.70" y2="19.36"/><line x1="27.33" y1="20.73" x2="26.80" y2="19.44"/><line x1="28.84" y1="20.22" x2="28.48" y2="18.86"/><line x1="30.41" y1="19.90" x2="30.22" y2="18.52"/><line x1="32.00" y1="19.80" x2="32.00" y2="17.40"/><line x1="33.59" y1="19.90" x2="33.78" y2="18.52"/><line x1="35.16" y1="20.22" x2="35.52" y2="18.86"/><line x1="36.67" y1="20.73" x2="37.20" y2="19.44"/><line x1="38.10" y1="21.43" x2="39.30" y2="19.36"/><line x1="39.43" y1="22.32" x2="40.28" y2="21.21"/><line x1="40.63" y1="23.37" x2="41.62" y2="22.38"/><line x1="41.68" y1="24.57" x2="42.79" y2="23.72"/><line x1="42.57" y1="25.90" x2="44.64" y2="24.70"/><line x1="43.27" y1="27.33" x2="44.56" y2="26.80"/><line x1="43.78" y1="28.84" x2="45.14" y2="28.48"/><line x1="44.10" y1="30.41" x2="45.48" y2="30.22"/></g>
+<circle cx="32" cy="32" r="8.3" fill="none" stroke="#ff2d2d" stroke-width="1.6" filter="url(#plf)"/>
+<circle cx="32" cy="32" r="5" fill="#000"/>
+<path d="M15 31.4h34" stroke="#fff" stroke-opacity=".95" stroke-width=".9" filter="url(#plf)"/>
+<ellipse cx="32" cy="22.5" rx="24" ry="7.5" fill="url(#pldome)"/>
+<ellipse cx="25.5" cy="25.5" rx="3.2" ry="1.6" fill="#fff" fill-opacity=".85" transform="rotate(-25 25.5 25.5)"/>
+<circle cx="29.6" cy="23.7" r=".9" fill="#fff" fill-opacity=".9"/>
+</g>
+<path d="M6 32C13 21 22 16 32 16s19 5 26 16c-7 11-16 16-26 16S13 43 6 32z" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".8"/>
+<path d="M11 22.5C16.5 17.5 23.5 15 32 15" stroke="#fff" stroke-opacity=".55" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+</svg>

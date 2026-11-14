@@ -6,6 +6,7 @@ reportlab's Paragraph markup.
 """
 import io
 from datetime import datetime
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
@@ -134,6 +135,12 @@ def _make_header_footer(brand: dict | None):
         try:
             from reportlab.lib.utils import ImageReader
             logo = ImageReader(io.BytesIO(brand["logo"]))
+        except Exception:
+            logo = None
+    elif not brand.get("name"):
+        try:
+            from reportlab.lib.utils import ImageReader
+            logo = ImageReader(str(Path(__file__).resolve().parent / "static" / "brand" / "phishlens-mark-512.png"))
         except Exception:
             logo = None
 
