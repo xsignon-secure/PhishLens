@@ -783,11 +783,12 @@ function renderReport(scan, isPublic, opts = {}) {
     : goodHtml;
 
   const rank = {fail: 0, warn: 1, pass: 2};
-  const checkRow = (c, i) => `
-    <details class="check ${c.status}" id="chk-${escapeHtml(c.key)}" style="animation-delay:${Math.min(0.15 + i * 0.02, 0.6).toFixed(2)}s">
-      <summary>${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>
+  const checkRow = (c, i, chip) => `
+    <details class="check ${c.status}${chip ? ' fc-chip' : ''}" id="chk-${escapeHtml(c.key)}" style="--j:${i}">
+      <summary>${chip ? `<span class="fc-tick" aria-hidden="true">✓</span><strong>${escapeHtml(c.title)}</strong><span class="pts">${c.score}/${c.max_score}</span>` : `${statusBadge(c.status)} <strong>${escapeHtml(c.title)}</strong>
         ${c.status !== 'pass' ? `<span class="sev ${severityFor(c)}">${({high: _t('High'), medium: _t('Medium'), low: _t('Low')})[severityFor(c)]}</span>` : ''}
         <span class="pts">${c.score}/${c.max_score}</span>
+        ${c.status !== 'pass' && CHECK_IMPACT[c.key] ? `<span class="fc-why">${escapeHtml(_t(CHECK_IMPACT[c.key]))}</span>` : ''}`}
         <span class="chev">▾</span></summary>
       ${c.details ? `<p class="details">${escapeHtml(c.details)}</p>` : ''}
       ${c.key === 'dnssec' ? dnssecParts(checks) : ''}
@@ -799,13 +800,7 @@ function renderReport(scan, isPublic, opts = {}) {
         : (c.fixes || []).map(f => `<p class="fix"><code>${escapeHtml(f)}</code>
         <button class="copy-btn" data-copy="${escapeHtml(f)}">${_t('Copy')}</button>${applyButton(f, opts)}</p>`).join('')}
     </details>`;
-  let n = 0;
-  const groupsHtml = CATEGORIES.map(cat => {
-    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key)
-      .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
-    if (!cs.length) return '';
-    return `<p class="findings-group">${_t(cat.label)} · ${cs.length}</p>` + cs.map(c => checkRow(c, n++)).join('');
-  }).join('');
+  const groupsHtml = findingsCarousel(checks, rank, checkRow, locked);
 
   const scanned = r.scanned_at ? new Date(r.scanned_at) : null;
   const scannedText = scanned && !isNaN(scanned)
@@ -873,12 +868,141 @@ function renderReport(scan, isPublic, opts = {}) {
     ${planHtml}
     ${recHtml}
     <section class="rpt-sec">
-      <div class="sec-head"><h3>${_t('Detailed findings')}</h3><p>${_t('Every check, grouped by area. Open a row for the details.')}</p></div>
+      <div class="sec-head"><h3>${_t('Detailed findings')}</h3><p>${_t('One area at a time. Point at an area or press Next; open a row for the details.')}</p></div>
       ${hasGuides && !plan.some(p => p.guide) ? providerPicker(pk, detected) : ''}
       ${groupsHtml}
     </section>
     <footer class="rpt-foot">${_t('Read-only scan of public DNS, mail and web records. Results reflect the moment of the scan.')}</footer>
   </div>`;
+}
+
+/* Detailed findings: one area card at a time (tabs switch on hover or click,
+   Next/Back, arrow keys, swipe). Issues are full rows; passes are chips that
+   open in place. Every check keeps its #chk-<key> anchor. */
+const FC_SHORT = {auth: N_('Email'), transport: N_('Transport'), dns: N_('DNS'), reputation: N_('Reputation'), web: N_('Website')};
+function findingsCarousel(checks, rank, checkRow, locked) {
+  const areas = CATEGORIES.map(cat => {
+    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key)
+      .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
+    if (!cs.length) return null;
+    const earned = cs.reduce((a, c) => a + (c.score || 0), 0);
+    const max = cs.reduce((a, c) => a + (c.max_score || 0), 0);
+    const pct = max ? Math.round(100 * earned / max) : null;
+    const tone = pct === null ? 'na' : pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad';
+    return {cat, cs, pct, tone, issues: cs.filter(c => c.status !== 'pass'), ok: cs.filter(c => c.status === 'pass')};
+  }).filter(Boolean);
+  if (!areas.length) return '';
+  const C = (2 * Math.PI * 70).toFixed(1);
+  const tabs = areas.map((a, i) => `<button type="button" class="fc-tab tone-${a.tone}" role="tab" data-i="${i}" aria-selected="${i === 0}" style="--s:${a.pct || 0}">
+      <span class="fc-mr"><span>${a.pct === null ? '—' : a.pct}</span></span>
+      <span class="fc-tl"><b>${_t(a.cat.label)}</b><em>${_t(FC_SHORT[a.cat.key])}</em><small>${a.issues.length ? _t('{0} to review', {0: a.issues.length}) : _t('All passed')}</small></span></button>`).join('');
+  let j = 0;
+  const cards = areas.map((a, i) => {
+    const fails = a.cs.filter(c => c.status === 'fail').length, warns = a.cs.filter(c => c.status === 'warn').length;
+    return `<article class="fc-card tone-${a.tone}${i === 0 ? ' on' : ''}" role="tabpanel" data-i="${i}"${i ? ' inert aria-hidden="true"' : ''}>
+      <div class="fc-left">
+        <div class="fc-ring"><svg viewBox="0 0 170 170" aria-hidden="true"><circle class="bg" cx="85" cy="85" r="70"/><circle class="fg" cx="85" cy="85" r="70" style="stroke-dasharray:${C};stroke-dashoffset:${C};--off:${(C * (1 - (a.pct || 0) / 100)).toFixed(1)}" data-off="${(C * (1 - (a.pct || 0) / 100)).toFixed(1)}"/></svg>
+          <div class="fc-num"><b data-to="${a.pct ?? ''}">${a.pct === null ? '—' : a.pct}</b><small>/ 100</small></div></div>
+        <h4>${_t(a.cat.label)}</h4><p>${_t(a.cat.blurb)}</p>
+        <div class="fc-cnt">${fails ? `<span class="dotc fail">${_t('{0} failing', {0: fails})}</span>` : ''}${warns ? `<span class="dotc warn">${_t('{0} warnings', {0: warns})}</span>` : ''}${a.ok.length ? `<span class="dotc pass">${_t('{0} passed', {0: a.ok.length})}</span>` : ''}</div>
+      </div>
+      <div class="fc-right">
+        ${a.issues.length ? `<div class="fc-lbl">${_t('Needs attention')}</div><div class="fc-issues">${a.issues.map(c => checkRow(c, j++)).join('')}</div>`
+          : `<div class="fc-allgood">${_t('Everything in this area passed.')}</div>`}
+        ${a.ok.length ? `<div class="fc-lbl">${_t('Passed')}</div><div class="fc-ok">${a.ok.map(c => checkRow(c, j++, true)).join('')}</div>` : ''}
+        ${locked && a.issues.length ? `<p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>` : ''}
+      </div>
+    </article>`;
+  }).join('');
+  return `<div class="fc" data-n="${areas.length}">
+    <div class="fc-bar"><div class="fc-tabs" role="tablist">${tabs}</div>
+      <div class="fc-nav"><button type="button" class="fc-prev" aria-label="${_t('Previous area')}">‹</button><span class="fc-pos">1 / ${areas.length}</span><button type="button" class="fc-next" aria-label="${_t('Next area')}">›</button></div></div>
+    <div class="fc-stage">${cards}</div>
+    <div class="fc-dots">${areas.map((a, i) => `<i data-i="${i}"${i === 0 ? ' class="on"' : ''}></i>`).join('')}</div>
+  </div>`;
+}
+
+function bindFindingsCarousel(container) {
+  container.querySelectorAll('.fc').forEach(fc => {
+    if (fc.dataset.bound) return;
+    fc.dataset.bound = '1';
+    const cards = [...fc.querySelectorAll('.fc-card')], tabs = [...fc.querySelectorAll('.fc-tab')], dots = [...fc.querySelectorAll('.fc-dots i')];
+    const N = cards.length;
+    let cur = -1;
+    const motion = document.documentElement.classList.contains('motion');
+    function fill(card) {
+      const fg = card.querySelector('.fg'), num = card.querySelector('.fc-num b');
+      fg.style.strokeDashoffset = fg.dataset.off;
+      const to = parseInt(num.dataset.to, 10);
+      if (motion && !isNaN(to)) countUp(num, to, 900);
+    }
+    function show(i, dir) {
+      i = (i + N) % N;
+      if (i === cur) return;
+      const back = dir < 0;
+      if (cur >= 0) {
+        const o = cards[cur];
+        o.classList.remove('on', 'from-left'); o.classList.add('out'); o.classList.toggle('to-right', back);
+        o.inert = true; o.setAttribute('aria-hidden', 'true');
+        const fg = o.querySelector('.fg'); fg.style.strokeDashoffset = fg.style.strokeDasharray;
+        setTimeout(() => o.classList.remove('out', 'to-right'), 560);
+      }
+      const n = cards[i];
+      n.classList.toggle('from-left', back);
+      void n.offsetWidth;
+      n.classList.add('on'); n.inert = false; n.removeAttribute('aria-hidden');
+      fill(n);
+      tabs.forEach((t, k) => { t.classList.toggle('on', k === i); t.setAttribute('aria-selected', k === i); });
+      dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      fc.querySelector('.fc-pos').textContent = (i + 1) + ' / ' + N;
+      cur = i;
+    }
+    fc.show = show;
+    fc.indexOf = el => cards.indexOf(el.closest('.fc-card'));
+    tabs.forEach((t, k) => {
+      // Hover switches areas, but not while the page scrolls under a still mouse after a jump.
+      t.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && Date.now() > (fc.hoverLock || 0)) show(k, k > cur ? 1 : -1); });
+      t.addEventListener('click', () => show(k, k > cur ? 1 : -1));
+      t.addEventListener('focus', () => show(k, k > cur ? 1 : -1));
+    });
+    dots.forEach((d, k) => d.addEventListener('click', () => show(k, k > cur ? 1 : -1)));
+    fc.querySelector('.fc-next').addEventListener('click', () => show(cur + 1, 1));
+    fc.querySelector('.fc-prev').addEventListener('click', () => show(cur - 1, -1));
+    fc.addEventListener('keydown', e => {
+      if (e.target.closest('summary, input, textarea, select')) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); show(cur + 1, 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); show(cur - 1, -1); }
+    });
+    let sx = null, sy = null;
+    const stage = fc.querySelector('.fc-stage');
+    stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive: true});
+    stage.addEventListener('touchend', e => {
+      if (sx === null) return;
+      const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) show(cur + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      sx = null;
+    });
+    cards.forEach(c => c.classList.remove('on'));
+    cards[0].classList.add('on');
+    cur = 0;
+    // Fill the first ring when the section scrolls into view.
+    const first = () => fill(cards[cur]);
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { first(); io.disconnect(); } }, {threshold: .25});
+      io.observe(fc);
+    } else first();
+  });
+}
+
+/* Jump to one check (protocol pills, links): switch its area card first. */
+function openCheck(container, id) {
+  const el = container.querySelector('#' + CSS.escape(id));
+  if (!el) return false;
+  const fc = el.closest('.fc');
+  if (fc && fc.show) { fc.hoverLock = Date.now() + 1200; fc.show(fc.indexOf(el), 1); }
+  if (el.tagName === 'DETAILS') el.open = true;
+  setTimeout(() => el.scrollIntoView({behavior: 'smooth', block: 'center'}), fc ? 120 : 0);
+  return true;
 }
 
 /* Wire up copy buttons + animate ring + count-up after injecting report HTML. */
@@ -905,7 +1029,9 @@ function bindReportInteractions(container) {
           .finally(() => { mail.disabled = false; });
         return;
       }
-      const see = e.target.closest('.fix-see a, .fix-locked a');
+      const jump = e.target.closest('a[href^="#chk-"]');
+      if (jump && openCheck(container, jump.getAttribute('href').slice(1))) { e.preventDefault(); return; }
+      const see = e.target.closest('.fix-see a, .fix-locked a, .fc-lock a');
       if (see) {
         e.preventDefault();
         const el = container.querySelector(see.getAttribute('href'));
@@ -914,6 +1040,7 @@ function bindReportInteractions(container) {
     });
   }
   bindFixCards(container);
+  bindFindingsCarousel(container);
   // Threat dashboard: each block plays its entrance when it scrolls into view.
   const anims = container.querySelectorAll('.thr-anim:not(.go)');
   if ('IntersectionObserver' in window && anims.length) {
@@ -1133,7 +1260,7 @@ document.addEventListener('click', async (e) => {
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const root = document.documentElement;
   root.classList.add('motion');
-  const REVEAL = '.panel, .card, .check-tile, .kpi, .help-section, .rpt-sec, .cat-card, .section-head, .cta-band, .stat, .proto, .tool, .findings-group, details.check';
+  const REVEAL = '.panel, .card, .check-tile, .kpi, .help-section, .rpt-sec, .cat-card, .section-head, .cta-band, .stat, .proto, .tool, .findings-group, details.check:not(.fc details.check)';
   const seen = new WeakSet();
   const io = new IntersectionObserver(entries => entries.forEach(e => {
     if (!e.isIntersecting) return;
