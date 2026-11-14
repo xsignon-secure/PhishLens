@@ -45,6 +45,20 @@
   <div id="scan-result"></div>
 </section>
 
+<section class="section demo-sec" aria-labelledby="demo-h">
+  <div class="section-head">
+    <h2 id="demo-h">{{ _("See PhishLens in action") }}</h2>
+    <p>{{ _("A 75-second tour: a live scan, the threat report and the dashboard, with narration.") }}</p>
+  </div>
+  <div class="demo-frame">
+    <video controls preload="none" playsinline poster="/static/demo/phishlens-demo-poster.jpg?v={{ asset_v }}"
+      aria-label="{{ _("PhishLens product demo with narration") }}">
+      <source src="/static/demo/phishlens-demo.mp4?v={{ asset_v }}" type="video/mp4">
+      <track kind="captions" src="/static/demo/phishlens-demo.vtt?v={{ asset_v }}" srclang="en" label="English">
+    </video>
+  </div>
+</section>
+
 <section class="section" aria-labelledby="checks-h">
   <div class="section-head">
     <h2 id="checks-h">{{ _("Everything that decides whether your email can be faked") }}</h2>

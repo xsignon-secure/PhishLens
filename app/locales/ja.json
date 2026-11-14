@@ -1254,5 +1254,8 @@
  "An attacker between mail servers could strip encryption and read or change mail sent to you.": "メールサーバー間の攻撃者が暗号化を外し、あなた宛てのメールを読んだり改ざんしたりできます。",
  "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "あなたのサーバーからのメールは信頼性が低く見え、拒否されたり迷惑メールに入ったりしやすくなります。",
  "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "ネットワークの乗っ取り（BGP）により、メールサーバーへの通信が誤った経路に送られる可能性があります。",
- "Some receivers over IPv6 may delay or reject your mail.": "IPv6 の一部の受信側で、メールが遅延または拒否される可能性があります。"
+ "Some receivers over IPv6 may delay or reject your mail.": "IPv6 の一部の受信側で、メールが遅延または拒否される可能性があります。",
+ "See PhishLens in action": "PhishLens の動作を見る",
+ "PhishLens product demo with narration": "ナレーション付き PhishLens 製品デモ",
+ "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "75秒のツアー：ライブスキャン、脅威レポート、ダッシュボードをナレーション付きで紹介します。"
 }

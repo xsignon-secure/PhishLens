@@ -2007,3 +2007,8 @@ html.thr-site .side-link.active, html.thr-site .side-link.active:hover {
   background: linear-gradient(135deg, #0284c7, #4f46e5); color: #ffffff;
   box-shadow: 0 0 0 1px rgba(125, 211, 252, .25) inset, 0 10px 24px -12px rgba(56, 189, 248, .8);
 }
+/* Home page demo video */
+.demo-frame { max-width: 980px; margin: 0 auto; border-radius: 18px; overflow: hidden; position: relative;
+  border: 1px solid rgba(125, 211, 252, .25); background: #070b18;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .03) inset, 0 30px 80px -30px rgba(56, 189, 248, .55), 0 20px 60px -30px rgba(139, 92, 246, .6); }
+.demo-frame video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #070b18; }

@@ -1,0 +1,41 @@
+WEBVTT
+
+1
+00:00:00.744 --> 00:00:07.874
+This is PhishLens, a free and open source tool that checks whether criminals can send email pretending to be your company.
+
+2
+00:00:08.575 --> 00:00:16.085
+Type your domain and press Scan. PhishLens reads only public records, so there is nothing to install and no sign up.
+
+3
+00:00:16.786 --> 00:00:25.746
+The live radar shows each check as it runs. SPF, DKIM, DMARC, MTA-STS, DNSSEC, blocklists, certificates and more.
+
+4
+00:00:26.958 --> 00:00:33.378
+In seconds, you get a threat exposure report. One score, a grade, and the attack paths that are still open.
+
+5
+00:00:34.078 --> 00:00:39.898
+Every area is scored on its own. Hover over a tab, or press Next, to move through them one at a time.
+
+6
+00:00:40.599 --> 00:00:46.679
+Top risks puts the most serious problems first, and explains in plain English what an attacker could do.
+
+7
+00:00:47.380 --> 00:00:52.240
+You also see whether you meet the sender rules from Gmail, Yahoo, and Microsoft.
+
+8
+00:00:53.430 --> 00:01:01.410
+Sign in to monitor your domains. The dashboard tracks your scores, alerts you when a record changes, and reads your DMARC reports.
+
+9
+00:01:02.111 --> 00:01:08.791
+There are free tools too. A phishing link checker, record checkers and generators, and an email header analyzer.
+
+10
+00:01:09.492 --> 00:01:13.672
+PhishLens. Know where your domain stands. Scan your domain free, today.
