@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     # (it fetches other people's websites). VISUAL_SCREENSHOTS also compares
     # headless-browser screenshots; needs `pip install playwright` and
     # `playwright install chromium`, and ~300 MB more RAM.
+    # Google Postmaster Tools (sender reputation at Gmail): an OAuth client
+    # (Google Cloud console, "Web application", redirect URI
+    # APP_URL/reputation/google/callback) with the Postmaster Tools API on.
+    GOOGLE_POSTMASTER_CLIENT_ID: str = ""
+    GOOGLE_POSTMASTER_CLIENT_SECRET: str = ""
     VISUAL_LOOKALIKE_CHECK: bool = False
     VISUAL_SCREENSHOTS: bool = False
     # Optional GeoIP country database (.mmdb) for DMARC report senders; needs

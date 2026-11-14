@@ -50,6 +50,12 @@ class Tenant(Base):
     # Report-phish button (Outlook add-in / Gmail add-on): sha256 of its token.
     report_token_hash = Column(String(64), nullable=True, unique=True)
     report_token_created_at = Column(DateTime, nullable=True)
+    # Sender reputation (app/sender_reputation.py): Google Postmaster refresh
+    # token and Microsoft SNDS key, both encrypted; latest data in sender_rep.
+    postmaster_token = Column(Text, nullable=True)
+    postmaster_email = Column(String(254), nullable=True)
+    snds_key = Column(Text, nullable=True)
+    sender_rep = Column(JSON, nullable=True)
     # PGP public key: failure (RUF) report details are stored encrypted to it.
     ruf_pgp_key = Column(Text, nullable=True)
     ruf_pgp_fingerprint = Column(String(64), nullable=True)
