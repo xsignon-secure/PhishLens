@@ -377,6 +377,31 @@
   </div>
 
   <div data-section="security" class="hidden">
+    <div class="panel" id="posture-panel">
+      <h2><span class="dot"></span>{{ _("Microsoft 365 and Google Workspace check") }}</h2>
+      <p class="muted small">{{ _("Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.") }}</p>
+      <div class="admin-only hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px">
+        <button class="btn tiny" type="button" id="pos-m365">{{ _("Connect Microsoft 365") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="pos-m365-off">{{ _("Disconnect Microsoft 365") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="pos-gws-off">{{ _("Disconnect Google Workspace") }}</button>
+        <button class="btn tiny ghost" type="button" id="pos-run">{{ _("Check now") }}</button>
+      </div>
+      <details class="admin-only hidden" id="pos-gws-box">
+        <summary>{{ _("Connect Google Workspace") }}</summary>
+        <ol class="muted small">
+          <li>{{ _("Google Admin console → Security → Access and data control → API controls → Manage domain-wide delegation → Add new.") }}</li>
+          <li>{{ _("Client ID:") }} <code id="pos-gws-client"></code></li>
+          <li>{{ _("Scopes:") }} <code id="pos-gws-scopes" style="word-break:break-all"></code></li>
+        </ol>
+        <form id="pos-gws-form" class="scanbox small">
+          <input id="pos-gws-domain" placeholder="example.com" aria-label="{{ _("Workspace domain") }}" required>
+          <input id="pos-gws-admin" type="email" placeholder="{{ _("Super admin email") }}" aria-label="{{ _("Super admin email") }}" required>
+          <button class="btn tiny" type="submit">{{ _("Connect") }}</button>
+        </form>
+      </details>
+      <p id="pos-status" class="muted small"></p>
+      <div id="pos-results"></div>
+    </div>
     <div class="panel" id="security-panel">
       <h2><span class="dot"></span>{{ _("Security") }}</h2>
       <p id="me-line" class="muted small"></p>
@@ -999,6 +1024,76 @@ document.getElementById('rep-refresh').onclick = async () => {
   if (q && words[q]) setTimeout(() => toast(_t(words[q])), 400);
 }
 
+/* ---------------- Microsoft 365 / Google Workspace check ---------------- */
+let posData = null;
+function posBlock(title, part) {
+  if (!part.connected) return '';
+  if (part.error && !part.result) return `<h3 class="small-h">${escapeHtml(title)}</h3><p class="error small">${escapeHtml(part.error)}</p>`;
+  const r = part.result || {checks: [], domains: []};
+  const monitored = new Set(dashData.monitors.map(m => m.domain));
+  const unmonitored = (r.domains || []).filter(d => !monitored.has(d) && !d.endsWith('.onmicrosoft.com'));
+  return `<h3 class="small-h">${escapeHtml(title)}${r.organization ? ' · ' + escapeHtml(r.organization) : ''}</h3>`
+    + (part.error ? `<p class="error small">${escapeHtml(part.error)}</p>` : '')
+    + r.checks.map(c => `<div class="dm-row"><div class="top"><strong>${escapeHtml(c.name)}</strong>${statusBadge(c.status)}</div>
+        <div class="meta">${escapeHtml(c.details)}</div>
+        ${c.issues.length ? `<ul class="visual-reasons">${c.issues.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>` : ''}
+        ${c.fixes.length ? `<p class="small">→ ${escapeHtml(c.fixes.join(' '))}</p>` : ''}</div>`).join('')
+    + (unmonitored.length ? `<p class="muted small">${_t('Domains in this account that PhishLens doesn\'t monitor yet:')} ${unmonitored.map(d =>
+        `<button class="btn tiny ghost" data-posmon="${escapeHtml(d)}">+ ${escapeHtml(d)}</button>`).join(' ')}</p>` : '');
+}
+function renderPosture(d) {
+  posData = d;
+  const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
+  document.getElementById('pos-m365').classList.toggle('hidden', d.m365.connected || !d.m365.configured);
+  document.getElementById('pos-m365-off').classList.toggle('hidden', !d.m365.connected);
+  document.getElementById('pos-gws-off').classList.toggle('hidden', !d.gws.connected);
+  document.getElementById('pos-gws-box').classList.toggle('hidden', !admin || d.gws.connected || !d.gws.configured);
+  document.getElementById('pos-gws-client').textContent = d.gws.client_id || '';
+  document.getElementById('pos-gws-scopes').textContent = (d.gws.scopes || []).join(',');
+  const none = !d.m365.connected && !d.gws.connected;
+  document.getElementById('pos-status').textContent = none
+    ? (d.m365.configured || d.gws.configured ? _t('Not connected yet.') : _t('Not set up on this server (see docs/CLOUD-POSTURE.md).'))
+    : (d.checked_at ? _t('Checked {0}.', {0: new Date(d.checked_at).toLocaleString()}) : '');
+  document.getElementById('pos-results').innerHTML = posBlock('Microsoft 365', d.m365) + posBlock('Google Workspace', d.gws);
+}
+async function loadPosture() { renderPosture(await api('/api/posture')); }
+document.getElementById('pos-m365').onclick = async () => {
+  try { const r = await api('/api/posture/m365/connect', {method: 'POST'}); location.href = r.url; }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+for (const kind of ['m365', 'gws']) {
+  document.getElementById(`pos-${kind}-off`).onclick = async () => {
+    if (!confirm(_t('Disconnect? The results are removed here. Also remove PhishLens in your admin console.'))) return;
+    try { await api('/api/posture/' + kind, {method: 'DELETE'}); loadPosture(); }
+    catch (err) { if (err.message !== 'auth') toast(err.message); }
+  };
+}
+document.getElementById('pos-run').onclick = async (e) => {
+  e.target.disabled = true;
+  try { renderPosture(await api('/api/posture/run', {method: 'POST'})); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+  e.target.disabled = false;
+};
+document.getElementById('pos-gws-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try { renderPosture(await api('/api/posture/gws', {method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({domain: document.getElementById('pos-gws-domain').value.trim(), admin_email: document.getElementById('pos-gws-admin').value.trim()})})); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('pos-results').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-posmon]');
+  if (!b) return;
+  try { await api('/api/monitors', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({domain: b.dataset.posmon})});
+        b.remove(); toast(_t('✓ Now monitoring {0}', {0: b.dataset.posmon})); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+});
+{
+  const q = new URLSearchParams(location.search).get('posture');
+  const words = {connected: N_('✓ Microsoft 365 connected'), expired: N_('The consent took too long: start again'),
+    cancelled: N_('Microsoft 365 consent was not given'), failed: N_('Microsoft didn\'t return a valid directory id'), signin: N_('Sign in as an owner or admin first')};
+  if (q && words[q]) setTimeout(() => toast(_t(words[q])), 400);
+}
+
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -1109,6 +1204,7 @@ async function loadEnterprise() {
   if (isOwner) loadPgp().catch(() => {});
   if (isOwner) loadReportButton().catch(() => {});
   loadReputation().catch(() => {});
+  loadPosture().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});

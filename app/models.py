@@ -56,6 +56,9 @@ class Tenant(Base):
     postmaster_email = Column(String(254), nullable=True)
     snds_key = Column(Text, nullable=True)
     sender_rep = Column(JSON, nullable=True)
+    # Microsoft 365 / Google Workspace security check (app/cloud_posture.py):
+    # {m365: {directory, result}, gws: {domain, admin, result}, checked_at}.
+    posture = Column(JSON, nullable=True)
     # PGP public key: failure (RUF) report details are stored encrypted to it.
     ruf_pgp_key = Column(Text, nullable=True)
     ruf_pgp_fingerprint = Column(String(64), nullable=True)

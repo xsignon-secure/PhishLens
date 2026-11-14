@@ -101,6 +101,13 @@ def _autopilot() -> None:
             log.info("sender reputation %s", stats)
     except Exception:
         log.exception("sender reputation refresh failed")
+    try:
+        from . import cloud_posture
+        stats = cloud_posture.run_all(db)
+        if stats["checked"]:
+            log.info("cloud posture %s", stats)
+    except Exception:
+        log.exception("cloud posture checks failed")
     finally:
         db.close()
 
