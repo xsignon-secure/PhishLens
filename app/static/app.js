@@ -516,6 +516,10 @@ const CHECK_IMPACT = {
   parked: N_('Attackers can send mail that appears to come from this unused domain.'),
   dangling: N_('Someone else could take over one of your subdomains, mail hosts or nameservers and use it for phishing.'),
   pqc: N_('Encrypted traffic recorded today could be decrypted in future by quantum computers.'),
+  dane: N_('An attacker between mail servers could strip encryption and read or change mail sent to you.'),
+  ptr: N_('Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.'),
+  ipv6: N_('Some receivers over IPv6 may delay or reject your mail.'),
+  rpki: N_('Traffic to your mail servers could be misrouted by a network hijack (BGP).'),
 };
 const LOW_SEVERITY = ['bimi', 'caa', 'ipv6', 'sec-headers', 'rpki', 'ptr', 'dane', 'tls-rpt', 'pqc'];
 
@@ -895,8 +899,8 @@ function risksDeck(checks, locked) {
     left: `<div class="fc-medal"><span>${label[sev]}</span></div><h4>${_t('Risk {0} of {1}', {0: i + 1, 1: n})}</h4><p>${_t('Severity')}: ${label[sev]}</p>`,
     right: `<h3 class="fc-title">${escapeHtml(c.title)}</h3>
       ${(c.issues || [])[0] ? `<p class="fc-issue">${escapeHtml(c.issues[0])}</p>` : ''}
-      <div class="fc-lbl">${_t('What an attacker could do')}</div>
-      <p class="fc-text">${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : escapeHtml(c.details || '')}</p>
+      ${CHECK_IMPACT[c.key] ? `<div class="fc-lbl">${_t('What an attacker could do')}</div>` : ''}
+      ${CHECK_IMPACT[c.key] ? `<p class="fc-text">${escapeHtml(_t(CHECK_IMPACT[c.key]))}</p>` : ''}
       ${locked ? `<p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>`
         : (c.fixes || [])[0] ? `<div class="fc-lbl">${_t('Fix')}</div><p class="fc-text"><code>${escapeHtml(c.fixes[0])}</code></p>` : ''}
       <p class="fc-more"><a href="#chk-${escapeHtml(c.key)}">${_t('See the full finding')} →</a></p>`,

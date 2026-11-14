@@ -1250,5 +1250,9 @@
  "Requirements": "Vereisten",
  "Score gain when fixed": "Scorewinst na herstel",
  "of {0}": "van {0}",
- "Risk {0} of {1}": "Risico {0} van {1}"
+ "Risk {0} of {1}": "Risico {0} van {1}",
+ "An attacker between mail servers could strip encryption and read or change mail sent to you.": "Een aanvaller tussen mailservers kan de versleuteling weghalen en mail aan jou lezen of wijzigen.",
+ "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "Mail van je servers lijkt minder betrouwbaar en wordt eerder geweigerd of als spam gezien.",
+ "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "Verkeer naar je mailservers kan via een netwerkkaping (BGP) worden omgeleid.",
+ "Some receivers over IPv6 may delay or reject your mail.": "Sommige ontvangers via IPv6 kunnen je mail vertragen of weigeren."
 }

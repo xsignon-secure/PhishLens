@@ -1250,5 +1250,9 @@
  "Requirements": "आवश्यकताएँ",
  "Score gain when fixed": "ठीक होने पर स्कोर में बढ़त",
  "of {0}": "/ {0}",
- "Risk {0} of {1}": "जोखिम {0} / {1}"
+ "Risk {0} of {1}": "जोखिम {0} / {1}",
+ "An attacker between mail servers could strip encryption and read or change mail sent to you.": "मेल सर्वरों के बीच बैठा हमलावर एन्क्रिप्शन हटाकर आपको भेजे गए मेल पढ़ या बदल सकता है।",
+ "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "आपके सर्वरों से आया मेल कम भरोसेमंद लगता है, इसलिए उसके अस्वीकार होने या स्पैम में जाने की संभावना ज़्यादा है।",
+ "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "नेटवर्क हाइजैक (BGP) से आपके मेल सर्वरों का ट्रैफ़िक गलत जगह भेजा जा सकता है।",
+ "Some receivers over IPv6 may delay or reject your mail.": "IPv6 पर कुछ प्राप्तकर्ता आपके मेल में देरी कर सकते हैं या उसे अस्वीकार कर सकते हैं।"
 }

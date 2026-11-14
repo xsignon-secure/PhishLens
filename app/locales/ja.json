@@ -1250,5 +1250,9 @@
  "Requirements": "要件",
  "Score gain when fixed": "修正後のスコア上昇",
  "of {0}": "/ {0}",
- "Risk {0} of {1}": "リスク {0} / {1}"
+ "Risk {0} of {1}": "リスク {0} / {1}",
+ "An attacker between mail servers could strip encryption and read or change mail sent to you.": "メールサーバー間の攻撃者が暗号化を外し、あなた宛てのメールを読んだり改ざんしたりできます。",
+ "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "あなたのサーバーからのメールは信頼性が低く見え、拒否されたり迷惑メールに入ったりしやすくなります。",
+ "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "ネットワークの乗っ取り（BGP）により、メールサーバーへの通信が誤った経路に送られる可能性があります。",
+ "Some receivers over IPv6 may delay or reject your mail.": "IPv6 の一部の受信側で、メールが遅延または拒否される可能性があります。"
 }

@@ -1250,5 +1250,9 @@
  "Requirements": "Anforderungen",
  "Score gain when fixed": "Punktgewinn nach Behebung",
  "of {0}": "von {0}",
- "Risk {0} of {1}": "Risiko {0} von {1}"
+ "Risk {0} of {1}": "Risiko {0} von {1}",
+ "An attacker between mail servers could strip encryption and read or change mail sent to you.": "Ein Angreifer zwischen Mailservern könnte die Verschlüsselung entfernen und an Sie gesendete E-Mails lesen oder verändern.",
+ "Mail from your servers looks less trustworthy, so it is more likely to be rejected or sent to spam.": "E-Mails Ihrer Server wirken weniger vertrauenswürdig und werden eher abgelehnt oder als Spam einsortiert.",
+ "Traffic to your mail servers could be misrouted by a network hijack (BGP).": "Datenverkehr zu Ihren Mailservern könnte durch eine Netzwerkübernahme (BGP) umgeleitet werden.",
+ "Some receivers over IPv6 may delay or reject your mail.": "Manche Empfänger über IPv6 könnten Ihre E-Mails verzögern oder ablehnen."
 }
