@@ -28,20 +28,26 @@ async def report(request: Request, db: Session = Depends(get_db), user: models.U
     """Send the suspicious email as the request body (raw .eml, or a message
     that has it attached). Anyone in the company can report."""
     rate_limit(request, f"phish-report:{user.tenant_id}", 300)
-    blob = await request.body()
+    return ingest(db, request, user.tenant, user.email, await request.body(), user)
+
+
+def ingest(db: Session, request: Request, tenant: models.Tenant, reporter: str, blob: bytes,
+           user: models.User | None = None, source: str = "upload") -> dict:
+    """Triage a reported email and store it (dashboard upload or report button)."""
     try:
         parsed = phish_reports.parse(blob)
     except phish_reports.ReportError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     result = phish_reports.triage(parsed)
-    ai = phish_reports.ai_triage(assistant.config(user.tenant), parsed, result)
-    row = models.PhishReport(tenant_id=user.tenant_id, reported_by=user.email, subject=parsed["subject"],
+    ai = phish_reports.ai_triage(assistant.config(tenant), parsed, result)
+    row = models.PhishReport(tenant_id=tenant.id, reported_by=reporter, subject=parsed["subject"],
                              sender=parsed["from"], verdict=result["verdict"], score=result["score"],
                              header=result["header"], links=result["links"], ai=ai)
     db.add(row)
     db.commit()
-    audit.log_request(db, request, "phish.report", user, {"verdict": row.verdict})
-    opened = _auto_takedowns(db, user, row)
+    audit.log_request(db, request, "phish.report", user, {"verdict": row.verdict, "source": source,
+                                                          "reporter": reporter})
+    opened = _auto_takedowns(db, tenant, row)
     out = _out(row, full=True)
     out["takedowns_opened"] = [t.domain for t in opened]
     return out
@@ -54,12 +60,12 @@ def _own_domains(db: Session, tenant_id: str) -> set[str]:
     return {d for (d,) in db.query(models.Monitor.domain).filter(models.Monitor.tenant_id == tenant_id).all()}
 
 
-def _auto_takedowns(db: Session, user: models.User, row: models.PhishReport) -> list[models.Takedown]:
+def _auto_takedowns(db: Session, tenant: models.Tenant, row: models.PhishReport) -> list[models.Takedown]:
     """Open takedown drafts for the phishing links of a report the rule-based
     checks judged phishing. Drafts only: a person reviews and sends them."""
     if row.verdict not in ("likely phishing", "dangerous"):
         return []
-    own = _own_domains(db, user.tenant_id)
+    own = _own_domains(db, tenant.id)
     opened = []
     for link in row.links or []:
         dom = link.get("domain")
@@ -67,7 +73,7 @@ def _auto_takedowns(db: Session, user: models.User, row: models.PhishReport) -> 
                 or dom in own or any(dom.endswith("." + o) for o in own)):
             continue
         try:
-            opened.append(takedowns.create(db, user.tenant, dom, link.get("url"), _evidence(db, user, dom, row),
+            opened.append(takedowns.create(db, tenant, dom, link.get("url"), _evidence(db, tenant.id, dom, row),
                                            report_id=row.id, created_by="triage", auto=True))
         except Exception:
             db.rollback()  # RDAP lookups are best-effort; the report itself is saved
@@ -76,7 +82,7 @@ def _auto_takedowns(db: Session, user: models.User, row: models.PhishReport) -> 
     return opened
 
 
-def _evidence(db: Session, user: models.User, domain: str, r: models.PhishReport | None) -> list[str]:
+def _evidence(db: Session, tenant_id: str, domain: str, r: models.PhishReport | None) -> list[str]:
     evidence = []
     if r is not None:
         evidence.append(f"Reported by an employee on {r.created_at:%Y-%m-%d}: subject \"{r.subject}\" from {r.sender}")
@@ -87,7 +93,7 @@ def _evidence(db: Session, user: models.User, domain: str, r: models.PhishReport
         evidence += [f["text"] for f in (r.header or {}).get("findings") or [] if f.get("level") == "fail"][:3]
         if r.ai and r.ai.get("impersonates"):
             evidence.append(f"Impersonates {r.ai['impersonates']}")
-    for m in db.query(models.Monitor).filter(models.Monitor.tenant_id == user.tenant_id).all():
+    for m in db.query(models.Monitor).filter(models.Monitor.tenant_id == tenant_id).all():
         if domain in (m.lookalikes or []):
             evidence.append(f"Lookalike of our domain {m.domain}, found by PhishLens monitoring")
     return evidence
@@ -139,7 +145,7 @@ def open_takedown(body: TakedownIn, request: Request, db: Session = Depends(get_
     rate_limit(request, f"takedown:{user.tenant_id}", 60)
     domain = normalize_domain(body.domain)
     report = _get(db, user, body.report_id) if body.report_id else None
-    row = takedowns.create(db, user.tenant, domain, body.url, _evidence(db, user, domain, report),
+    row = takedowns.create(db, user.tenant, domain, body.url, _evidence(db, user.tenant_id, domain, report),
                            report_id=report.id if report else None, created_by=user.email)
     audit.log_request(db, request, "phish.takedown_open", user, {"domain": domain})
     return takedowns.out(row)
@@ -219,7 +225,7 @@ def takedown(body: TakedownIn, request: Request, db: Session = Depends(get_db),
     PhishLens doesn't send it: you review it and send it from your own mail."""
     rate_limit(request, f"takedown:{user.tenant_id}", 60)
     domain = normalize_domain(body.domain)
-    evidence = _evidence(db, user, domain, _get(db, user, body.report_id) if body.report_id else None)
+    evidence = _evidence(db, user.tenant_id, domain, _get(db, user, body.report_id) if body.report_id else None)
     draft = phish_reports.takedown(domain, body.url, evidence or ["Impersonates our brand"], user.tenant.name)
     audit.log_request(db, request, "phish.takedown_draft", user, {"domain": domain})
     return draft

@@ -17,7 +17,7 @@ from . import scheduler
 from .config import settings
 from .database import init_db
 from .routers import (assistant, auth, autopilot, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, portal,
-                      phish, platform, scans, signup, sso, tasks, team, tlsrpt, tools, users)
+                      phish, platform, report_button, scans, signup, sso, tasks, team, tlsrpt, tools, users)
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -59,6 +59,7 @@ _CSRF_EXEMPT = {
     "/api/tools/propagation", "/api/tools/url", "/api/tools/spf-tree", "/api/tools/bimi-svg",
     "/api/auth/signup",
     "/api/auth/saml/acs",  # cross-site POST from the IdP; the signed assertion authorizes it
+    "/api/report-button/report",  # authorized by the report token header, never by cookies
 }
 
 
@@ -142,7 +143,10 @@ async def mta_sts_policy_host(request, call_next):
 async def security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    if response.headers.get("x-addin-frame"):
+        del response.headers["x-addin-frame"]  # the Outlook add-in pane sets its own frame-ancestors
+    else:
+        response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if settings.APP_URL.startswith("https://"):
@@ -208,6 +212,7 @@ app.include_router(assistant.router)
 app.include_router(phish.router)
 app.include_router(tasks.router)
 app.include_router(portal.router)
+app.include_router(report_button.router)
 
 
 @app.get("/api/health")

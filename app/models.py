@@ -47,6 +47,9 @@ class Tenant(Base):
     mfa_required = Column(Boolean, nullable=False, default=False)
     # Unused since SCIM was removed; kept so old databases need no migration.
     scim_token_hash = Column(String(64), nullable=True, unique=True)
+    # Report-phish button (Outlook add-in / Gmail add-on): sha256 of its token.
+    report_token_hash = Column(String(64), nullable=True, unique=True)
+    report_token_created_at = Column(DateTime, nullable=True)
     # PGP public key: failure (RUF) report details are stored encrypted to it.
     ruf_pgp_key = Column(Text, nullable=True)
     ruf_pgp_fingerprint = Column(String(64), nullable=True)
