@@ -1816,8 +1816,15 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .fc-badge { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
   font-weight: 900; font-size: 14px; color: var(--fc-white); background: color-mix(in srgb, var(--c) 30%, #0f1730);
   border: 1px solid color-mix(in srgb, var(--c) 70%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
-.fc-many .fc-tabs { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; padding-bottom: 4px; }
-.fc-many .fc-tab { flex: 0 0 190px; scroll-snap-align: start; }
+/* Many items (Top risks): compact chips that wrap onto more rows, never a sideways scroll. */
+.fc-many .fc-bar { align-items: flex-start; }
+.fc-many .fc-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.fc-many .fc-tab { flex: 0 1 auto; max-width: 100%; padding: 5px 12px 5px 5px; gap: 8px; border-radius: 99px; }
+.fc-many .fc-tab:hover { transform: translateY(-1px); }
+.fc-many .fc-tab.on::after { left: 12px; right: 12px; }
+.fc-many .fc-badge { width: 26px; height: 26px; border-radius: 50%; font-size: 12px; }
+.fc-many .fc-tl b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.fc-many .fc-tl small { display: none; }
 .fc-card.wide { grid-template-columns: minmax(0, 1fr); }
 .fc-title { margin: 0; color: var(--fc-white); font-size: 21px; letter-spacing: -.01em; }
 .fc-issue { margin: 0; color: #c3cdee; font-size: 14px; }
@@ -1868,7 +1875,9 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .plan .fc { margin-top: 4px; }
 .plan.locked-plan .fc + .plan-lock { margin-top: 16px; }
 @media (max-width: 760px) {
-  .fc-many .fc-tab { flex-basis: 120px; }
+  .fc-many .fc-tabs { display: flex; }
+  .fc-many .fc-tab { flex-direction: row; padding: 3px; border-radius: 50%; }
+  .fc-many .fc-tl { display: none; }
   .fc-medal { width: 110px; height: 110px; } .fc-medal span { font-size: 17px; } .fc-medal.step b { font-size: 40px; }
   .fc-bars li { grid-template-columns: minmax(0, 1fr) auto; }
   .fc-bars .fb-bar { grid-column: 1 / -1; order: 3; }
