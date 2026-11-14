@@ -94,6 +94,13 @@ def _autopilot() -> None:
             log.info("takedown rechecks %s", stats)
     except Exception:
         log.exception("takedown rechecks failed")
+    try:
+        from . import sender_reputation
+        stats = sender_reputation.refresh_all(db)
+        if stats["checked"] or stats["failed"]:
+            log.info("sender reputation %s", stats)
+    except Exception:
+        log.exception("sender reputation refresh failed")
     finally:
         db.close()
 

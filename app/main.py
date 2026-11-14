@@ -17,7 +17,7 @@ from . import scheduler
 from .config import settings
 from .database import init_db
 from .routers import (assistant, auth, autopilot, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages, portal,
-                      phish, platform, report_button, scans, signup, sso, tasks, team, tlsrpt, tools, users)
+                      phish, platform, report_button, reputation, scans, signup, sso, tasks, team, tlsrpt, tools, users)
 
 # A ContextVar (not threading.local): concurrent async requests share one
 # event-loop thread, so a thread-local would leak IDs between requests.
@@ -213,6 +213,7 @@ app.include_router(phish.router)
 app.include_router(tasks.router)
 app.include_router(portal.router)
 app.include_router(report_button.router)
+app.include_router(reputation.router)
 
 
 @app.get("/api/health")

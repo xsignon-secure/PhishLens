@@ -106,6 +106,23 @@
       <div id="takedown-list"></div>
       <div id="takedown-out"></div>
     </div>
+    <div class="panel" id="reputation-panel">
+      <h2><span class="dot"></span>{{ _("Reputation at Gmail and Outlook") }}</h2>
+      <p class="muted small">{{ _("How Gmail (Google Postmaster Tools) and Outlook.com (Microsoft SNDS) rate your mail, refreshed daily. You're emailed when a domain's reputation drops, the spam rate passes Gmail's 0.3% limit, or Outlook blocks a mail server.") }}</p>
+      <div id="rep-problems"></div>
+      <div class="admin-only hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px">
+        <button class="btn tiny" type="button" id="rep-google">{{ _("Connect Google Postmaster") }}</button>
+        <button class="btn tiny ghost hidden" type="button" id="rep-google-off">{{ _("Disconnect Google") }}</button>
+        <form id="rep-snds-form" class="scanbox small" style="margin:0">
+          <input id="rep-snds-key" type="password" autocomplete="off" placeholder="{{ _("SNDS automated access key") }}" aria-label="{{ _("SNDS automated access key") }}">
+          <button class="btn tiny" type="submit">{{ _("Save") }}</button>
+        </form>
+        <button class="btn tiny ghost" type="button" id="rep-refresh">{{ _("Refresh now") }}</button>
+      </div>
+      <p id="rep-status" class="muted small"></p>
+      <div id="rep-google-list"></div>
+      <div id="rep-snds-list"></div>
+    </div>
     <div class="panel" id="dmarc-panel">
       <h2><span class="dot"></span>{{ _("DMARC reports") }}</h2>
       <p class="muted small">{{ _("Upload the aggregate reports mailbox providers send to your <code>rua=</code> address (.xml, .xml.gz or .zip). See who sends mail as your domain, who passes, and when it's safe to enforce.") }}</p>
@@ -921,6 +938,67 @@ document.getElementById('rb-files').addEventListener('click', (e) => {
   else saveText('appsscript.json', rbFiles.gmail_manifest, 'application/json');
 });
 
+/* ---------------- sender reputation (Postmaster, SNDS) ---------------- */
+const REP_PILL = {HIGH: 'pass', MEDIUM: 'warn', LOW: 'fail', BAD: 'fail', GREEN: 'pass', YELLOW: 'warn', RED: 'fail'};
+const REP_WORDS = {HIGH: N_('High'), MEDIUM: N_('Medium'), LOW: N_('Low'), BAD: N_('Bad'), GREEN: N_('Green'), YELLOW: N_('Yellow'), RED: N_('Red')};
+const repPill = v => v ? `<span class="badge ${REP_PILL[v] || 'warn'}">${escapeHtml(_t(REP_WORDS[v] || v))}</span>` : '<span class="muted">—</span>';
+const repPct = (v, digits = 1) => v == null ? '—' : (v * 100).toFixed(digits) + '%';
+function renderReputation(d) {
+  document.getElementById('rep-problems').innerHTML = d.problems.map(p => `<p class="error small">⚠ ${escapeHtml(p)}</p>`).join('');
+  const g = document.getElementById('rep-google');
+  g.classList.toggle('hidden', d.google.connected || !d.google.configured);
+  document.getElementById('rep-google-off').classList.toggle('hidden', !d.google.connected);
+  const bits = [];
+  bits.push(d.google.connected ? _t('Google Postmaster: connected as {0}.', {0: d.google.account || '?'})
+    : d.google.configured ? _t('Google Postmaster: not connected.') : _t('Google Postmaster: not set up on this server.'));
+  bits.push(d.snds.connected ? _t('Microsoft SNDS: connected.') : _t('Microsoft SNDS: not connected.'));
+  if (d.fetched_at) bits.push(_t('Updated {0}.', {0: new Date(d.fetched_at).toLocaleString()}));
+  Object.entries(d.errors || {}).forEach(([k, v]) => bits.push(`${k === 'google' ? 'Google' : 'SNDS'}: ${v}`));
+  document.getElementById('rep-status').textContent = bits.join(' ');
+  const doms = Object.entries(d.google.domains || {});
+  document.getElementById('rep-google-list').innerHTML = doms.length ? `<h3 class="small-h">Gmail</h3><div class="table-wrap"><table>
+    <thead><tr><th>${_t('Domain')}</th><th>${_t('Reputation')}</th><th>${_t('Spam rate')}</th><th>SPF</th><th>DKIM</th><th>DMARC</th><th>${_t('Day')}</th></tr></thead><tbody>`
+    + doms.map(([dom, stats]) => { const s = stats[stats.length - 1] || {};
+      return `<tr><td><strong>${escapeHtml(dom)}</strong></td><td>${repPill(s.domain_reputation)}</td>
+        <td class="${(s.spam_rate || 0) >= 0.003 ? 'error' : ''}">${repPct(s.spam_rate, 2)}</td><td>${repPct(s.spf, 0)}</td><td>${repPct(s.dkim, 0)}</td><td>${repPct(s.dmarc, 0)}</td>
+        <td class="muted small">${escapeHtml(s.day || '—')}</td></tr>`; }).join('') + '</tbody></table></div>'
+    : (d.google.connected ? '<p class="muted small">' + _t('Postmaster Tools has no data yet: Gmail only reports on domains verified there that send it enough mail.') + '</p>' : '');
+  const rows = d.snds.rows || [];
+  const blocked = (d.snds.blocked || []).filter(b => /^y/i.test(b.blocked));
+  document.getElementById('rep-snds-list').innerHTML = rows.length || blocked.length ? `<h3 class="small-h">Outlook.com</h3><div class="table-wrap"><table>
+    <thead><tr><th>${_t('Mail server IP')}</th><th>${_t('Filter result')}</th><th>${_t('Complaint rate')}</th><th>${_t('Spam traps')}</th><th>${_t('Recipients')}</th></tr></thead><tbody>`
+    + rows.slice(-20).reverse().map(r => `<tr><td><code>${escapeHtml(r.ip)}</code></td><td>${repPill(r.filter)}</td><td>${repPct(r.complaint_rate, 1)}</td><td>${r.trap_hits}</td><td>${r.recipients}</td></tr>`).join('')
+    + blocked.map(b => `<tr><td><code>${escapeHtml(b.first)}${b.last !== b.first ? '–' + escapeHtml(b.last) : ''}</code></td><td><span class="badge fail">${_t('Blocked')}</span></td><td colspan="3" class="muted small">${escapeHtml(b.details || '')}</td></tr>`).join('')
+    + '</tbody></table></div>' : '';
+}
+async function loadReputation() { renderReputation(await api('/api/reputation')); }
+document.getElementById('rep-google').onclick = async () => {
+  try { const r = await api('/api/reputation/google/connect', {method: 'POST'}); location.href = r.url; }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('rep-google-off').onclick = async () => {
+  if (!confirm(_t('Disconnect Google Postmaster? Its data here is removed.'))) return;
+  try { await api('/api/reputation/google', {method: 'DELETE'}); loadReputation(); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('rep-snds-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const key = document.getElementById('rep-snds-key').value.trim();
+  try { renderReputation(await api('/api/reputation/snds', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({key})}));
+        document.getElementById('rep-snds-key').value = ''; toast(key ? _t('✓ SNDS connected') : _t('SNDS disconnected')); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+document.getElementById('rep-refresh').onclick = async () => {
+  try { renderReputation(await api('/api/reputation/refresh', {method: 'POST'})); }
+  catch (err) { if (err.message !== 'auth') toast(err.message); }
+};
+{
+  const q = new URLSearchParams(location.search).get('reputation');
+  const words = {connected: N_('✓ Google Postmaster connected'), expired: N_('The Google sign-in took too long: start again'),
+    cancelled: N_('Google connection cancelled'), failed: N_('Google refused the connection: try again'), signin: N_('Sign in as an owner or admin first')};
+  if (q && words[q]) setTimeout(() => toast(_t(words[q])), 400);
+}
+
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -1030,6 +1108,7 @@ async function loadEnterprise() {
   if (isOwner) { loadUsers().catch(() => {}); loadSmtp().catch(() => {}); }
   if (isOwner) loadPgp().catch(() => {});
   if (isOwner) loadReportButton().catch(() => {});
+  loadReputation().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});
@@ -1950,7 +2029,7 @@ const INT_FIELDS = {
          ['companies', N_('Client label = entity id (one per line)'), 'map', 'Acme = 3']],
 };
 const INT_KINDS = {score_drop: N_('Score dropped'), check_failed: N_('Check started failing'), dns_changed: N_('DNS record changed'),
-                   lookalike_registered: N_('Lookalike domain registered'), lookalike_impersonating: N_('Lookalike site copies yours'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs')};
+                   lookalike_registered: N_('Lookalike domain registered'), lookalike_impersonating: N_('Lookalike site copies yours'), sender_reputation: N_('Mailbox provider reputation'), cert_expiring: N_('Certificate expiring'), ct_certificate: N_('New certificate in CT logs')};
 function intFieldsHtml(kind, cfg) {
   if (!kind) return '';
   const val = n => cfg && cfg.kind === kind && cfg[n] != null ? cfg[n] : '';
