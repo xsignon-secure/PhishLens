@@ -1810,3 +1810,68 @@ details[open] > summary .chev { transform: rotate(180deg); }
   .fc-card { visibility: visible !important; opacity: 1 !important; transform: none !important; margin-bottom: 12px; break-inside: avoid; }
   .fc .fg { stroke-dashoffset: var(--off, 0) !important; }
 }
+
+/* ---------- Carousels for the other report sections ---------- */
+.fc .tone-low { --c: #6ea8ff; }
+.fc-badge { width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center;
+  font-weight: 900; font-size: 14px; color: var(--fc-white); background: color-mix(in srgb, var(--c) 30%, #0f1730);
+  border: 1px solid color-mix(in srgb, var(--c) 70%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
+.fc-many .fc-tabs { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; padding-bottom: 4px; }
+.fc-many .fc-tab { flex: 0 0 190px; scroll-snap-align: start; }
+.fc-card.wide { grid-template-columns: minmax(0, 1fr); }
+.fc-title { margin: 0; color: var(--fc-white); font-size: 21px; letter-spacing: -.01em; }
+.fc-issue { margin: 0; color: #c3cdee; font-size: 14px; }
+.fc-text { margin: 0; color: #a9b7dd; font-size: 14px; line-height: 1.6; }
+.fc-text code { white-space: pre-wrap; word-break: break-all; }
+.fc-more { margin: 4px 0 0; }
+.fc-more a { color: var(--fc-blue); font-weight: 600; text-decoration: none; font-size: 13.5px; }
+.fc-more a:hover { text-decoration: underline; }
+/* risk / step medallion */
+.fc-medal { width: 150px; height: 150px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 35%, #0f1730) 0 55%, transparent 56%),
+              conic-gradient(var(--c), color-mix(in srgb, var(--c) 30%, transparent), var(--c));
+  box-shadow: 0 0 40px color-mix(in srgb, var(--c) 35%, transparent); }
+.fc-medal span { font-size: 22px; font-weight: 900; color: var(--fc-white); text-transform: uppercase; letter-spacing: .06em; }
+.fc-medal.step { display: flex; flex-direction: column; justify-content: center; }
+.fc-medal.step b { font-size: 54px; line-height: 1; color: var(--fc-white); font-weight: 900; }
+.fc-medal.step span { font-size: 12px; letter-spacing: .1em; color: #c3cdee; }
+.motion .fc-card.on .fc-medal { animation: fc-medal .7s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes fc-medal { from { transform: scale(.6) rotate(-40deg); opacity: 0; } }
+.motion .fc-risks .fc-card.tone-bad.on .fc-medal { animation: fc-medal .7s cubic-bezier(.3,1.5,.5,1) both, fc-throb 2.2s ease-in-out .8s infinite; }
+@keyframes fc-throb { 50% { box-shadow: 0 0 70px color-mix(in srgb, var(--c) 60%, transparent); } }
+.fc-gain { color: #3ee8b0 !important; font-size: 26px !important; }
+/* points bars (score by category) */
+.fc-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fc-bars li { display: grid; grid-template-columns: minmax(0, 1.3fr) 82px minmax(0, 1fr) 52px; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); font-size: 13.5px; }
+.fb-name { color: var(--fc-white); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-st { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.fc-bars .pass .fb-st { color: #3ee8b0; } .fc-bars .warn .fb-st { color: #ffbf5e; } .fc-bars .fail .fb-st { color: #ff6b7a; }
+.fb-bar { height: 8px; border-radius: 9px; background: rgba(255,255,255,.08); overflow: hidden; }
+.fb-bar i { display: block; height: 100%; width: var(--w); border-radius: 9px; background: #2ee6a8; }
+.fc-bars .warn .fb-bar i { background: #ffb547; } .fc-bars .fail .fb-bar i { background: #ff4d5e; }
+.fb-pts { text-align: right; color: var(--fc-dim); font-variant-numeric: tabular-nums; }
+.motion .fc-card.on .fc-bars li { animation: fc-rise .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.1s + var(--j, 0) * .05s); }
+.motion .fc-card.on .fb-bar i { animation: fc-grow .9s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.25s + var(--j, 0) * .05s); }
+@keyframes fc-grow { from { width: 0; } }
+/* mailbox rules */
+.fc-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fc-rules li { display: flex; gap: 12px; align-items: flex-start; padding: 11px 13px; border-radius: 12px; background: rgba(255,255,255,.04); color: #dfe7ff; font-size: 14px; }
+.fc-rules .ri { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 900; font-size: 12px; }
+.fc-rules .pass .ri { background: rgba(46,230,168,.18); color: #3ee8b0; }
+.fc-rules .fail .ri { background: rgba(255,77,94,.2); color: #ff6b7a; }
+.fc-rules .warn .ri { background: rgba(255,181,71,.2); color: #ffbf5e; }
+.fc-rules .manual .ri { background: rgba(140,155,200,.2); color: #b9c7ff; }
+.motion .fc-card.on .fc-rules li { animation: fc-rise .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.1s + var(--j, 0) * .06s); }
+/* remediation: the signed-in fix card sits inside the carousel card */
+.fc-plan .fixcard { margin: 0; }
+.plan .fc { margin-top: 4px; }
+.plan.locked-plan .fc + .plan-lock { margin-top: 16px; }
+@media (max-width: 760px) {
+  .fc-many .fc-tab { flex-basis: 120px; }
+  .fc-medal { width: 110px; height: 110px; } .fc-medal span { font-size: 17px; } .fc-medal.step b { font-size: 40px; }
+  .fc-bars li { grid-template-columns: minmax(0, 1fr) auto; }
+  .fc-bars .fb-bar { grid-column: 1 / -1; order: 3; }
+  .fc-bars .fb-st { display: none; }
+}
+.rpt-threat .plan:has(> .fc), .plan:has(> .fc) { background: none; border: 0; padding: 0; box-shadow: none; }
