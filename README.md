@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/brand-banner.png" alt="PhishLens" width="760">
+
 # PhishLens
 
 **Open-source email security: domain scanning, DMARC monitoring and one-click fixes.**

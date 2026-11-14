@@ -233,19 +233,11 @@ def gmail_manifest() -> str:
 
 
 def icon_png(size: int) -> bytes:
-    """The PhishLens shield as a PNG (Office manifests need PNG icons)."""
-    from PIL import Image, ImageDraw
-    scale = 4
-    s = size * scale
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    p = lambda x, y: (x / 32 * s, y / 32 * s)  # noqa: E731
-    d.polygon([p(16, 2.5), p(27.5, 6.8), p(27.5, 15.2), p(23, 25), p(16, 29.5), p(9, 25), p(4.5, 15.2), p(4.5, 6.8)],
-              fill=(31, 91, 216, 255))
-    w = max(1, int(2.3 / 32 * s))
-    d.ellipse([p(9.8, 9.4), p(20.2, 19.8)], outline="white", width=w)
-    d.line([p(18.8, 18.4), p(22.4, 22)], fill="white", width=w)
-    img = img.resize((size, size), Image.Resampling.LANCZOS)
+    """The PhishLens scan-eye mark as a PNG (Office manifests need PNG icons)."""
+    from pathlib import Path
+    from PIL import Image
+    src = Path(__file__).resolve().parent / "static" / "brand" / "phishlens-mark-512.png"
+    img = Image.open(src).convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, "PNG")
     return buf.getvalue()
