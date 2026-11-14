@@ -833,7 +833,7 @@ function deckRing(pct, small) {
 function deck(items, o = {}) {
   if (!items.length) return '';
   const many = items.length > 5;
-  const tabs = items.map((it, i) => `<button type="button" class="fc-tab tone-${it.tone}" role="tab" data-i="${i}" aria-selected="${i === 0}" style="--s:${it.ring ?? 100}">
+  const tabs = items.map((it, i) => `<button type="button" class="fc-tab tone-${it.tone}" role="tab" data-i="${i}" title="${escapeHtml(it.label)}" aria-selected="${i === 0}" style="--s:${it.ring ?? 100}">
       ${it.ring !== undefined ? `<span class="fc-mr"><span>${it.ring === null ? '—' : it.ring}</span></span>` : `<span class="fc-badge">${it.badge}</span>`}
       <span class="fc-tl"><b>${escapeHtml(it.label)}</b><em>${escapeHtml(it.short || it.label)}</em>${it.sub ? `<small>${it.sub}</small>` : ''}</span></button>`).join('');
   const cards = items.map((it, i) => `<article class="fc-card tone-${it.tone}${it.wide ? ' wide' : ''}${i === 0 ? ' on' : ''}" role="tabpanel" data-i="${i}"${i ? ' inert aria-hidden="true"' : ''}>
