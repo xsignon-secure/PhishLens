@@ -1,5 +1,5 @@
 """Scoring: weighted 0-100 aggregation + letter grade + prioritized action plan."""
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 
 from . import dns_checks, exposure, mail_checks, web_checks
@@ -59,7 +59,11 @@ def _run_check(fn, domain: str) -> dict:
         }
 
 
-def run_all_checks(domain: str, known_names: list[str] | None = None) -> list[dict]:
+def check_count() -> int:
+    return len(EMAIL_CHECKS) + len(WEB_CHECKS)
+
+
+def run_all_checks(domain: str, known_names: list[str] | None = None, on_check=None) -> list[dict]:
     """Run every check concurrently; results keep the registry order.
 
     Checks are independent network probes (DNS, SMTP, HTTPS), so running them
@@ -71,7 +75,17 @@ def run_all_checks(domain: str, known_names: list[str] | None = None) -> list[di
         dangling.__name__ = "check_dangling"
         checks = [dangling if fn is exposure.check_dangling else fn for fn in checks]
     with ThreadPoolExecutor(max_workers=len(checks) or 1) as pool:
-        return list(pool.map(lambda fn: _run_check(fn, domain), checks))
+        futures = {pool.submit(_run_check, fn, domain): i for i, fn in enumerate(checks)}
+        results: list[dict | None] = [None] * len(checks)
+        for fut in as_completed(futures):
+            res = fut.result()
+            results[futures[fut]] = res
+            if on_check:
+                try:
+                    on_check(res)  # live progress (the landing page radar); never breaks a scan
+                except Exception:
+                    pass
+        return results
 
 
 def score_results(results: list[dict]) -> tuple[int, str]:

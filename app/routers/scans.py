@@ -1,14 +1,22 @@
 """Scans: public one-off scan (funnel), tenant history, shareable reports."""
+import json
+import logging
+import queue
+import threading
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from .. import audit, models, pdf_report, plans, schemas, summary
 from ..config import settings
-from ..database import get_db
+from ..database import SessionLocal, get_db
+from .. import deps
 from ..deps import client_ip, get_current_user, optional_user, public_scan_limit, rate_limit, tenant_scans
 from ..scanner import engine
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+log = logging.getLogger("phishlens.scans")
 
 HISTORY_PAGE = 500
 
@@ -118,6 +126,62 @@ def public_scan(payload: schemas.ScanIn, request: Request, db: Session = Depends
     scan = engine.run_scan(db, payload.domain, tenant_id=None)
     audit.log_request(db, request, "scan.public", detail={"domain": scan.domain, "score": scan.score})
     return engine.scan_to_dict(scan, solutions=user is not None)
+
+
+@router.post("/public/stream")
+def public_scan_stream(payload: schemas.ScanIn, request: Request,
+                       user: models.User | None = Depends(optional_user)):
+    """The same scan as POST /public, streamed as NDJSON so the landing page
+    can show each check as it finishes:
+
+    {"type": "start", "domain": ..., "total": N}
+    {"type": "check", "key": ..., "title": ..., "status": ..., "n": i}   (one per check, as they finish)
+    {"type": "done", "report": {...same body as POST /public...}}  or  {"type": "error", "detail": ...}
+
+    Check events carry only the name and pass/warn/fail, never details or fixes."""
+    public_scan_limit(request)
+    domain = deps.normalize_domain(payload.domain)
+    deps.assert_public_target(domain)  # bad targets fail fast, before the stream starts
+    solutions = user is not None
+    events: queue.Queue = queue.Queue()
+    count = {"n": 0}
+
+    def on_check(res: dict) -> None:
+        count["n"] += 1
+        events.put({"type": "check", "key": res.get("key"), "title": res.get("title"),
+                    "status": res.get("status"), "n": count["n"]})
+
+    def work() -> None:
+        db = SessionLocal()
+        try:
+            scan = engine.run_scan(db, domain, tenant_id=None, on_check=on_check)
+            audit.log_request(db, request, "scan.public", detail={"domain": scan.domain, "score": scan.score})
+            events.put({"type": "done", "report": engine.scan_to_dict(scan, solutions=solutions)})
+        except HTTPException as exc:
+            events.put({"type": "error", "detail": exc.detail})
+        except Exception:
+            log.exception("streamed scan of %s failed", domain)
+            events.put({"type": "error", "detail": "Scan failed"})
+        finally:
+            db.close()
+
+    threading.Thread(target=work, daemon=True).start()
+
+    def stream():
+        from ..scanner import scoring
+        yield json.dumps({"type": "start", "domain": domain, "total": scoring.check_count()}) + "\n"
+        while True:
+            try:
+                ev = events.get(timeout=120)
+            except queue.Empty:
+                yield json.dumps({"type": "error", "detail": "Scan timed out"}) + "\n"
+                return
+            yield json.dumps(ev, default=str) + "\n"
+            if ev["type"] in ("done", "error"):
+                return
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @router.post("", status_code=201)

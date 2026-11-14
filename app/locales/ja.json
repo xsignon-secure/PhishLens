@@ -557,7 +557,6 @@
  "Site URL": "サイト URL",
  "Skip tour": "ツアーをスキップ",
  "Source code": "ソースコード",
- "Starting…": "開始中…",
  "Status": "状態",
  "Step {0} of {1}": "ステップ {0} / {1}",
  "Steps": "手順",
@@ -1232,5 +1231,13 @@
  "Your mail is likely to be rejected or sent to spam.": "あなたのメールは拒否されるか、迷惑メールになる可能性が高いです。",
  "Mail interception": "メールの傍受",
  "limited": "限定的",
- "DNS": "DNS"
+ "DNS": "DNS",
+ "checks": "項目",
+ "Live scan": "ライブスキャン",
+ "Web headers": "Webヘッダー",
+ "Post-quantum": "耐量子",
+ "TLS cert": "TLS証明書",
+ "Parked": "パーキング",
+ "Blacklists": "ブラックリスト",
+ "Dangling DNS": "ダングリングDNS"
 }

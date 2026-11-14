@@ -112,6 +112,114 @@ function runScanProgress(wrapId, phaseId, fillId) {
   };
 }
 
+/* ---------------- live scan radar ----------------
+   Fed by POST /api/scans/public/stream: each check lights up a blip as it
+   finishes (red = failing, amber = weak, green = pass). Only names and
+   pass/weak/fail are shown here; the report follows. */
+const RADAR_SIZE = 320, RADAR_C = 160;
+function radarSvg() {
+  let ticks = '';
+  for (let i = 0; i < 72; i++) {
+    const a = i * 5 * Math.PI / 180, long = i % 6 === 0;
+    const r1 = 150, r2 = long ? 141 : 146;
+    ticks += `<line x1="${(RADAR_C + r1 * Math.cos(a)).toFixed(1)}" y1="${(RADAR_C + r1 * Math.sin(a)).toFixed(1)}" x2="${(RADAR_C + r2 * Math.cos(a)).toFixed(1)}" y2="${(RADAR_C + r2 * Math.sin(a)).toFixed(1)}" class="rd-tick${long ? ' long' : ''}"/>`;
+  }
+  return `<svg class="rd-svg" viewBox="0 0 ${RADAR_SIZE} ${RADAR_SIZE}" aria-hidden="true">
+    <defs>
+      <linearGradient id="rd-wedge" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="var(--rd-green)" stop-opacity="0"/>
+        <stop offset="1" stop-color="var(--rd-green)" stop-opacity=".38"/>
+      </linearGradient>
+    </defs>
+    <circle cx="${RADAR_C}" cy="${RADAR_C}" r="152" class="rd-outer"/>
+    ${ticks}
+    <circle cx="${RADAR_C}" cy="${RADAR_C}" r="114" class="rd-ring"/>
+    <circle cx="${RADAR_C}" cy="${RADAR_C}" r="76" class="rd-ring"/>
+    <circle cx="${RADAR_C}" cy="${RADAR_C}" r="38" class="rd-ring"/>
+    <line x1="${RADAR_C}" y1="4" x2="${RADAR_C}" y2="316" class="rd-axis"/>
+    <line x1="4" y1="${RADAR_C}" x2="316" y2="${RADAR_C}" class="rd-axis"/>
+    <g class="rd-sweep"><path d="M${RADAR_C} ${RADAR_C} L${RADAR_C + 150} ${RADAR_C} A150 150 0 0 0 ${(RADAR_C + 150 * Math.cos(-Math.PI / 4)).toFixed(1)} ${(RADAR_C + 150 * Math.sin(-Math.PI / 4)).toFixed(1)} Z" fill="url(#rd-wedge)"/>
+      <line x1="${RADAR_C}" y1="${RADAR_C}" x2="${RADAR_C + 150}" y2="${RADAR_C}" class="rd-beam"/></g>
+    <circle cx="${RADAR_C}" cy="${RADAR_C}" r="5" class="rd-hub"/>
+  </svg>`;
+}
+/* Spread blips evenly: golden-angle spiral between the inner and outer ring. */
+function radarSlot(i, total) {
+  const a = (i * 137.508 - 90) * Math.PI / 180;
+  const r = 42 + 96 * Math.sqrt((i + .5) / Math.max(total, 1));
+  return {x: (RADAR_C + r * Math.cos(a)) / RADAR_SIZE * 100, y: (RADAR_C + r * Math.sin(a)) / RADAR_SIZE * 100};
+}
+const RADAR_WORD = {pass: N_('pass'), warn: N_('weak'), fail: N_('failing')};
+/* Short names for the blips; the live list shows the full check name. */
+const RADAR_SHORT = {'sec-headers': N_('Web headers'), pqc: N_('Post-quantum'), dane: 'DANE', ptr: 'PTR',
+  'tls-cert': N_('TLS cert'), parked: N_('Parked'), dangling: N_('Dangling DNS'), dnsbl: N_('Blacklists')};
+function runScanRadar(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = `<div class="rd-card">
+    <div class="rd-scope">${radarSvg()}<div class="rd-blips"></div></div>
+    <div class="rd-side">
+      <div class="rd-kicker"><span class="rd-live"></span>${_t('Live scan')}</div>
+      <div class="rd-domain"></div>
+      <div class="rd-count"><b>0</b><span>/ <i>–</i> ${_t('checks')}</span></div>
+      <div class="rd-tally"><span class="t-fail"><b>0</b> ${_t('failing')}</span><span class="t-warn"><b>0</b> ${_t('weak')}</span><span class="t-pass"><b>0</b> ${_t('pass')}</span></div>
+      <div class="rd-phase">${_t('Resolving domain…')}</div>
+      <ol class="rd-feed" aria-live="polite"></ol>
+    </div>
+  </div>`;
+  wrap.classList.remove('hidden');
+  const q = el => wrap.querySelector(el);
+  const blips = q('.rd-blips'), feed = q('.rd-feed');
+  const tally = {fail: 0, warn: 0, pass: 0};
+  let total = 0, shown = 0, timer = null, finishWaiters = [];
+  const pending = [];
+  function placeholders() {
+    blips.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const p = radarSlot(i, total);
+      blips.insertAdjacentHTML('beforeend',
+        `<span class="rd-blip" style="left:${p.x}%;top:${p.y}%;--d:${(i * 0.09).toFixed(2)}s"><i></i><em></em></span>`);
+    }
+  }
+  function reveal(ev) {
+    const st = ['pass', 'warn', 'fail'].includes(ev.status) ? ev.status : 'warn';
+    const el = blips.children[shown];
+    shown++;
+    if (el) {
+      el.classList.add('on', 'st-' + st);
+      el.querySelector('em').textContent = _t(RADAR_SHORT[ev.key] || ev.title || ev.key || '');
+    }
+    tally[st]++;
+    q('.rd-count b').textContent = shown;
+    q('.t-' + st + ' b').textContent = tally[st];
+    if (shown >= total) q('.rd-phase').textContent = _t('Compiling your report…');
+    feed.insertAdjacentHTML('afterbegin',
+      `<li class="st-${st}"><span class="rd-dot"></span><span class="rd-name">${escapeHtml(_t(ev.title || ev.key || ''))}</span><span class="rd-word">${_t(RADAR_WORD[st])}</span></li>`);
+    while (feed.children.length > 7) feed.lastElementChild.remove();
+  }
+  function pump() {
+    if (!pending.length) { timer = null; if (finishWaiters.length) finishWaiters.splice(0).forEach(f => f()); return; }
+    reveal(pending.shift());
+    timer = setTimeout(pump, 170);
+  }
+  return {
+    start(domain, n) {
+      total = n; q('.rd-domain').textContent = domain;
+      q('.rd-count i').textContent = n;
+      q('.rd-phase').textContent = _t('Collecting public records…');
+      placeholders();
+    },
+    check(ev) { pending.push(ev); if (!timer) pump(); },
+    /* Resolves once every queued blip has been shown, plus a short beat. */
+    settle() {
+      return new Promise(res => {
+        const go = () => setTimeout(res, shown ? 550 : 0);
+        if (!timer && !pending.length) go(); else finishWaiters.push(go);
+      });
+    },
+    hide() { clearTimeout(timer); wrap.classList.add('hidden'); wrap.innerHTML = ''; }
+  };
+}
+
 /* ---------------- report ---------------- */
 function statusBadge(status) {
   const map = { pass: _t('✓ pass'), warn: _t('! warning'), fail: _t('✗ fail') };
