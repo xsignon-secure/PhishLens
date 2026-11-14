@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     # APP_URL/reputation/google/callback) with the Postmaster Tools API on.
     GOOGLE_POSTMASTER_CLIENT_ID: str = ""
     GOOGLE_POSTMASTER_CLIENT_SECRET: str = ""
+    # Microsoft 365 security check: a multi-tenant Entra app with read-only
+    # application permissions (docs/CLOUD-POSTURE.md).
+    M365_CLIENT_ID: str = ""
+    M365_CLIENT_SECRET: str = ""
+    # Google Workspace security check: a service account (JSON text or a file
+    # path) that customers authorize for domain-wide delegation.
+    GOOGLE_WORKSPACE_SERVICE_ACCOUNT: str = ""
     VISUAL_LOOKALIKE_CHECK: bool = False
     VISUAL_SCREENSHOTS: bool = False
     # Optional GeoIP country database (.mmdb) for DMARC report senders; needs

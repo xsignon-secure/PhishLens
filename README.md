@@ -83,6 +83,10 @@ for your DNS provider.
   and paste a Microsoft SNDS key to see domain and IP reputation, Gmail's
   user-reported spam rate and Outlook's filter results, refreshed daily, with
   an email when something turns bad. Setup: [docs/REPUTATION.md](docs/REPUTATION.md).
+- Microsoft 365 and Google Workspace check (read-only): multi-factor sign-in,
+  legacy sign-in, number of global/super admins, user consent to apps, and
+  mailboxes forwarding mail outside the company. Rechecked weekly. Setup:
+  [docs/CLOUD-POSTURE.md](docs/CLOUD-POSTURE.md).
 - Report-phish button: an Outlook add-in (desktop, web, Mac) and a Gmail
   add-on, generated per company from the dashboard, send the open email to
   the report inbox in one click. Their key can only submit reports. Setup:
@@ -242,6 +246,7 @@ All settings are environment variables; `.env.example` lists every one.
 | `RPKI_CHECK`, `GEOIP_DB` | Optional RPKI lookups and DMARC sender countries. |
 | `PQC_CHECK` | Post-quantum key exchange test (default on). |
 | `GOOGLE_POSTMASTER_CLIENT_ID`, `GOOGLE_POSTMASTER_CLIENT_SECRET` | Google OAuth client for Postmaster Tools (see docs/REPUTATION.md). |
+| `M365_CLIENT_ID`, `M365_CLIENT_SECRET`, `GOOGLE_WORKSPACE_SERVICE_ACCOUNT` | Microsoft 365 / Google Workspace check (see docs/CLOUD-POSTURE.md). |
 | `VISUAL_LOOKALIKE_CHECK` | Fetch lookalike domains' websites and compare them with yours (default off). |
 | `VISUAL_SCREENSHOTS` | Also compare screenshots; needs `pip install playwright` and `playwright install chromium` (~300 MB more RAM; default off). |
 | `PUBLIC_AI_SUMMARY`, `PUBLIC_AI_SUMMARY_DAILY_LIMIT`, `SUMMARY_MODEL` | Plain-language "In plain words" summary on every report, written with the server's AI key (default model `claude-haiku-5-5`), capped per day; fixed text without a key. It describes risk only, never fixes. |
