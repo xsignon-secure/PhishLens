@@ -55,6 +55,15 @@ def landing(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "index.html", {"request": request, "user": _user_or_none(request, db)})
 
 
+@router.get("/scan", response_class=HTMLResponse)
+def scan_page(request: Request, d: str = "", db: Session = Depends(get_db)):
+    """The scan runs and its report shows here, so the home page stays as it is.
+    ?d=<domain> starts a scan; ?id=<scan id> reopens a finished report."""
+    domain = d.strip().lower()[:253]
+    return templates.TemplateResponse(request, "scan.html",
+                                      {"request": request, "user": _user_or_none(request, db), "domain": domain})
+
+
 @router.get("/help", response_class=HTMLResponse)
 def help_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "help.html", {"request": request, "user": _user_or_none(request, db)})

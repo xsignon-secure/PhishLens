@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{% if domain %}{{ _("Scanning") }} {{ domain }}{% else %}{{ _("Scan report") }}{% endif %} — PhishLens{% endblock %}
+{% block content %}
+<section class="scan-page">
+  <form id="scan-form" class="scanbox scan-again" autocomplete="off" action="/scan" method="get">
+    <input id="scan-domain" name="d" type="text" placeholder="{{ _("Scan another domain…") }}" value="{{ domain or '' }}" spellcheck="false" aria-label="{{ _("Domain to scan") }}" required>
+    <button type="submit" class="btn" id="scan-btn">{{ _("Scan my domain") }}</button>
+  </form>
+  <div id="scan-radar" class="scan-radar hidden"></div>
+  <div id="scan-result"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const PARAMS = new URLSearchParams(location.search);
+const scanInput = document.getElementById('scan-domain');
+const scanBtn = document.getElementById('scan-btn');
+const box = document.getElementById('scan-result');
+let scanning = false, scannedDomain = null;
+
+function showReport(data, replaceUrl) {
+  document.title = _t('Report:') + ' ' + data.domain + ' — PhishLens';
+  // The address becomes the report's own link: refresh or share it without scanning again.
+  if (replaceUrl && data.id) history.replaceState(null, '', '/scan?id=' + encodeURIComponent(data.id));
+  box.innerHTML = renderReport(data, true, {pdfUrl: '/api/scans/public/' + data.id + '/pdf',
+    guideUrl: '/api/scans/public/' + data.id + '/guide.pdf', next: '/scan?id=' + data.id, scanId: data.id,
+    summaryUrl: '/api/scans/public/' + data.id + '/summary'});
+  bindReportInteractions(box);
+}
+function showError(msg) {
+  box.innerHTML = '<div class="report"><p class="error">' + escapeHtml(msg) + '</p>' +
+    '<p class="muted">' + _t('Tip: enter a bare domain like') + ' <code>example.com</code> ' + _t('— no http://, no paths.') + '</p></div>';
+}
+/* Streams the scan so the radar fills in check by check; falls back to the
+   plain request when the browser or a proxy can't stream. */
+async function streamScan(domain, radar) {
+  const body = JSON.stringify({domain});
+  const headers = {'Content-Type': 'application/json'};
+  let r;
+  try { r = await fetch('/api/scans/public/stream', {method: 'POST', headers, body}); } catch (e) { r = null; }
+  if (!r || !r.body || !r.body.getReader || r.status === 404 || r.status === 405) {
+    const p = await fetch('/api/scans/public', {method: 'POST', headers, body});
+    const d = await p.json();
+    if (!p.ok) throw new Error(d.detail || _t('Scan failed'));
+    radar.start(d.domain, d.checks.length);
+    d.checks.forEach(c => radar.check(c));
+    return d;
+  }
+  if (!r.ok) {
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    throw new Error(d.detail || _t('Scan failed'));
+  }
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const {value, done} = await reader.read();
+    if (value) buf += dec.decode(value, {stream: true});
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line) continue;
+      const ev = JSON.parse(line);
+      if (ev.type === 'start') radar.start(ev.domain, ev.total);
+      else if (ev.type === 'check') radar.check(ev);
+      else if (ev.type === 'done') return ev.report;
+      else if (ev.type === 'error') throw new Error(ev.detail || _t('Scan failed'));
+    }
+    if (done) throw new Error(_t('Scan failed'));
+  }
+}
+function setScanButton(state) {
+  scanBtn.classList.toggle('is-scanning', state === 'scanning');
+  scanBtn.classList.toggle('is-done', state === 'done');
+  scanBtn.disabled = state !== 'ready';
+  scanBtn.setAttribute('aria-busy', state === 'scanning' ? 'true' : 'false');
+  scanBtn.innerHTML = state === 'scanning'
+    ? '<span class="btn-spinner" aria-hidden="true"></span>' + escapeHtml(_t('Scanning…'))
+    : escapeHtml(_t('Scan my domain'));
+  if (state === 'done') scanBtn.title = _t('Type another domain to scan again');
+  else scanBtn.removeAttribute('title');
+}
+scanInput.addEventListener('input', () => {
+  if (scanning) return;
+  const v = scanInput.value.trim().toLowerCase();
+  setScanButton(v && v === scannedDomain ? 'done' : 'ready');
+});
+async function runScan(domain) {
+  if (!domain || scanning) return;
+  scanning = true;
+  setScanButton('scanning');
+  box.innerHTML = '';
+  const radar = runScanRadar('scan-radar');
+  try {
+    const data = await streamScan(domain, radar);
+    await radar.settle();
+    radar.hide();
+    showReport(data, true);
+    window.scrollTo({top: 0});
+    scanning = false; scannedDomain = domain;
+    setScanButton(scanInput.value.trim().toLowerCase() === domain ? 'done' : 'ready');
+  } catch (err) {
+    radar.hide();
+    scanning = false; scannedDomain = null;
+    setScanButton('ready');
+    showError(err.message);
+  }
+}
+// "Check again" in the report re-runs the scan on this page.
+window.rescanDomain = (domain) => { scanInput.value = domain; scannedDomain = null; runScan(domain); };
+document.getElementById('scan-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const domain = scanInput.value.trim().toLowerCase();
+  if (!domain || scanning) return;
+  history.pushState(null, '', '/scan?d=' + encodeURIComponent(domain));
+  runScan(domain);
+});
+const id = PARAMS.get('id'), d = (PARAMS.get('d') || '').trim().toLowerCase();
+if (id && /^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+  fetch('/api/scans/public/' + encodeURIComponent(id)).then(r => r.ok ? r.json() : null).then(data => {
+    if (data) { showReport(data, false); scannedDomain = data.domain; scanInput.value = data.domain; setScanButton('done'); }
+    else showError(_t('This report has expired or does not exist. Scan the domain again.'));
+  });
+} else if (d) {
+  runScan(d);
+} else {
+  scanInput.focus();
+}
+</script>
+{% endblock %}

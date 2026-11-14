@@ -40,11 +40,15 @@ every feature. XSignOn also runs a hosted service with
 
 ▶ [Watch the demo video](https://github.com/xsignon-secure/PhishLens/raw/main/app/static/demo/phishlens-demo.mp4) (MP4, 4 MB, [captions](app/static/demo/phishlens-demo.vtt)). It also plays on the home page of every PhishLens server.
 
-| Scan report | Dashboard |
+| Home page | Live scan radar |
 |---|---|
-| ![Scan report with prioritized fixes](docs/screenshots/scan-report.png) | ![Dashboard with monitored domains](docs/screenshots/dashboard.png) |
-| **Phishing link checker** | **Translated pages** |
-| ![Phishing link checker](docs/screenshots/free-tools.png) | ![Landing page in Spanish](docs/screenshots/landing-es.png) |
+| ![Home page with the free domain scan](docs/screenshots/home.png) | ![Live radar showing each check as it runs](docs/screenshots/scan-radar.png) |
+| **Threat exposure report** | **Top risks, one at a time** |
+| ![Threat report with score, attack paths and heat map](docs/screenshots/scan-report.png) | ![Top risks carousel with severity and attacker impact](docs/screenshots/top-risks.png) |
+| **Dashboard** | **Free tools** |
+| ![Dashboard overview with KPIs and alerts](docs/screenshots/dashboard.png) | ![Phishing link checker and record tools](docs/screenshots/free-tools.png) |
+| **Translated pages** | |
+| ![Home page in Spanish](docs/screenshots/landing-es.png) | |
 
 ## Features
 

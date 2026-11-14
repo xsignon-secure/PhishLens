@@ -1257,5 +1257,8 @@
  "Some receivers over IPv6 may delay or reject your mail.": "IPv6 の一部の受信側で、メールが遅延または拒否される可能性があります。",
  "See PhishLens in action": "PhishLens の動作を見る",
  "PhishLens product demo with narration": "ナレーション付き PhishLens 製品デモ",
- "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "75秒のツアー：ライブスキャン、脅威レポート、ダッシュボードをナレーション付きで紹介します。"
+ "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "75秒のツアー：ライブスキャン、脅威レポート、ダッシュボードをナレーション付きで紹介します。",
+ "This report has expired or does not exist. Scan the domain again.": "このレポートは期限切れか存在しません。もう一度ドメインをスキャンしてください。",
+ "Scan report": "スキャンレポート",
+ "Domain to scan": "スキャンするドメイン"
 }

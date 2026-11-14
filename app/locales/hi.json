@@ -1257,5 +1257,8 @@
  "Some receivers over IPv6 may delay or reject your mail.": "IPv6 पर कुछ प्राप्तकर्ता आपके मेल में देरी कर सकते हैं या उसे अस्वीकार कर सकते हैं।",
  "See PhishLens in action": "PhishLens को काम करते हुए देखें",
  "PhishLens product demo with narration": "आवाज़ के साथ PhishLens प्रोडक्ट डेमो",
- "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "75 सेकंड का टूर: लाइव स्कैन, खतरा रिपोर्ट और डैशबोर्ड, आवाज़ के साथ।"
+ "A 75-second tour: a live scan, the threat report and the dashboard, with narration.": "75 सेकंड का टूर: लाइव स्कैन, खतरा रिपोर्ट और डैशबोर्ड, आवाज़ के साथ।",
+ "This report has expired or does not exist. Scan the domain again.": "यह रिपोर्ट समाप्त हो गई है या मौजूद नहीं है। डोमेन को फिर से स्कैन करें।",
+ "Scan report": "स्कैन रिपोर्ट",
+ "Domain to scan": "स्कैन करने के लिए डोमेन"
 }

@@ -2012,3 +2012,7 @@ html.thr-site .side-link.active, html.thr-site .side-link.active:hover {
   border: 1px solid rgba(125, 211, 252, .25); background: #070b18;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .03) inset, 0 30px 80px -30px rgba(56, 189, 248, .55), 0 20px 60px -30px rgba(139, 92, 246, .6); }
 .demo-frame video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #070b18; }
+/* Scan page: the scan and its report live on their own page */
+.scan-page { max-width: 1180px; margin: 0 auto; padding: 22px 0 40px; }
+.scan-page .scan-again { max-width: 640px; margin: 0 auto 22px; }
+.scan-page .scan-radar { margin-top: 8px; }
