@@ -1201,5 +1201,6 @@
  "Send staff a harmless practice phishing email and see who clicks and who reports it. Anyone who clicks lands on a page that explains it was a test and shows the warning signs. It never asks for a password.": "Senden Sie Mitarbeitenden eine harmlose Übungs-Phishing-E-Mail und sehen Sie, wer klickt und wer sie meldet. Wer klickt, landet auf einer Seite, die erklärt, dass es ein Test war, und die Warnzeichen zeigt. Sie fragt nie nach einem Passwort.",
  "People": "Personen",
  "{0} failed": "{0} fehlgeschlagen",
- "Phishing simulation by PhishLens. This page never asks for a password.": "Phishing-Simulation von PhishLens. Diese Seite fragt nie nach einem Passwort."
+ "Phishing simulation by PhishLens. This page never asks for a password.": "Phishing-Simulation von PhishLens. Diese Seite fragt nie nach einem Passwort.",
+ "Type another domain to scan again": "Geben Sie eine andere Domain ein, um erneut zu scannen"
 }

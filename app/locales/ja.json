@@ -1201,5 +1201,6 @@
  "Send staff a harmless practice phishing email and see who clicks and who reports it. Anyone who clicks lands on a page that explains it was a test and shows the warning signs. It never asks for a password.": "従業員に無害な練習用フィッシングメールを送り、誰がクリックし誰が報告したかを確認します。クリックした人には、テストだったことと注意すべきサインを説明するページが表示されます。パスワードを求めることはありません。",
  "People": "対象者",
  "{0} failed": "{0}件失敗",
- "Phishing simulation by PhishLens. This page never asks for a password.": "PhishLensによるフィッシングシミュレーション。このページがパスワードを求めることはありません。"
+ "Phishing simulation by PhishLens. This page never asks for a password.": "PhishLensによるフィッシングシミュレーション。このページがパスワードを求めることはありません。",
+ "Type another domain to scan again": "別のドメインを入力すると再スキャンできます"
 }
