@@ -295,6 +295,27 @@
       </form>
     </div>
   </div>
+  <div class="panel" id="feed-panel">
+    <h2 data-feature="siem_psa"><span class="dot"></span>{{ _("Threat feed for your SIEM") }}</h2>
+    <p class="muted small">{{ _("Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.") }}</p>
+    <p id="feed-counts" class="muted small"></p>
+    <dl class="feed-kv">
+      <dt>{{ _("TAXII server") }}</dt><dd><code id="feed-discovery"></code></dd>
+      <dt>{{ _("API root") }}</dt><dd><code id="feed-root"></code></dd>
+      <dt>{{ _("Collection ID") }}</dt><dd><code id="feed-col"></code></dd>
+      <dt>{{ _("Username") }}</dt><dd>{{ _("anything, e.g. phishlens") }}</dd>
+      <dt>{{ _("Password") }}</dt><dd>{{ _("an API key (create one above)") }}</dd>
+    </dl>
+    <p class="small" id="feed-downloads"></p>
+    <details>
+      <summary>{{ _("Microsoft Sentinel") }}</summary>
+      <ol class="muted small">
+        <li>{{ _("Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.") }}</li>
+        <li>{{ _("Paste the API root and Collection ID above, the username and an API key as the password.") }}</li>
+        <li>{{ _("Polling frequency: once an hour. Revoked indicators are removed automatically.") }}</li>
+      </ol>
+    </details>
+  </div>
     <div class="panel" id="brand-panel">
       <h2 data-feature="white_label"><span class="dot"></span>{{ _("White-label &amp; alert routing") }}</h2>
       <p class="muted small">{{ _("Put your name, colour and logo on shared reports, PDFs and alert emails. Extra alert addresses can be your PSA's email-to-ticket inbox (ConnectWise, Autotask, HaloPSA…).") }}</p>
@@ -1094,6 +1115,20 @@ document.getElementById('pos-results').addEventListener('click', async (e) => {
   if (q && words[q]) setTimeout(() => toast(_t(words[q])), 400);
 }
 
+async function loadFeed() {
+  let d;
+  try { d = await api('/api/threat-feed'); }
+  catch (err) { document.getElementById('feed-counts').textContent = err.message === 'auth' ? '' : err.message; return; }
+  document.getElementById('feed-counts').textContent = _t('{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).',
+    {0: d.total, 1: d.by_kind.domain, 2: d.by_kind.url, 3: d.by_kind.email, 4: d.malicious});
+  document.getElementById('feed-discovery').textContent = d.taxii.discovery;
+  document.getElementById('feed-root').textContent = d.taxii.api_root;
+  document.getElementById('feed-col').textContent = d.taxii.collection_id;
+  const dl = [['stix', N_('STIX bundle')], ['csv', N_('CSV')], ['domains', N_('Domain block list')], ['urls', N_('URL block list')]];
+  document.getElementById('feed-downloads').innerHTML = dl.map(([k, label]) =>
+    `<a class="btn tiny ghost" href="${escapeHtml(new URL(d.downloads[k]).pathname)}" download>${escapeHtml(_t(label))}</a>`).join(' ');
+}
+
 async function loadPhish() {
   const rows = await api('/api/phish-reports');
   const admin = dashData.me && ['owner', 'admin'].includes(dashData.me.role);
@@ -1205,6 +1240,7 @@ async function loadEnterprise() {
   if (isOwner) loadReportButton().catch(() => {});
   loadReputation().catch(() => {});
   loadPosture().catch(() => {});
+  loadFeed().catch(() => {});
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', me.role !== 'owner'));
   loadSso().catch(() => {});
   loadAssistant().catch(() => {});

@@ -505,3 +505,25 @@ class MailTest(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     received_at = Column(DateTime, nullable=True)
     result = Column(JSON, nullable=True)
+
+
+class ThreatIndicator(Base):
+    """One indicator in the company's threat feed (STIX 2.1 / TAXII 2.1):
+    a phishing domain, URL or sender address PhishLens found. Kept after it
+    disappears, as revoked, so SIEMs that pulled it learn to drop it."""
+    __tablename__ = "threat_indicators"
+    __table_args__ = (UniqueConstraint("tenant_id", "stix_id", name="uq_indicator_tenant_stix"),)
+
+    id = Column(String(32), primary_key=True, default=_uid)
+    tenant_id = Column(String(32), ForeignKey("tenants.id"), nullable=False, index=True)
+    stix_id = Column(String(64), nullable=False)  # indicator--<uuid5>, stable per company and value
+    kind = Column(String(20), nullable=False)  # domain | url | email
+    value = Column(String(2000), nullable=False)
+    sources = Column(JSON, nullable=False)  # lookalike | ct | phish_report | takedown
+    confidence = Column(Integer, nullable=False, default=50)
+    malicious = Column(Boolean, nullable=False, default=False)  # else only anomalous
+    description = Column(Text, nullable=False)
+    first_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
+    modified = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    revoked = Column(Boolean, nullable=False, default=False)

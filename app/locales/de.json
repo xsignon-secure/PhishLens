@@ -1132,5 +1132,21 @@
  "Scopes:": "Bereiche:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "Nur lesende Prüfungen, die entscheiden, ob ein gestohlenes Passwort zum Einbruch wird: Mehrfaktor-Anmeldung, Legacy-Anmeldung, Admin-Konten, App-Zustimmung und nach außen weitergeleitete E-Mails. Wöchentlich neu geprüft.",
  "Not connected yet.": "Noch nicht verbunden.",
- "Workspace domain": "Workspace-Domain"
+ "Workspace domain": "Workspace-Domain",
+ "Threat feed for your SIEM": "Bedrohungsfeed für Ihr SIEM",
+ "an API key (create one above)": "ein API-Schlüssel (oben erstellen)",
+ "Collection ID": "Sammlungs-ID",
+ "URL block list": "URL-Sperrliste",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → Content Hub → Threat Intelligence installieren, dann Datenconnectors → Threat Intelligence - TAXII → Connectorseite öffnen.",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0} Indikatoren: {1} Domains, {2} Links, {3} Absender ({4} bösartig).",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "Abfragehäufigkeit: einmal pro Stunde. Widerrufene Indikatoren werden automatisch entfernt.",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "Phishing-Domains, -Links und -Absender, die PhishLens für Ihr Unternehmen gefunden hat (Lookalikes, gemeldete E-Mails, Takedowns), als STIX-2.1-Indikatoren. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI und MISP können sie per TAXII 2.1 abrufen; Firewalls können die einfachen Sperrlisten nutzen. Ihre eigenen Domains und unbedenkliche Links sind nie enthalten.",
+ "CSV": "CSV",
+ "Domain block list": "Domain-Sperrliste",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "Fügen Sie API-Root und Sammlungs-ID von oben ein, den Benutzernamen und einen API-Schlüssel als Passwort.",
+ "API root": "API-Root",
+ "anything, e.g. phishlens": "beliebig, z. B. phishlens",
+ "TAXII server": "TAXII-Server",
+ "STIX bundle": "STIX-Bundle"
 }

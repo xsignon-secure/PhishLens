@@ -87,6 +87,11 @@ for your DNS provider.
   legacy sign-in, number of global/super admins, user consent to apps, and
   mailboxes forwarding mail outside the company. Rechecked weekly. Setup:
   [docs/CLOUD-POSTURE.md](docs/CLOUD-POSTURE.md).
+- Threat feed for SIEMs: phishing domains, links and senders found for the
+  company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators over
+  a TAXII 2.1 server (Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI,
+  MISP), plus CSV and firewall block lists. Indicators that go away are
+  revoked. Setup: [docs/THREAT-FEED.md](docs/THREAT-FEED.md).
 - Report-phish button: an Outlook add-in (desktop, web, Mac) and a Gmail
   add-on, generated per company from the dashboard, send the open email to
   the report inbox in one click. Their key can only submit reports. Setup:
@@ -333,6 +338,7 @@ Run the tests with `.venv/bin/python -m pytest tests/ -q`.
 | [HOSTED-RECORDS.md](docs/HOSTED-RECORDS.md) | Hosted DMARC, SPF, MTA-STS, BIMI, DKIM |
 | [DOMAIN-CONNECT.md](docs/DOMAIN-CONNECT.md) | One-click publishing |
 | [INTEGRATIONS.md](docs/INTEGRATIONS.md) | Report mailboxes, SIEM, PSA, helpdesks |
+| [THREAT-FEED.md](docs/THREAT-FEED.md) | STIX/TAXII threat feed for Sentinel, Splunk, Elastic, firewalls |
 | [MCP.md](docs/MCP.md) | AI assistant connection |
 | [ENTERPRISE.md](docs/ENTERPRISE.md) | Database migrations and operations |
 | [MARKET-ANALYSIS-2026-10.md](docs/MARKET-ANALYSIS-2026-10.md) | How PhishLens compares |

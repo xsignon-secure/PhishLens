@@ -17,7 +17,7 @@ from . import scheduler
 from .config import settings
 from .database import init_db
 from .routers import (assistant, auth, autopilot, dmarc, hosted, integrations, mailtest, mcp, metrics, monitors, overview, pages,
-                      phish, platform, portal, posture, report_button, reputation, scans, signup, sso, tasks, team,
+                      phish, platform, portal, posture, report_button, reputation, scans, signup, sso, tasks, team, threat_feed,
                       tlsrpt, tools, users)
 
 # A ContextVar (not threading.local): concurrent async requests share one
@@ -216,6 +216,7 @@ app.include_router(portal.router)
 app.include_router(report_button.router)
 app.include_router(reputation.router)
 app.include_router(posture.router)
+app.include_router(threat_feed.router)
 
 
 @app.get("/api/health")

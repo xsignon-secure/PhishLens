@@ -1132,5 +1132,21 @@
  "Scopes:": "Bereiken:",
  "Read-only checks that decide whether a phished password becomes a breach: multi-factor sign-in, legacy sign-in, admin accounts, app consent and mail forwarded outside. Rechecked weekly.": "Alleen-lezen controles die bepalen of een gestolen wachtwoord een inbraak wordt: meervoudige aanmelding, verouderde aanmelding, beheerdersaccounts, app-toestemming en mail die naar buiten wordt doorgestuurd. Wekelijks opnieuw gecontroleerd.",
  "Not connected yet.": "Nog niet gekoppeld.",
- "Workspace domain": "Workspace-domein"
+ "Workspace domain": "Workspace-domein",
+ "Threat feed for your SIEM": "Dreigingsfeed voor uw SIEM",
+ "an API key (create one above)": "een API-sleutel (maak er hierboven een)",
+ "Collection ID": "Collectie-ID",
+ "URL block list": "URL-blokkeerlijst",
+ "Sentinel → Content hub → install Threat Intelligence, then Data connectors → Threat Intelligence - TAXII → Open connector page.": "Sentinel → Content hub → installeer Threat Intelligence, daarna Gegevensconnectors → Threat Intelligence - TAXII → Connectorpagina openen.",
+ "Microsoft Sentinel": "Microsoft Sentinel",
+ "{0} indicators: {1} domains, {2} links, {3} senders ({4} malicious).": "{0} indicatoren: {1} domeinen, {2} links, {3} afzenders ({4} kwaadaardig).",
+ "Polling frequency: once an hour. Revoked indicators are removed automatically.": "Pollingfrequentie: eenmaal per uur. Ingetrokken indicatoren worden automatisch verwijderd.",
+ "Phishing domains, links and senders PhishLens found for your company (lookalikes, reported emails, takedowns) as STIX 2.1 indicators. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI and MISP can pull them over TAXII 2.1; firewalls can use the plain block lists. Your own domains and clean links are never included.": "Phishingdomeinen, -links en -afzenders die PhishLens voor uw bedrijf heeft gevonden (lookalikes, gemelde e-mails, takedowns) als STIX 2.1-indicatoren. Microsoft Sentinel, Splunk, Elastic, QRadar, OpenCTI en MISP kunnen ze ophalen via TAXII 2.1; firewalls kunnen de eenvoudige blokkeerlijsten gebruiken. Uw eigen domeinen en schone links worden nooit opgenomen.",
+ "CSV": "CSV",
+ "Domain block list": "Domeinblokkeerlijst",
+ "Paste the API root and Collection ID above, the username and an API key as the password.": "Plak de API-root en collectie-ID hierboven, de gebruikersnaam en een API-sleutel als wachtwoord.",
+ "API root": "API-root",
+ "anything, e.g. phishlens": "willekeurig, bijv. phishlens",
+ "TAXII server": "TAXII-server",
+ "STIX bundle": "STIX-bundel"
 }
