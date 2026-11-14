@@ -538,38 +538,9 @@ function bimiCheckHtml(r, svg, sender) {
     </div>`;
 }
 
-function observationsTable(checks, locked) {
-  const rank = {high: 0, medium: 1, low: 2};
-  const rows = checks.filter(c => c.status === 'fail' || c.status === 'warn')
-    .map(c => ({c, sev: severityFor(c)}))
-    .sort((a, b) => rank[a.sev] - rank[b.sev]);
-  if (!rows.length) return '';
-  const label = {high: _t('High'), medium: _t('Medium'), low: _t('Low')};
-  return `<section class="observations rpt-sec"><div class="sec-head"><h3>${_t('Top risks')}</h3><p>${_t('What an attacker could do today, most serious first.')}</p></div>
-    <div class="table-wrap"><table>
-    <thead><tr><th>${_t('Risk')}</th><th>${_t('Severity')}</th><th>${_t('Impact')}</th>${locked ? '' : `<th>${_t('Fix')}</th>`}</tr></thead>
-    <tbody>${rows.map(({c, sev}) => `<tr>
-      <td><strong>${escapeHtml(c.title)}</strong>${(c.issues || [])[0] ? `<br><span class="muted small">${escapeHtml(c.issues[0])}</span>` : ''}</td>
-      <td><span class="sev ${sev}">${label[sev]}</span></td>
-      <td>${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : '<span class="muted">—</span>'}</td>
-      ${locked ? '' : `<td>${escapeHtml((c.fixes || [])[0] || '')}</td>`}</tr>`).join('')}</tbody>
-    </table></div></section>`;
-}
-
-/* Gmail / Yahoo / Microsoft sender requirements, from compliance.py. */
-function complianceCard(list) {
-  if (!list || !list.length) return '';
-  const icon = {pass: '✓', fail: '✗', warn: '!', manual: '?'};
-  const label = {pass: _t('Meets'), fail: _t('Fails'), warn: _t('Partly')};
-  return `<section class="compliance rpt-sec"><div class="sec-head"><h3>${_t('Mailbox provider requirements')}</h3><p>${_t('Rules Gmail, Yahoo and Microsoft apply to senders.')}</p></div>
-    <div class="compliance-grid">${list.map(p => `
-      <details class="compliance-col ${p.status}">
-        <summary><strong>${escapeHtml(p.name)}</strong>
-          <span class="badge ${p.status}">${label[p.status] || ''}</span>
-          <span class="muted small">${_t('{0}/{1} checked rules pass', {0: p.passed, 1: p.checked})}</span></summary>
-        <p class="muted small">${escapeHtml(p.note)}</p>
-        <ul>${p.rules.map(r => `<li class="rule ${r.status}"><span class="ri">${icon[r.status]}</span> ${escapeHtml(r.label)}${r.status === 'manual' ? ` <span class="muted small">(${_t('not visible in DNS: check it yourself')})</span>` : ''}</li>`).join('')}</ul>
-      </details>`).join('')}</div></section>`;
+function risksSection(checks, locked) {
+  const d = risksDeck(checks, locked);
+  return d ? `<section class="observations rpt-sec"><div class="sec-head"><h3>${_t('Top risks')}</h3><p>${_t('What an attacker could do today, most serious first.')}</p></div>${d}</section>` : '';
 }
 
 function dnssecParts(checks) {
@@ -639,24 +610,6 @@ function verdictFor(r, checks) {
   return {
     head: _t('Spoofing is blocked, but gaps remain'),
     sub: _t('Forged mail from this domain is rejected. Other controls below still leave room for interception or abuse.')};
-}
-
-function categoryCards(checks) {
-  return CATEGORIES.map(cat => {
-    const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key);
-    if (!cs.length) return '';
-    const earned = cs.reduce((a, c) => a + (c.score || 0), 0);
-    const max = cs.reduce((a, c) => a + (c.max_score || 0), 0);
-    const pct = max ? Math.round(100 * earned / max) : null;
-    const fails = cs.filter(c => c.status === 'fail').length, warns = cs.filter(c => c.status === 'warn').length;
-    const tone = pct === null ? 'na' : pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad';
-    return `<div class="cat-card ${tone}">
-      <div class="cat-top"><span class="cat-name">${_t(cat.label)}</span><span class="cat-pct">${pct === null ? '—' : pct + '%'}</span></div>
-      <div class="cat-bar"><span style="width:${pct || 0}%"></span></div>
-      <div class="cat-meta">${_t(cat.blurb)}</div>
-      <div class="cat-counts">${fails ? `<span class="dotc fail">${_t('{0} failing', {0: fails})}</span>` : ''}${warns ? `<span class="dotc warn">${_t('{0} warnings', {0: warns})}</span>` : ''}${!fails && !warns ? `<span class="dotc pass">${_t('All passed')}</span>` : ''}</div>
-    </div>`;
-  }).join('');
 }
 
 function protocolStrip(checks) {
@@ -763,23 +716,11 @@ function renderReport(scan, isPublic, opts = {}) {
   const locked = !!r.solutions_locked;
   const lockHtml = locked && r.locked_fixes ? lockedGuideCard(r, opts) : '';
   const goodHtml = `<div class="plan good"><h3>${ICONS.check + ' ' + _t('Nothing urgent — this domain is in great shape.')}</h3></div>`;
-  const rankList = plan.length ? `<ol class="risk-rank">${plan.map((p, i) => `<li>
-      <span class="rr-n">${i + 1}</span><strong>${escapeHtml(p.check)}</strong>
-      <span class="rr-pts">${_t('+{0} pts', {0: p.points})}</span>
-      ${locked ? `<span class="rr-lock">${ICONS.lock}</span>` : ''}</li>`).join('')}</ol>` : '';
   const planHead = `<div class="sec-head"><h3>${_t('Remediation priorities')}</h3><p>${_t('Ranked by how much each item raises your score.')}</p></div>`;
-  const planHtml = locked
-    ? (plan.length || lockHtml ? `<section class="rpt-sec">${planHead}<div class="plan locked-plan">${rankList}${lockHtml}</div></section>` : goodHtml)
-    : plan.length
-    ? `<section class="rpt-sec">${planHead}<div class="plan">
-      ${hasGuides ? providerPicker(pk, detected) : ''}` +
-      plan.map((p, i) => {
-        const c = checks.find(x => x.title === p.check) || {title: p.check, status: 'fail'};
-        return p.guide ? fixCard(p.guide, c, p.points, r.domain, pk, opts, i + 1)
-          : `<ol start="${i + 1}"><li><strong>${escapeHtml(p.check)}</strong> <span class="pts">${_t('+{0} pts', {0: p.points})}</span>
-        <span class="fixline"><code>${escapeHtml(p.fix)}</code>
-        <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</span></li></ol>`;
-      }).join('') + `</div></section>`
+  const planHtml = plan.length || lockHtml
+    ? `<section class="rpt-sec">${planHead}<div class="plan${locked ? ' locked-plan' : ''}">
+      ${!locked && hasGuides ? providerPicker(pk, detected) : ''}
+      ${planDeck(plan, checks, r, pk, opts, locked)}${lockHtml}</div></section>`
     : goodHtml;
 
   const rank = {fail: 0, warn: 1, pass: 2};
@@ -861,10 +802,10 @@ function renderReport(scan, isPublic, opts = {}) {
       <p class="plain-text muted">${_t('Writing a summary of this report…')}</p></div></section>` : ''}
     <section class="rpt-sec">
       <div class="sec-head"><h3>${_t('Score by category')}</h3></div>
-      <div class="cat-grid">${categoryCards(checks)}</div>
+      ${categoryDeck(checks)}
     </section>
-    ${observationsTable(checks, locked)}
-    ${complianceCard(r.compliance)}
+    ${risksSection(checks, locked)}
+    ${r.compliance && r.compliance.length ? `<section class="compliance rpt-sec"><div class="sec-head"><h3>${_t('Mailbox provider requirements')}</h3><p>${_t('Rules Gmail, Yahoo and Microsoft apply to senders.')}</p></div>${complianceDeck(r.compliance)}</section>` : ''}
     ${planHtml}
     ${recHtml}
     <section class="rpt-sec">
@@ -879,9 +820,36 @@ function renderReport(scan, isPublic, opts = {}) {
 /* Detailed findings: one area card at a time (tabs switch on hover or click,
    Next/Back, arrow keys, swipe). Issues are full rows; passes are chips that
    open in place. Every check keeps its #chk-<key> anchor. */
-const FC_SHORT = {auth: N_('Email'), transport: N_('Transport'), dns: N_('DNS'), reputation: N_('Reputation'), web: N_('Website')};
-function findingsCarousel(checks, rank, checkRow, locked) {
-  const areas = CATEGORIES.map(cat => {
+/* A carousel ("deck"): a tab row (switch on hover, click or focus), Next/Back,
+   dots, arrow keys and swipe; one card shows at a time. Used by every
+   report section that lists several things. items: {tone, ring|badge,
+   label, short, sub, left, right, wide}. */
+const DECK_C = (2 * Math.PI * 70).toFixed(1);
+function deckRing(pct, small) {
+  const off = (DECK_C * (1 - (pct || 0) / 100)).toFixed(1);
+  return `<div class="fc-ring"><svg viewBox="0 0 170 170" aria-hidden="true"><circle class="bg" cx="85" cy="85" r="70"/><circle class="fg" cx="85" cy="85" r="70" style="stroke-dasharray:${DECK_C};stroke-dashoffset:${DECK_C};--off:${off}" data-off="${off}"/></svg>
+    <div class="fc-num"><b data-to="${pct ?? ''}">${pct === null || pct === undefined ? '—' : pct}</b><small>${small || '/ 100'}</small></div></div>`;
+}
+function deck(items, o = {}) {
+  if (!items.length) return '';
+  const many = items.length > 5;
+  const tabs = items.map((it, i) => `<button type="button" class="fc-tab tone-${it.tone}" role="tab" data-i="${i}" aria-selected="${i === 0}" style="--s:${it.ring ?? 100}">
+      ${it.ring !== undefined ? `<span class="fc-mr"><span>${it.ring === null ? '—' : it.ring}</span></span>` : `<span class="fc-badge">${it.badge}</span>`}
+      <span class="fc-tl"><b>${escapeHtml(it.label)}</b><em>${escapeHtml(it.short || it.label)}</em>${it.sub ? `<small>${it.sub}</small>` : ''}</span></button>`).join('');
+  const cards = items.map((it, i) => `<article class="fc-card tone-${it.tone}${it.wide ? ' wide' : ''}${i === 0 ? ' on' : ''}" role="tabpanel" data-i="${i}"${i ? ' inert aria-hidden="true"' : ''}>
+      ${it.left ? `<div class="fc-left">${it.left}</div>` : ''}
+      <div class="fc-right">${it.right}</div>
+    </article>`).join('');
+  return `<div class="fc${o.cls ? ' ' + o.cls : ''}${many ? ' fc-many' : ''}" data-n="${items.length}">
+    <div class="fc-bar"><div class="fc-tabs" role="tablist">${tabs}</div>
+      <div class="fc-nav"><button type="button" class="fc-prev" aria-label="${_t('Previous')}">‹</button><span class="fc-pos">1 / ${items.length}</span><button type="button" class="fc-next" aria-label="${_t('Next')}">›</button></div></div>
+    <div class="fc-stage">${cards}</div>
+    <div class="fc-dots">${items.map((it, i) => `<i data-i="${i}"${i === 0 ? ' class="on"' : ''}></i>`).join('')}</div>
+  </div>`;
+}
+
+function catStats(checks, rank) {
+  return CATEGORIES.map(cat => {
     const cs = checks.filter(c => (CHECK_CATEGORY[c.key] || 'dns') === cat.key)
       .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
     if (!cs.length) return null;
@@ -889,37 +857,105 @@ function findingsCarousel(checks, rank, checkRow, locked) {
     const max = cs.reduce((a, c) => a + (c.max_score || 0), 0);
     const pct = max ? Math.round(100 * earned / max) : null;
     const tone = pct === null ? 'na' : pct >= 80 ? 'good' : pct >= 50 ? 'mid' : 'bad';
-    return {cat, cs, pct, tone, issues: cs.filter(c => c.status !== 'pass'), ok: cs.filter(c => c.status === 'pass')};
+    const fails = cs.filter(c => c.status === 'fail').length, warns = cs.filter(c => c.status === 'warn').length;
+    return {cat, cs, pct, tone, fails, warns, issues: cs.filter(c => c.status !== 'pass'), ok: cs.filter(c => c.status === 'pass')};
   }).filter(Boolean);
-  if (!areas.length) return '';
-  const C = (2 * Math.PI * 70).toFixed(1);
-  const tabs = areas.map((a, i) => `<button type="button" class="fc-tab tone-${a.tone}" role="tab" data-i="${i}" aria-selected="${i === 0}" style="--s:${a.pct || 0}">
-      <span class="fc-mr"><span>${a.pct === null ? '—' : a.pct}</span></span>
-      <span class="fc-tl"><b>${_t(a.cat.label)}</b><em>${_t(FC_SHORT[a.cat.key])}</em><small>${a.issues.length ? _t('{0} to review', {0: a.issues.length}) : _t('All passed')}</small></span></button>`).join('');
+}
+function catCounts(a) {
+  return `<div class="fc-cnt">${a.fails ? `<span class="dotc fail">${_t('{0} failing', {0: a.fails})}</span>` : ''}${a.warns ? `<span class="dotc warn">${_t('{0} warnings', {0: a.warns})}</span>` : ''}${a.ok.length ? `<span class="dotc pass">${_t('{0} passed', {0: a.ok.length})}</span>` : ''}</div>`;
+}
+const STATUS_WORD = {pass: N_('Passed'), warn: N_('Warning'), fail: N_('Failing')};
+
+/* Score by category: one area per card, every check with its points. */
+function categoryDeck(checks) {
+  const rank = {fail: 0, warn: 1, pass: 2};
+  return deck(catStats(checks, rank).map(a => ({
+    tone: a.tone, ring: a.pct, label: _t(a.cat.label), short: _t(FC_SHORT[a.cat.key]),
+    sub: a.pct === null ? '' : (a.issues.length ? _t('{0} to review', {0: a.issues.length}) : _t('All passed')),
+    left: `${deckRing(a.pct)}<h4>${_t(a.cat.label)}</h4><p>${_t(a.cat.blurb)}</p>${catCounts(a)}`,
+    right: `<div class="fc-lbl">${_t('Points by check')}</div><ul class="fc-bars">${a.cs.map((c, j) => {
+      const w = c.max_score ? Math.round(100 * c.score / c.max_score) : (c.status === 'pass' ? 100 : 0);
+      return `<li class="${c.status}" style="--j:${j}"><span class="fb-name">${escapeHtml(c.title)}</span>
+        <span class="fb-st">${_t(STATUS_WORD[c.status] || c.status)}</span>
+        <span class="fb-bar"><i style="--w:${w}%"></i></span><span class="fb-pts">${c.max_score ? `${c.score}/${c.max_score}` : '—'}</span></li>`;
+    }).join('')}</ul>`,
+  })), {cls: 'fc-cats'});
+}
+
+/* Top risks: one risk per card, most serious first. */
+const SEV_TONE = {high: 'bad', medium: 'mid', low: 'low'};
+function risksDeck(checks, locked) {
+  const order = {high: 0, medium: 1, low: 2};
+  const label = {high: _t('High'), medium: _t('Medium'), low: _t('Low')};
+  const rows = checks.filter(c => c.status === 'fail' || c.status === 'warn')
+    .map(c => ({c, sev: severityFor(c)})).sort((a, b) => order[a.sev] - order[b.sev]);
+  const n = rows.length;
+  return deck(rows.map(({c, sev}, i) => ({
+    tone: SEV_TONE[sev], badge: i + 1, label: c.title, sub: label[sev],
+    left: `<div class="fc-medal"><span>${label[sev]}</span></div><h4>${_t('Risk {0} of {1}', {0: i + 1, 1: n})}</h4><p>${_t('Severity')}: ${label[sev]}</p>`,
+    right: `<h3 class="fc-title">${escapeHtml(c.title)}</h3>
+      ${(c.issues || [])[0] ? `<p class="fc-issue">${escapeHtml(c.issues[0])}</p>` : ''}
+      <div class="fc-lbl">${_t('What an attacker could do')}</div>
+      <p class="fc-text">${CHECK_IMPACT[c.key] ? escapeHtml(_t(CHECK_IMPACT[c.key])) : escapeHtml(c.details || '')}</p>
+      ${locked ? `<p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>`
+        : (c.fixes || [])[0] ? `<div class="fc-lbl">${_t('Fix')}</div><p class="fc-text"><code>${escapeHtml(c.fixes[0])}</code></p>` : ''}
+      <p class="fc-more"><a href="#chk-${escapeHtml(c.key)}">${_t('See the full finding')} →</a></p>`,
+  })), {cls: 'fc-risks'});
+}
+
+/* Gmail / Yahoo / Microsoft sender requirements, one provider per card. */
+function complianceDeck(list) {
+  if (!list || !list.length) return '';
+  const icon = {pass: '✓', fail: '✗', warn: '!', manual: '?'};
+  const label = {pass: _t('Meets'), fail: _t('Fails'), warn: _t('Partly')};
+  const tone = {pass: 'good', warn: 'mid', fail: 'bad'};
+  return deck(list.map(p => {
+    const pct = p.checked ? Math.round(100 * p.passed / p.checked) : null;
+    return {
+      tone: tone[p.status] || 'na', ring: pct, label: p.name, sub: label[p.status] || '',
+      left: `${deckRing(pct, _t('{0}/{1} rules', {0: p.passed, 1: p.checked}))}<h4>${escapeHtml(p.name)}</h4><p><span class="badge ${p.status}">${label[p.status] || ''}</span></p>`,
+      right: `${p.note ? `<p class="fc-text">${escapeHtml(p.note)}</p>` : ''}<div class="fc-lbl">${_t('Requirements')}</div>
+        <ul class="fc-rules">${p.rules.map((r, j) => `<li class="rule ${r.status}" style="--j:${j}"><span class="ri">${icon[r.status]}</span><span>${escapeHtml(r.label)}${r.status === 'manual' ? ` <span class="muted small">(${_t('not visible in DNS: check it yourself')})</span>` : ''}</span></li>`).join('')}</ul>`,
+    };
+  }), {cls: 'fc-mail'});
+}
+
+/* Remediation priorities, one per card. Signed-in: the fix card. Free: the
+   item, its points and that a plan exists (never how fixes work). */
+function planDeck(plan, checks, r, pk, opts, locked) {
+  const n = plan.length;
+  return deck(plan.map((p, i) => {
+    const c = checks.find(x => x.title === p.check) || {title: p.check, status: 'fail', key: ''};
+    const sev = severityFor(c);
+    const body = locked
+      ? `<h3 class="fc-title">${escapeHtml(p.check)}</h3>
+         ${CHECK_IMPACT[c.key] ? `<div class="fc-lbl">${_t('Why it matters')}</div><p class="fc-text">${escapeHtml(_t(CHECK_IMPACT[c.key]))}</p>` : ''}
+         <p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>`
+      : p.guide ? fixCard(p.guide, c, p.points, r.domain, pk, opts, i + 1)
+      : `<h3 class="fc-title">${escapeHtml(p.check)}</h3><p class="fixline"><code>${escapeHtml(p.fix)}</code>
+         <button class="copy-btn" data-copy="${escapeHtml(p.fix)}">${_t('Copy')}</button>${applyButton(p.fix, opts)}</p>`;
+    return {
+      tone: SEV_TONE[sev], badge: i + 1, label: p.check, sub: _t('+{0} pts', {0: p.points}),
+      left: `<div class="fc-medal step"><b>${i + 1}</b><span>${_t('of {0}', {0: n})}</span></div><h4 class="fc-gain">${_t('+{0} pts', {0: p.points})}</h4><p>${_t('Score gain when fixed')}</p>`,
+      right: body,
+    };
+  }), {cls: 'fc-plan'});
+}
+
+/* Detailed findings: one area per card. Issues are full rows; passes are
+   chips that open in place. Every check keeps its #chk-<key> anchor. */
+const FC_SHORT = {auth: N_('Email'), transport: N_('Transport'), dns: N_('DNS'), reputation: N_('Reputation'), web: N_('Website')};
+function findingsCarousel(checks, rank, checkRow, locked) {
   let j = 0;
-  const cards = areas.map((a, i) => {
-    const fails = a.cs.filter(c => c.status === 'fail').length, warns = a.cs.filter(c => c.status === 'warn').length;
-    return `<article class="fc-card tone-${a.tone}${i === 0 ? ' on' : ''}" role="tabpanel" data-i="${i}"${i ? ' inert aria-hidden="true"' : ''}>
-      <div class="fc-left">
-        <div class="fc-ring"><svg viewBox="0 0 170 170" aria-hidden="true"><circle class="bg" cx="85" cy="85" r="70"/><circle class="fg" cx="85" cy="85" r="70" style="stroke-dasharray:${C};stroke-dashoffset:${C};--off:${(C * (1 - (a.pct || 0) / 100)).toFixed(1)}" data-off="${(C * (1 - (a.pct || 0) / 100)).toFixed(1)}"/></svg>
-          <div class="fc-num"><b data-to="${a.pct ?? ''}">${a.pct === null ? '—' : a.pct}</b><small>/ 100</small></div></div>
-        <h4>${_t(a.cat.label)}</h4><p>${_t(a.cat.blurb)}</p>
-        <div class="fc-cnt">${fails ? `<span class="dotc fail">${_t('{0} failing', {0: fails})}</span>` : ''}${warns ? `<span class="dotc warn">${_t('{0} warnings', {0: warns})}</span>` : ''}${a.ok.length ? `<span class="dotc pass">${_t('{0} passed', {0: a.ok.length})}</span>` : ''}</div>
-      </div>
-      <div class="fc-right">
-        ${a.issues.length ? `<div class="fc-lbl">${_t('Needs attention')}</div><div class="fc-issues">${a.issues.map(c => checkRow(c, j++)).join('')}</div>`
-          : `<div class="fc-allgood">${_t('Everything in this area passed.')}</div>`}
-        ${a.ok.length ? `<div class="fc-lbl">${_t('Passed')}</div><div class="fc-ok">${a.ok.map(c => checkRow(c, j++, true)).join('')}</div>` : ''}
-        ${locked && a.issues.length ? `<p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>` : ''}
-      </div>
-    </article>`;
-  }).join('');
-  return `<div class="fc" data-n="${areas.length}">
-    <div class="fc-bar"><div class="fc-tabs" role="tablist">${tabs}</div>
-      <div class="fc-nav"><button type="button" class="fc-prev" aria-label="${_t('Previous area')}">‹</button><span class="fc-pos">1 / ${areas.length}</span><button type="button" class="fc-next" aria-label="${_t('Next area')}">›</button></div></div>
-    <div class="fc-stage">${cards}</div>
-    <div class="fc-dots">${areas.map((a, i) => `<i data-i="${i}"${i === 0 ? ' class="on"' : ''}></i>`).join('')}</div>
-  </div>`;
+  return deck(catStats(checks, rank).map(a => ({
+    tone: a.tone, ring: a.pct, label: _t(a.cat.label), short: _t(FC_SHORT[a.cat.key]),
+    sub: a.issues.length ? _t('{0} to review', {0: a.issues.length}) : _t('All passed'),
+    left: `${deckRing(a.pct)}<h4>${_t(a.cat.label)}</h4><p>${_t(a.cat.blurb)}</p>${catCounts(a)}`,
+    right: `${a.issues.length ? `<div class="fc-lbl">${_t('Needs attention')}</div><div class="fc-issues">${a.issues.map(c => checkRow(c, j++)).join('')}</div>`
+        : `<div class="fc-allgood">${_t('Everything in this area passed.')}</div>`}
+      ${a.ok.length ? `<div class="fc-lbl">${_t('Passed')}</div><div class="fc-ok">${a.ok.map(c => checkRow(c, j++, true)).join('')}</div>` : ''}
+      ${locked && a.issues.length ? `<p class="fc-lock">${ICONS.lock}<a href="#remediation-locked">${_t('Remediation available to signed-in users')}</a></p>` : ''}`,
+  })), {cls: 'fc-findings'});
 }
 
 function bindFindingsCarousel(container) {
@@ -932,6 +968,7 @@ function bindFindingsCarousel(container) {
     const motion = document.documentElement.classList.contains('motion');
     function fill(card) {
       const fg = card.querySelector('.fg'), num = card.querySelector('.fc-num b');
+      if (!fg || !num) return;
       fg.style.strokeDashoffset = fg.dataset.off;
       const to = parseInt(num.dataset.to, 10);
       if (motion && !isNaN(to)) countUp(num, to, 900);
@@ -944,7 +981,7 @@ function bindFindingsCarousel(container) {
         const o = cards[cur];
         o.classList.remove('on', 'from-left'); o.classList.add('out'); o.classList.toggle('to-right', back);
         o.inert = true; o.setAttribute('aria-hidden', 'true');
-        const fg = o.querySelector('.fg'); fg.style.strokeDashoffset = fg.style.strokeDasharray;
+        const fg = o.querySelector('.fg'); if (fg) fg.style.strokeDashoffset = fg.style.strokeDasharray;
         setTimeout(() => o.classList.remove('out', 'to-right'), 560);
       }
       const n = cards[i];
@@ -1029,7 +1066,7 @@ function bindReportInteractions(container) {
           .finally(() => { mail.disabled = false; });
         return;
       }
-      const jump = e.target.closest('a[href^="#chk-"]');
+      const jump = e.target.closest('a[href^="#chk-"], a[href^="#fix-"]');
       if (jump && openCheck(container, jump.getAttribute('href').slice(1))) { e.preventDefault(); return; }
       const see = e.target.closest('.fix-see a, .fix-locked a, .fc-lock a');
       if (see) {
