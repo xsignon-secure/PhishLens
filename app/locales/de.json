@@ -979,7 +979,6 @@
  "Low risk": "Geringes Risiko",
  "Top risk: attackers can send email as yourcompany.com": "Größtes Risiko: Angreifer können E-Mails als yourcompany.com senden",
  "Transport encryption": "Transportverschlüsselung",
- "Every check, grouped by area. Open a row for the details.": "Jede Prüfung, nach Bereich gruppiert. Öffnen Sie eine Zeile für Details.",
  "Email authentication": "E-Mail-Authentifizierung",
  "Detailed findings": "Detaillierte Ergebnisse",
  "High risk": "Hohes Risiko",
@@ -1239,5 +1238,12 @@
  "TLS cert": "TLS-Zert.",
  "Parked": "Geparkt",
  "Blacklists": "Sperrlisten",
- "Dangling DNS": "Verwaistes DNS"
+ "Dangling DNS": "Verwaistes DNS",
+ "Everything in this area passed.": "In diesem Bereich ist alles bestanden.",
+ "Needs attention": "Handlungsbedarf",
+ "{0} to review": "{0} zu prüfen",
+ "Next area": "Nächster Bereich",
+ "{0} passed": "{0} bestanden",
+ "Previous area": "Vorheriger Bereich",
+ "One area at a time. Point at an area or press Next; open a row for the details.": "Ein Bereich nach dem anderen. Zeigen Sie auf einen Bereich oder drücken Sie Weiter; öffnen Sie eine Zeile für Details."
 }

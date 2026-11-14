@@ -979,7 +979,6 @@
  "Low risk": "低リスク",
  "Top risk: attackers can send email as yourcompany.com": "最大のリスク:攻撃者が yourcompany.com としてメールを送信できます",
  "Transport encryption": "転送の暗号化",
- "Every check, grouped by area. Open a row for the details.": "すべてのチェックを分野別に表示。行を開くと詳細を確認できます。",
  "Email authentication": "メール認証",
  "Detailed findings": "詳細な結果",
  "High risk": "高リスク",
@@ -1239,5 +1238,12 @@
  "TLS cert": "TLS証明書",
  "Parked": "パーキング",
  "Blacklists": "ブラックリスト",
- "Dangling DNS": "ダングリングDNS"
+ "Dangling DNS": "ダングリングDNS",
+ "Everything in this area passed.": "この分野はすべて合格です。",
+ "Needs attention": "要対応",
+ "{0} to review": "確認 {0}件",
+ "Next area": "次の分野",
+ "{0} passed": "{0}件合格",
+ "Previous area": "前の分野",
+ "One area at a time. Point at an area or press Next; open a row for the details.": "分野ごとに表示します。分野にマウスを合わせるか「次へ」を押し、行を開くと詳細が見られます。"
 }

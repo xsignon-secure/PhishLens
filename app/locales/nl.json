@@ -979,7 +979,6 @@
  "Low risk": "Laag risico",
  "Top risk: attackers can send email as yourcompany.com": "Grootste risico: aanvallers kunnen e-mail versturen als yourcompany.com",
  "Transport encryption": "Transportversleuteling",
- "Every check, grouped by area. Open a row for the details.": "Elke controle, gegroepeerd per gebied. Open een rij voor details.",
  "Email authentication": "E-mailauthenticatie",
  "Detailed findings": "Gedetailleerde bevindingen",
  "High risk": "Hoog risico",
@@ -1239,5 +1238,12 @@
  "TLS cert": "TLS-cert.",
  "Parked": "Geparkeerd",
  "Blacklists": "Blokkadelijsten",
- "Dangling DNS": "Zwevende DNS"
+ "Dangling DNS": "Zwevende DNS",
+ "Everything in this area passed.": "Alles in dit onderdeel is geslaagd.",
+ "Needs attention": "Vraagt aandacht",
+ "{0} to review": "{0} te bekijken",
+ "Next area": "Volgend onderdeel",
+ "{0} passed": "{0} geslaagd",
+ "Previous area": "Vorig onderdeel",
+ "One area at a time. Point at an area or press Next; open a row for the details.": "Eén onderdeel tegelijk. Wijs een onderdeel aan of druk op Volgende; open een regel voor details."
 }

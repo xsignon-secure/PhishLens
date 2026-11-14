@@ -979,7 +979,6 @@
  "Low risk": "कम जोखिम",
  "Top risk: attackers can send email as yourcompany.com": "मुख्य जोखिम: हमलावर yourcompany.com के नाम से ईमेल भेज सकते हैं",
  "Transport encryption": "ट्रांसपोर्ट एन्क्रिप्शन",
- "Every check, grouped by area. Open a row for the details.": "हर जाँच, क्षेत्र के अनुसार। विवरण के लिए कोई पंक्ति खोलें।",
  "Email authentication": "ईमेल प्रमाणीकरण",
  "Detailed findings": "विस्तृत निष्कर्ष",
  "High risk": "उच्च जोखिम",
@@ -1239,5 +1238,12 @@
  "TLS cert": "TLS प्रमाणपत्र",
  "Parked": "पार्क्ड",
  "Blacklists": "ब्लैकलिस्ट",
- "Dangling DNS": "लटकता DNS"
+ "Dangling DNS": "लटकता DNS",
+ "Everything in this area passed.": "इस क्षेत्र में सब कुछ पास हुआ।",
+ "Needs attention": "ध्यान देने की ज़रूरत",
+ "{0} to review": "{0} समीक्षा हेतु",
+ "Next area": "अगला क्षेत्र",
+ "{0} passed": "{0} पास",
+ "Previous area": "पिछला क्षेत्र",
+ "One area at a time. Point at an area or press Next; open a row for the details.": "एक बार में एक क्षेत्र। किसी क्षेत्र पर पॉइंट करें या आगे दबाएँ; विवरण के लिए पंक्ति खोलें।"
 }
