@@ -1884,3 +1884,126 @@ details[open] > summary .chev { transform: rotate(180deg); }
   .fc-bars .fb-st { display: none; }
 }
 .rpt-threat .plan:has(> .fc), .plan:has(> .fc) { background: none; border: 0; padding: 0; box-shadow: none; }
+
+/* ============================================================
+   Inner pages in the report's threat style. Every page except
+   the home page gets html.thr-site: the same dark navy tokens as
+   .rpt-threat, a glow and a faint grid behind the content, and
+   glass cards. Always dark, like the report.
+   ============================================================ */
+html.thr-site {
+  color-scheme: dark;
+  --bg0: #0b1020; --bg1: #0f1630;
+  --surface: #121a31; --surface-2: #172040; --surface-3: #1e2747;
+  --line: #2a3458; --line-soft: #222c4d;
+  --ink-strong: #f2f5ff; --ink: #dde3f5; --ink-dim: #a9b4d6; --ink-faint: #8b97c4;
+  --accent: #38bdf8; --accent-hover: #67cdfa; --accent-2: #7dd3fc; --accent-soft: rgba(56, 189, 248, .12);
+  --accent-line: rgba(56, 189, 248, .4); --accent-ring: rgba(56, 189, 248, .25); --on-accent: #04121f;
+  --green: #4ade80; --green-bg: rgba(74, 222, 128, .12);
+  --blue: #60a5fa; --blue-bg: rgba(96, 165, 250, .12);
+  --amber: #fbbf24; --amber-bg: rgba(251, 191, 36, .12);
+  --orange: #fb923c; --orange-bg: rgba(251, 146, 60, .12);
+  --red: #f87171; --red-bg: rgba(248, 113, 113, .13);
+  --violet: #a78bfa;
+  --gA: #4ade80; --gB: #60a5fa; --gC: #fbbf24; --gD: #fb923c; --gF: #f87171;
+  --code-bg: #0a1022; --code-ink: #a9c6ff; --hover: rgba(255, 255, 255, .03);
+  --nav-bg: rgba(9, 13, 28, .82); --overlay: rgba(3, 5, 14, .76);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35); --shadow: 0 14px 34px -16px rgba(0, 0, 0, .8);
+  --shadow-lg: 0 30px 70px -30px rgba(5, 10, 30, .85);
+  --title: #f2f5ff;
+  --t1: #7dd3fc; --t1-bg: rgba(125, 211, 252, .12);
+  --t2: #c4b5fd; --t2-bg: rgba(196, 181, 253, .13);
+  --t3: #5eead4; --t3-bg: rgba(94, 234, 212, .12);
+  --t4: #f9a8d4; --t4-bg: rgba(249, 168, 212, .12);
+  --t5: #fdba74; --t5-bg: rgba(253, 186, 116, .12);
+  --t6: #86efac; --t6-bg: rgba(134, 239, 172, .12);
+  --side-bg: linear-gradient(180deg, rgba(9, 14, 34, .92) 0%, rgba(12, 18, 44, .92) 100%);
+  --side-solid: #090e22; --side-ink: #b9c4e2; --side-ico: #7dd3fc;
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 18px 40px -24px rgba(0, 0, 0, .9);
+  background: #0b1020;
+}
+html.thr-site body {
+  background:
+    radial-gradient(1100px 460px at 8% -8%, rgba(56, 189, 248, .14), transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, rgba(139, 92, 246, .15), transparent 60%),
+    linear-gradient(180deg, #0b1020 0%, #0d1328 100%) fixed;
+}
+html.thr-site body::before {      /* faint grid, fading out down the page */
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .4;
+  background-image: linear-gradient(rgba(125, 211, 252, .06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(125, 211, 252, .06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, #000 0, transparent 640px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, transparent 640px);
+}
+html.thr-site main, html.thr-site .site-footer { position: relative; z-index: 1; }
+html.thr-site .theme-toggle { display: none; }
+html.thr-site .nav { border-bottom-color: rgba(125, 211, 252, .12); }
+html.thr-site .nav nav a.active { background: rgba(56, 189, 248, .12); color: #e0f2fe; box-shadow: inset 0 0 0 1px rgba(56, 189, 248, .3); }
+
+/* Kicker and heading, like the report header */
+html.thr-site .eyebrow {
+  background: rgba(56, 189, 248, .1); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, .3);
+  box-shadow: 0 0 18px -6px rgba(56, 189, 248, .6); letter-spacing: .12em; text-transform: uppercase; font-size: 11px;
+}
+html.thr-site .eyebrow::before { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+html.thr-site main h1, html.thr-site .page-head h1, html.thr-site .app-head h1 { color: #ffffff; }
+html.thr-site .page-head .lead { color: var(--ink-dim); }
+
+/* Glass cards with a coloured top edge */
+html.thr-site :is(.panel, .card, .check-tile, .help-section, .auth-card, .legal, .plan-card, .bench-card, .setup-step) {
+  background: rgba(18, 26, 49, .78); border: 1px solid var(--line); box-shadow: var(--card-shadow);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+html.thr-site :is(.panel, .card, .check-tile, .help-section) { position: relative; overflow: hidden; }
+html.thr-site :is(.panel, .card, .check-tile, .help-section)::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--tc, #38bdf8), transparent); opacity: .7;
+}
+html.thr-site .panel.warn { background: rgba(251, 191, 36, .08); border-color: rgba(251, 191, 36, .4); }
+
+/* Inputs */
+html.thr-site :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
+  background: rgba(8, 13, 30, .7); color: var(--ink); border-color: var(--line);
+}
+html.thr-site :is(input, select, textarea)::placeholder { color: #6f7ba6; }
+html.thr-site .scanbox { background: rgba(8, 13, 30, .7); border-color: var(--line); }
+
+/* KPI tiles: dark glass with a glowing number, like the report score card */
+html.thr-site .kpi { --kc: #38bdf8; background: linear-gradient(160deg, color-mix(in srgb, var(--kc) 16%, rgba(18, 26, 49, .9)), rgba(14, 20, 40, .92));
+  border: 1px solid color-mix(in srgb, var(--kc) 35%, transparent); color: var(--ink);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .02) inset, 0 18px 40px -22px color-mix(in srgb, var(--kc) 70%, transparent); }
+html.thr-site .kpi.kpi-violet { --kc: #a78bfa; }
+html.thr-site .kpi.kpi-green { --kc: #4ade80; }
+html.thr-site .kpi.kpi-amber, html.thr-site .kpi.kpi-orange { --kc: #fb923c; }
+html.thr-site .kpi.kpi-red { --kc: #f87171; }
+html.thr-site .kpi::after { background: radial-gradient(circle, color-mix(in srgb, var(--kc) 22%, transparent), transparent 70%); }
+html.thr-site .kpi .kpi-num { color: var(--kc); text-shadow: 0 0 18px color-mix(in srgb, var(--kc) 60%, transparent); }
+html.thr-site .kpi .kpi-label { color: #f2f5ff; }
+html.thr-site .kpi .kpi-sub { color: var(--ink-dim); }
+html.thr-site .kpi .kpi-glyph { color: var(--kc); background: color-mix(in srgb, var(--kc) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kc) 35%, transparent); }
+
+/* Sidebar */
+html.thr-site .side { border-right: 1px solid rgba(125, 211, 252, .12); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+/* Tables, alerts, code */
+html.thr-site table th { color: #8b97c4; }
+html.thr-site .alert { background: rgba(248, 113, 113, .1); }
+html.thr-site pre, html.thr-site code { background: var(--code-bg); color: var(--code-ink); }
+
+html.thr-site .site-footer { background: rgba(7, 10, 22, .7); border-top-color: rgba(125, 211, 252, .12); }
+
+.motion.thr-site body::before { animation: thr-grid 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .motion.thr-site body::before { animation: none; } }
+/* Primary buttons: cyan-to-indigo glow, white text */
+html.thr-site .btn:not(.ghost):not(.subtle), html.thr-site .nav .nav-cta {
+  background: linear-gradient(135deg, #0284c7, #4f46e5); color: #ffffff; border: 0;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, .25) inset, 0 10px 24px -12px rgba(56, 189, 248, .8);
+}
+html.thr-site .btn:not(.ghost):not(.subtle):hover, html.thr-site .nav nav a.nav-cta:hover { color: #ffffff; filter: brightness(1.12); }
+html.thr-site .btn.ghost { background: rgba(255, 255, 255, .04); border-color: var(--line); color: var(--ink); }
+html.thr-site .btn.ghost:hover { background: rgba(255, 255, 255, .08); }
+html.thr-site .side-link.active, html.thr-site .side-link.active:hover {
+  background: linear-gradient(135deg, #0284c7, #4f46e5); color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, .25) inset, 0 10px 24px -12px rgba(56, 189, 248, .8);
+}
