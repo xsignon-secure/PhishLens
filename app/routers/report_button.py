@@ -63,6 +63,8 @@ async def report(request: Request, db: Session = Depends(get_db)):
     reporter = reporter if mailer.real_email(reporter) else "report button"
     out = ingest(db, request, tenant, reporter, blob, source="report_button")
     # The add-in shows only the verdict: the token can't read reports back.
+    if out.get("simulation"):
+        return {"id": out["id"], "verdict": "simulation", "simulation": True, "message": out["message"]}
     return {"id": out["id"], "verdict": out["verdict"]}
 
 

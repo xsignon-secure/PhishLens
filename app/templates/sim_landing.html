@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="{{ current_lang() }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ _("This was a phishing test") }}</title>
+<style>
+  :root { --ink: #14213d; --muted: #4a5872; --bg: #f4f6fb; --card: #fff; --line: #e3e8f2; --accent: #1f5bd8; --warn: #b45309; --warn-bg: #fff7e6; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e8ecf4; --muted: #a9b4c8; --bg: #12151d; --card: #1b1f2a; --line: #2c3344; --accent: #6b9bff; --warn: #fbbf24; --warn-bg: #2b2414; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 16px 56px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+  h1 { font-size: 26px; line-height: 1.25; margin: 16px 0 8px; }
+  p { color: var(--muted); margin: 0 0 14px; }
+  h2 { font-size: 17px; margin: 22px 0 8px; }
+  .subject { border-left: 4px solid var(--line); padding: 6px 12px; margin: 0 0 6px; font-style: italic; color: var(--ink); }
+  ul { padding-left: 20px; margin: 0; } li { margin: 6px 0; }
+  .tip { margin-top: 22px; padding: 14px 16px; border-radius: 12px; background: var(--bg); }
+  .tip strong { color: var(--accent); }
+  footer { margin-top: 18px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <span class="badge">⚠ {{ _("Phishing test") }}</span>
+    <h1>{{ _("This was a phishing test from {0}") | replace("{0}", company) }}</h1>
+    <p>{{ _("Nothing bad happened: this page was set up by your company's IT team to practise spotting phishing. You didn't give away any information.") }}</p>
+    <h2>{{ _("The email you clicked") }}</h2>
+    <p class="subject">{{ subject }}</p>
+    <h2>{{ _("Warning signs you can look for next time") }}</h2>
+    <ul>
+      {% for s in signs %}<li>{{ s }}</li>{% endfor %}
+    </ul>
+    <div class="tip">
+      {% if report_button %}
+      <strong>{{ _("Next time:") }}</strong> {{ _("don't click. Use the Report phishing button in your mailbox so your security team can check it.") }}
+      {% else %}
+      <strong>{{ _("Next time:") }}</strong> {{ _("don't click. Forward the email to your IT or security team and delete it.") }}
+      {% endif %}
+    </div>
+  </div>
+  <footer>{{ _("Phishing simulation by PhishLens. This page never asks for a password.") }}</footer>
+</main>
+<script>
+fetch(location.pathname.replace(/\/$/, '') + '/seen', {method: 'POST', credentials: 'omit', keepalive: true}).catch(() => {});
+</script>
+</body>
+</html>

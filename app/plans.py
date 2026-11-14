@@ -12,7 +12,7 @@ from .config import settings
 
 PRO_FEATURES = frozenset({
     "ruf", "tls_rpt", "lookalike_watch", "hosted", "dns_fixes",
-    "scheduled_reports", "share", "webhook", "api_keys",
+    "scheduled_reports", "share", "webhook", "api_keys", "simulations",
 })
 MSP_FEATURES = PRO_FEATURES | {"white_label", "siem_psa", "mcp", "client_portal"}
 
@@ -32,7 +32,7 @@ FEATURE_NAMES = {
     "hosted": "Hosted records", "dns_fixes": "One-click DNS fixes", "scheduled_reports": "Scheduled reports",
     "share": "Shared report links", "webhook": "Alert webhooks", "api_keys": "API keys",
     "white_label": "White-label", "siem_psa": "SIEM and PSA", "mcp": "AI assistant connection (MCP)",
-    "client_portal": "Client portal logins",
+    "client_portal": "Client portal logins", "simulations": "Phishing simulations",
 }
 
 
